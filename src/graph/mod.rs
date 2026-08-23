@@ -16,6 +16,7 @@ mod literal;
 // deliberate.
 #[allow(clippy::module_inception)]
 mod network;
+mod opcode;
 mod operands;
 mod origin;
 mod parameters;
@@ -30,6 +31,7 @@ pub use adjoints::Adjoints;
 pub use composite::{concat, stack};
 pub use field::{Field, Gradients};
 pub use network::Network;
+pub use opcode::{Node, Opcode};
 pub use parameters::Parameters;
 pub use symbol::Symbol;
 pub use tape::Tape;

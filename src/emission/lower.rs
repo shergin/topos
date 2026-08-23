@@ -27,6 +27,7 @@ use super::builder::{
 
 /// Why a plan declined to emit.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EmitError {
     /// A node's operation has no StableHLO lowering; reserved for
     /// future operations, since every current operation lowers.
@@ -77,7 +78,9 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
     /// Serializes this plan as a textual StableHLO module: one
     /// `func.func @main` whose arguments are the plan's parameters then
     /// its inputs, both in recording order, and whose results are the
-    /// readable values in recording order. Leaves embed as constants.
+    /// declared results in declared order
+    /// ([`Plan::results`](crate::Plan::results): the request's roots,
+    /// then its observes). Leaves embed as constants.
     ///
     /// One-hot selections cross the boundary as their dense one-hot
     /// matrices — `gather` lowers to `dot_general` against the one-hot,
@@ -146,11 +149,13 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
             self.lower(index, &catalog, &mut emitter)?;
         }
 
+        // Results in declared order: the request's roots, then its
+        // observes — `Plan::results` — never inferred from node order,
+        // so a caller pins the module signature by the request alone.
         let mut results: Vec<(String, String)> = Vec::new();
-        for index in 0..self.len() {
-            if self.readable()[index] {
-                results.push((emitter.name(index).to_string(), tensor(index)));
-            }
+        for &symbol in self.results() {
+            let index = symbol.id.index();
+            results.push((emitter.name(index).to_string(), tensor(index)));
         }
         let result_types: Vec<&str> = results.iter().map(|(_, kind)| kind.as_str()).collect();
         let result_names: Vec<&str> = results.iter().map(|(name, _)| name.as_str()).collect();

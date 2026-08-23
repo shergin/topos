@@ -1,4 +1,5 @@
 use super::SlotId;
+use crate::graph::Opcode;
 use crate::{Element, MapOperation, Shape, Tensor, Tensorial};
 
 use static_assertions::assert_impl_all;
@@ -229,36 +230,69 @@ impl<Data> Function<Data> {
     }
 
     /// Returns the operation's display name, for plan introspection.
-    pub(crate) fn name(&self) -> &'static str {
+    /// Returns the public opcode of this function: the payload-free
+    /// snapshot the IR view prints, one variant per variant here.
+    pub(crate) fn opcode(&self) -> Opcode {
         match self {
-            Function::Leaf(_) => "Leaf",
-            Function::Parameter(_) => "Parameter",
-            Function::Input(_) => "Input",
-            Function::Add(_) => "Add",
-            Function::Sub(_) => "Sub",
-            Function::Mul(_) => "Mul",
-            Function::Div(_) => "Div",
-            Function::Neg(_) => "Neg",
-            Function::Map(map) => map.name(),
-            Function::MatMul(_) => "MatMul",
-            Function::Transpose(_) => "Transpose",
-            Function::Sum(_) => "Sum",
-            Function::SumAlong(_) => "SumAlong",
-            Function::Broadcast(_) => "Broadcast",
-            Function::BroadcastAlong(_) => "BroadcastAlong",
-            Function::Reshape(_) => "Reshape",
-            Function::Permute(_) => "Permute",
-            Function::Narrow(_) => "Narrow",
-            Function::Pad(_) => "Pad",
-            Function::Unfold(_) => "Unfold",
-            Function::Gather(_) => "Gather",
-            Function::LogSoftmax(_) => "LogSoftmax",
-            Function::LogSumExp(_) => "LogSumExp",
-            Function::Step(_) => "Step",
-            Function::Fold(_) => "Fold",
-            Function::Scatter(_) => "Scatter",
-            Function::Powf(_) => "Powf",
-            Function::Maximum(_) => "Maximum",
+            Function::Leaf(_) => Opcode::Leaf,
+            Function::Parameter(_) => Opcode::Parameter,
+            Function::Input(_) => Opcode::Input,
+            Function::Add(_) => Opcode::Add,
+            Function::Sub(_) => Opcode::Sub,
+            Function::Mul(_) => Opcode::Mul,
+            Function::Div(_) => Opcode::Div,
+            Function::Neg(_) => Opcode::Neg,
+            Function::Map(map) => Opcode::Map { operation: map.op },
+            Function::MatMul(_) => Opcode::MatMul,
+            Function::Transpose(_) => Opcode::Transpose,
+            Function::Sum(_) => Opcode::Sum,
+            Function::SumAlong(sum_along) => Opcode::SumAlong {
+                axis: sum_along.axis,
+            },
+            Function::Broadcast(_) => Opcode::Broadcast,
+            Function::BroadcastAlong(broadcast_along) => Opcode::BroadcastAlong {
+                axis: broadcast_along.axis,
+            },
+            Function::Reshape(reshape) => Opcode::Reshape {
+                shape: reshape.shape.clone(),
+            },
+            Function::Permute(permute) => Opcode::Permute {
+                order: permute.order.clone(),
+            },
+            Function::Narrow(narrow) => Opcode::Narrow {
+                axis: narrow.axis,
+                start: narrow.start,
+                len: narrow.len,
+            },
+            Function::Pad(pad) => Opcode::Pad {
+                axis: pad.axis,
+                start: pad.start,
+                full_extent: pad.full_extent,
+            },
+            Function::Unfold(unfold) => Opcode::Unfold {
+                axis: unfold.axis,
+                size: unfold.size,
+                step: unfold.step,
+                dilation: unfold.dilation,
+            },
+            Function::Fold(fold) => Opcode::Fold {
+                axis: fold.axis,
+                size: fold.size,
+                step: fold.step,
+                dilation: fold.dilation,
+                extent: fold.extent,
+            },
+            Function::Gather(_) => Opcode::Gather,
+            Function::Scatter(scatter) => Opcode::Scatter { rows: scatter.rows },
+            Function::LogSoftmax(log_softmax) => Opcode::LogSoftmax {
+                axis: log_softmax.axis,
+            },
+            Function::LogSumExp(log_sum_exp) => Opcode::LogSumExp {
+                axis: log_sum_exp.axis,
+            },
+            Function::Step(_) => Opcode::Step,
+            Function::Powf(_) => Opcode::Powf,
+            Function::Maximum(_) => Opcode::Maximum,
         }
     }
 

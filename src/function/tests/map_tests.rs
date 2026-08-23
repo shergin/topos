@@ -106,7 +106,7 @@ fn names_print_the_operation_not_the_kind() {
         MapOperation::Tanh,
     ]
     .into_iter()
-    .map(|op| Map { op }.name())
+    .map(|operation| crate::Opcode::Map { operation }.name())
     .collect();
     assert_eq!(names, ["Exp", "Ln", "Sqrt", "Tanh"]);
 }

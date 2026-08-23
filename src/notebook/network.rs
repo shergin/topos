@@ -6,33 +6,31 @@ use super::html;
 use crate::{Element, Network};
 
 impl<E: Element> Network<E> {
-    /// Renders the network as a self-contained HTML card: how much
-    /// graph is recorded, and the reminder that payloads live in the
-    /// caller's state.
+    /// Renders the network as a self-contained HTML card: the IR
+    /// dump, one line per recorded node — the same text
+    /// [`describe`](Network::describe) answers, so the notebook and
+    /// the terminal cannot disagree.
     ///
     /// Rendering is pure and deterministic for a given network and
     /// theme, which is what makes it testable.
     pub fn to_html(&self, theme: Theme) -> String {
-        let header = html::escape(&self.summary());
-        html::card(
-            theme,
-            &header,
-            "<div>the immutable spec; read payloads through \
-             <code>parameters.of(symbol)</code> or a run</div>",
-        )
+        let described = self.describe();
+        let summary = described
+            .lines()
+            .last()
+            .unwrap_or("network: 0 nodes")
+            .to_string();
+        let spec = format!(
+            "<pre style=\"margin:0;white-space:pre;overflow-x:auto\">{}</pre>",
+            html::escape(&described)
+        );
+        html::card(theme, &html::escape(&summary), &spec)
     }
 
-    /// Displays the network when it is the last expression in an Evcxr
-    /// cell.
+    /// Displays the network when it is the last expression in an
+    /// Evcxr cell.
     pub fn evcxr_display(&self) {
-        html::show(&self.to_html(Theme::detect()), &self.summary());
-    }
-
-    /// The one-line description both representations share.
-    fn summary(&self) -> String {
-        let nodes = self.len();
-        let plural = if nodes == 1 { "" } else { "s" };
-        format!("network  \u{b7}  {nodes} recorded node{plural}")
+        html::show(&self.to_html(Theme::detect()), &self.describe());
     }
 }
 

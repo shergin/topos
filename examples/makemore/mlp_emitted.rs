@@ -207,16 +207,10 @@ fn main() {
 
     let (contexts, targets, loss) = (contexts.symbol(), targets.symbol(), loss.symbol());
     let parameter_symbols = parameters.map(|parameter| parameter.symbol());
-    // Pin the emitted result order: results are the readable set in
-    // recording order, and the raw gradient nodes sit at scan-artifact
-    // positions, so record one same-shape reshape alias per gradient,
-    // in parameter order, and compile the aliases as the roots.
-    let adjoints = tape
-        .differentiate(loss, parameter_symbols)
-        .map_gradients(|gradient| {
-            let value = tape.resolve(gradient);
-            value.reshape(value.shape()).symbol()
-        });
+    // Result order is declared: emission returns the request's roots
+    // in request order, so the gradients emit in parameter order with
+    // no aliasing ceremony.
+    let adjoints = tape.differentiate(loss, parameter_symbols);
     let network = tape.into_network();
     let plan = network.compile(Request::roots(adjoints.roots()));
     let module = plan.emit_stablehlo().expect("the joint step emits");
@@ -243,8 +237,6 @@ fn main() {
             [(contexts, batch_contexts), (targets, batch_targets)],
         );
         oracle_losses.push(run.of(loss).scalar());
-        // The aliases are the readable set; they carry the gradient
-        // payloads bit for bit (a same-shape reshape is the identity).
         let gradients = run.recorded_gradients(&adjoints);
         let rate = learning_rate(step);
         oracle_parameters = oracle_parameters.step(&gradients, |parameter, gradient| {

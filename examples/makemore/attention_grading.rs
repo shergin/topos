@@ -215,12 +215,9 @@ fn recorded(
         ])
         .map(|value| value.symbol())
         .collect();
-    // Alias each gradient through a same-shape reshape so the emitted
-    // result order follows recording order.
-    let adjoints = tape.differentiate(loss, wrt).map_gradients(|gradient| {
-        let value = tape.resolve(gradient);
-        value.reshape(value.shape()).symbol()
-    });
+    // Result order is declared: emission returns the request's roots
+    // in request order, no aliasing needed.
+    let adjoints = tape.differentiate(loss, wrt);
     let (tokens, targets, loss) = (tokens.symbol(), targets.symbol(), loss.symbol());
     let network = tape.into_network();
     let parameters = network.parameters();

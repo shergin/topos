@@ -23,15 +23,6 @@ impl Map {
     /// Returns the operation's display name — `"Tanh"`, not `"Map"`:
     /// the node kind is an internal grouping, and dumps stay in the
     /// mnemonics the user recorded.
-    pub(crate) fn name(&self) -> &'static str {
-        match self.op {
-            MapOperation::Exp => "Exp",
-            MapOperation::Ln => "Ln",
-            MapOperation::Sqrt => "Sqrt",
-            MapOperation::Tanh => "Tanh",
-        }
-    }
-
     /// Returns the arity: one operand.
     pub(crate) fn arity(&self) -> usize {
         1

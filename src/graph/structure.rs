@@ -1,9 +1,11 @@
 use cow_vec::CowVec;
+use smallvec::SmallVec;
 
 use crate::Shape;
 use crate::function::Function;
 
-use super::ValueId;
+use super::opcode::Node;
+use super::{Origin, Symbol, ValueId};
 
 use super::Operands;
 
@@ -57,5 +59,40 @@ impl<Data> Structure<Data> {
         debug_assert_eq!(self.functions.len(), self.operands.len());
         debug_assert_eq!(self.functions.len(), self.shapes.len());
         ValueId(self.functions.len() - 1)
+    }
+}
+
+impl<Data> Structure<Data> {
+    /// Builds the public snapshot of the node at `index`, minting
+    /// symbols of the `origin` family for the node and its operands.
+    ///
+    /// # Panics
+    /// Panics if `index` is out of bounds.
+    pub(crate) fn node_at(&self, origin: Origin, index: usize) -> Node {
+        let function = self
+            .functions
+            .get(index)
+            .expect("`node_at` index is in bounds for its columns");
+        let operands: SmallVec<[Symbol; 2]> = self
+            .operands
+            .get(index)
+            .expect("operand links cover the columns")
+            .as_slice()
+            .iter()
+            .map(|link| Symbol { origin, id: *link })
+            .collect();
+        Node {
+            symbol: Symbol {
+                origin,
+                id: ValueId(index),
+            },
+            opcode: function.opcode(),
+            shape: self
+                .shapes
+                .get(index)
+                .expect("shapes cover the columns")
+                .clone(),
+            operands,
+        }
     }
 }

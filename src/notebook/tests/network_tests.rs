@@ -2,16 +2,24 @@ use super::*;
 use crate::Tape;
 
 #[test]
-fn the_card_reports_the_recorded_node_count() {
+fn the_card_renders_the_ir_dump() {
     let empty: Network<f64> = Tape::new().into_network();
-    assert!(empty.to_html(Theme::DARK).contains("0 recorded nodes"));
+    assert!(empty.to_html(Theme::DARK).contains("0 nodes"));
 
     let tape: Tape<f64> = Tape::new();
     let a = tape.parameter(1.0);
     let b = tape.parameter(2.0);
     let _sum = a + b;
     let network = tape.into_network();
-    assert!(network.to_html(Theme::DARK).contains("3 recorded nodes"));
+    let html = network.to_html(Theme::DARK);
+    // The card is the same text `describe` answers, line for line.
+    for line in network.describe().lines() {
+        assert!(
+            html.contains(line.trim_end()),
+            "card is missing the spec line {line:?}"
+        );
+    }
+    assert!(html.contains("3 nodes"));
 }
 
 #[test]
@@ -19,7 +27,7 @@ fn one_node_reads_in_the_singular() {
     let tape: Tape<f64> = Tape::new();
     let _only = tape.parameter(1.0);
     let network = tape.into_network();
-    assert!(network.to_html(Theme::DARK).contains("1 recorded node<"));
+    assert!(network.to_html(Theme::DARK).contains("1 node"));
 }
 
 #[test]

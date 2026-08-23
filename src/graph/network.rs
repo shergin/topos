@@ -4,7 +4,9 @@ use static_assertions::assert_impl_all;
 
 use crate::{Element, Tensor};
 
-use super::{Origin, Parameters, SlotStore, Structure, Symbol, Tape, ValueId};
+use crate::function::Function;
+
+use super::{Node, Origin, Parameters, SlotStore, Structure, Symbol, Tape, ValueId};
 
 // Request-time thread-safety contract. `Differentiable` already requires
 // `Data: Send + Sync`, so only a structural change (an `Rc`, a `RefCell`, a
@@ -121,6 +123,78 @@ impl<E: Element> Network<E> {
     /// Returns the number of recorded parameter slots.
     pub(crate) fn parameters_len(&self) -> usize {
         self.initials.len()
+    }
+
+    /// Returns the public snapshot of the node `symbol` names:
+    /// opcode, operands, and recorded shape, detached from the
+    /// network.
+    ///
+    /// # Panics
+    /// Panics if `symbol` belongs to a different network or is not
+    /// allocated in it.
+    pub fn node(&self, symbol: Symbol) -> Node {
+        let id = self.locate(symbol);
+        self.structure.node_at(self.origin, id.index())
+    }
+
+    /// Returns every recorded node in allocation order, as public
+    /// snapshots.
+    pub fn nodes(&self) -> impl Iterator<Item = Node> + '_ {
+        (0..self.len()).map(|index| self.structure.node_at(self.origin, index))
+    }
+
+    /// Returns the stored payload of the node `symbol` names: a
+    /// leaf's constant, a parameter's record-site initial, or an
+    /// input's default — `None` for computed nodes.
+    ///
+    /// It is the sealed form of [`Value::payload`](crate::Value::payload).
+    /// Live parameter payloads are the caller's
+    /// [`Parameters`](crate::Parameters), read by
+    /// [`Parameters::of`](crate::Parameters::of); run results are
+    /// read from a [`Run`](crate::Run).
+    ///
+    /// # Panics
+    /// Panics if `symbol` belongs to a different network or is not
+    /// allocated in it.
+    pub fn payload(&self, symbol: Symbol) -> Option<&Tensor<E>> {
+        let id = self.locate(symbol);
+        match self
+            .structure
+            .functions
+            .get(id.index())
+            .expect("`locate` checked the bounds")
+        {
+            Function::Leaf(leaf) => Some(&leaf.0),
+            Function::Parameter(parameter) => Some(&self.initials.payloads()[parameter.0.index()]),
+            Function::Input(input) => Some(&self.inputs.payloads()[input.0.index()]),
+            _ => None,
+        }
+    }
+
+    /// Renders the spec as text: one line per node in allocation
+    /// order — index, opcode, operand indices, parameters, shape —
+    /// then a summary. The IR dump, and the same line format
+    /// [`Plan::describe`](crate::Plan::describe) uses for its
+    /// scheduled subset.
+    pub fn describe(&self) -> String {
+        use std::fmt::Write;
+
+        let mut lines = String::new();
+        for node in self.nodes() {
+            writeln!(lines, "{}", node.spec_line()).expect("writing to a string cannot fail");
+        }
+        let nodes = self.len();
+        let parameters = self.initials.len();
+        let inputs = self.inputs.len();
+        writeln!(
+            lines,
+            "network: {nodes} node{}, {parameters} parameter{}, {inputs} input{}",
+            if nodes == 1 { "" } else { "s" },
+            if parameters == 1 { "" } else { "s" },
+            if inputs == 1 { "" } else { "s" },
+        )
+        .expect("writing to a string cannot fail");
+        lines
     }
 
     /// Locates the node `symbol` names on this network.

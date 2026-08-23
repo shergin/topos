@@ -7,7 +7,9 @@ use crate::function::Function;
 use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::trace::Trace;
-use super::{Adjoints, Network, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId};
+use super::{
+    Adjoints, Network, Node, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId,
+};
 
 // Request-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`. The tape is the root every other guarantee rests on.
@@ -172,6 +174,76 @@ impl<E: Element> Tape<E> {
     /// Returns the number of recorded nodes.
     pub fn len(&self) -> usize {
         self.lock().structure.len()
+    }
+
+    /// Returns the public snapshot of the node `symbol` names:
+    /// opcode, operands, and recorded shape, detached from the tape,
+    /// so it outlives the lock.
+    ///
+    /// # Panics
+    /// Panics if `symbol` belongs to a different network or is not
+    /// allocated on this tape.
+    pub fn node(&self, symbol: Symbol) -> Node {
+        assert!(
+            symbol.origin == self.origin,
+            "symbol belongs to a different network"
+        );
+        let inner = self.lock();
+        assert!(
+            symbol.id.index() < inner.structure.len(),
+            "symbol is not allocated on this tape"
+        );
+        inner.structure.node_at(self.origin, symbol.id.index())
+    }
+
+    /// Returns every node recorded so far, in allocation order, as a
+    /// snapshot taken under the tape lock.
+    pub fn nodes(&self) -> Vec<Node> {
+        let inner = self.lock();
+        (0..inner.structure.len())
+            .map(|index| inner.structure.node_at(self.origin, index))
+            .collect()
+    }
+
+    /// Returns a clone of the stored payload of the node `symbol`
+    /// names: a leaf's constant, a parameter's record-site initial,
+    /// or an input's default — `None` for computed nodes.
+    ///
+    /// # Panics
+    /// Panics if `symbol` belongs to a different network or is not
+    /// allocated on this tape.
+    pub fn payload(&self, symbol: Symbol) -> Option<Tensor<E>> {
+        self.resolve(symbol).payload()
+    }
+
+    /// Renders the recording so far as text: one line per node in
+    /// allocation order, then a summary — the open-phase twin of
+    /// [`Network::describe`](crate::Network::describe).
+    pub fn describe(&self) -> String {
+        use std::fmt::Write;
+
+        let inner = self.lock();
+        let mut lines = String::new();
+        for index in 0..inner.structure.len() {
+            writeln!(
+                lines,
+                "{}",
+                inner.structure.node_at(self.origin, index).spec_line()
+            )
+            .expect("writing to a string cannot fail");
+        }
+        let nodes = inner.structure.len();
+        let parameters = inner.initials.len();
+        let inputs = inner.inputs.len();
+        writeln!(
+            lines,
+            "tape: {nodes} node{}, {parameters} parameter{}, {inputs} input{}",
+            if nodes == 1 { "" } else { "s" },
+            if parameters == 1 { "" } else { "s" },
+            if inputs == 1 { "" } else { "s" },
+        )
+        .expect("writing to a string cannot fail");
+        lines
     }
 
     /// Returns `true` if it holds no nodes.

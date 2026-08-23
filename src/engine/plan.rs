@@ -8,7 +8,7 @@ use crate::{Element, Numerics, Shape, Tensor};
 
 use crate::backend::{Backend, Formula, NumericsScope, Precision};
 use crate::function::Function;
-use crate::graph::{Network, Operands, Origin, Parameters, SlotStore, Structure, Symbol};
+use crate::graph::{Network, Node, Operands, Origin, Parameters, SlotStore, Structure, Symbol};
 
 use super::pattern::{
     BatchNormalization, Candidates, Catalog, Pattern, ReduceWindow, View, WindowProduct,
@@ -113,6 +113,10 @@ pub struct Plan<E> {
     /// even when liveness happens to retain it, so the contract does
     /// not depend on the optimizer's choices.
     readable: Arc<Vec<bool>>,
+    /// The declared results in declaration order: roots as requested,
+    /// then observes, first occurrence kept. Emission honors this
+    /// order.
+    results: Vec<Symbol>,
     /// Per node, the slots whose last forward reader this node is and
     /// which the analysis licenses for release: everything outside the
     /// keep-set and read contract. Forward-only runs execute every
@@ -153,8 +157,12 @@ impl<E: Element> Plan<E> {
 
         let mut wanted = vec![false; length];
         let mut readable = vec![false; length];
+        let mut results: Vec<Symbol> = Vec::with_capacity(roots.len() + observe.len());
         for symbol in roots.iter().chain(observe) {
             let index = network.locate(*symbol).index();
+            if !readable[index] {
+                results.push(*symbol);
+            }
             wanted[index] = true;
             readable[index] = true;
         }
@@ -274,6 +282,7 @@ impl<E: Element> Plan<E> {
             parameter_slots: network.parameters_len(),
             wanted,
             readable: Arc::new(readable),
+            results,
             releases,
             candidates,
             home,
@@ -306,6 +315,41 @@ impl<E: Element> Plan<E> {
         self.numerics
     }
 
+    /// Returns the public snapshot of the node `symbol` names inside
+    /// the plan's graph prefix.
+    ///
+    /// # Panics
+    /// Panics if `symbol` belongs to a different network or is not
+    /// allocated in the prefix.
+    pub fn node(&self, symbol: Symbol) -> Node {
+        assert!(
+            symbol.origin == self.origin,
+            "symbol belongs to a different network"
+        );
+        assert!(
+            symbol.id.index() < self.len(),
+            "symbol is not allocated in the plan's graph prefix"
+        );
+        self.structure.node_at(self.origin, symbol.id.index())
+    }
+
+    /// Returns the scheduled nodes — the ancestor closure a run
+    /// evaluates — in allocation order, as public snapshots.
+    pub fn nodes(&self) -> impl Iterator<Item = Node> + '_ {
+        (0..self.len())
+            .filter(|&index| self.wanted[index])
+            .map(|index| self.structure.node_at(self.origin, index))
+    }
+
+    /// Returns the declared results in declaration order: the
+    /// request's roots, then its observes, first occurrence kept.
+    ///
+    /// Result order is declared, never inferred: StableHLO emission
+    /// returns exactly these values in exactly this order.
+    pub fn results(&self) -> &[Symbol] {
+        &self.results
+    }
+
     /// Returns the plan's function column, for plan consumers such as
     /// the StableHLO emitter — introspection siblings of `describe`.
     pub(crate) fn functions(&self) -> &CowVec<Function<Tensor<E>>> {
@@ -326,11 +370,6 @@ impl<E: Element> Plan<E> {
     /// run must evaluate.
     pub(crate) fn wanted(&self) -> &[bool] {
         &self.wanted
-    }
-
-    /// Returns the declared observable set: targets plus keeps.
-    pub(crate) fn readable(&self) -> &[bool] {
-        &self.readable
     }
 
     /// Returns the discovered pattern pool, for plan consumers such as
@@ -430,11 +469,6 @@ impl<E: Element> Plan<E> {
                 continue;
             }
             evaluated += 1;
-            let function = self
-                .structure
-                .functions
-                .get(index)
-                .expect("plan columns are fixed");
             let liveness = if self.home.interior(index) {
                 "fused".to_string()
             } else if self.readable[index] {
@@ -447,9 +481,8 @@ impl<E: Element> Plan<E> {
             };
             writeln!(
                 lines,
-                "  {index:4}  {:<14} {:<16} {liveness}",
-                function.name(),
-                self.structure.shapes[index].to_string(),
+                "{:<52} {liveness}",
+                self.structure.node_at(self.origin, index).spec_line(),
             )
             .expect("writing to a string cannot fail");
         }

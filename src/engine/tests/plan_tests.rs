@@ -402,36 +402,36 @@ fn describe_snapshots_the_fused_forward_plan() {
     let network = tape.into_network();
 
     let forward = network.compile(Request::roots([output]));
-    let expected = "     0  Leaf           [2, 1, 4, 4]     freed after 11
-     1  Leaf           [2, 1, 3, 3]     freed after 9
-     2  Leaf           [2]              freed after 12
-     3  Pad            [2, 1, 6, 4]     fused
-     4  Pad            [2, 1, 6, 6]     fused
-     5  Unfold         [2, 1, 4, 3, 6]  fused
-     6  Unfold         [2, 1, 4, 3, 4, 3] fused
-     7  Permute        [2, 4, 4, 1, 3, 3] fused
-     8  Reshape        [32, 9]          fused
-     9  Permute        [1, 3, 3, 2]     freed after 10
-    10  Reshape        [9, 2]           freed after 11
-    11  MatMul         [32, 2]          freed after 13
-    12  BroadcastAlong [32, 2]          freed after 13
-    13  Add            [32, 2]          freed after 14
-    14  Reshape        [2, 4, 4, 2]     freed after 15
-    15  Permute        [2, 2, 4, 4]     freed after 17
-    16  Leaf           [2, 2, 4, 4]     freed after 17
-    17  Maximum        [2, 2, 4, 4]     freed after 29
-    18  Unfold         [2, 2, 2, 2, 4]  fused
-    19  Unfold         [2, 2, 2, 2, 2, 2] fused
-    20  Permute        [2, 2, 2, 2, 2, 2] fused
-    21  Reshape        [2, 2, 2, 2, 4]  fused
-    22  Narrow         [2, 2, 2, 2, 1]  fused
-    23  Narrow         [2, 2, 2, 2, 1]  fused
-    24  Maximum        [2, 2, 2, 2, 1]  fused
-    25  Narrow         [2, 2, 2, 2, 1]  fused
-    26  Maximum        [2, 2, 2, 2, 1]  fused
-    27  Narrow         [2, 2, 2, 2, 1]  fused
-    28  Maximum        [2, 2, 2, 2, 1]  fused
-    29  Reshape        [2, 2, 2, 2]     kept
+    let expected = "   0  Leaf                              [2, 1, 4, 4] freed after 11
+   1  Leaf                              [2, 1, 3, 3] freed after 9
+   2  Leaf                              [2]          freed after 12
+   3  Pad            0  axis=2 start=1 full_extent=6 [2, 1, 6, 4] fused
+   4  Pad            3  axis=3 start=1 full_extent=6 [2, 1, 6, 6] fused
+   5  Unfold         4  axis=2 size=3 step=1 dilation=1 [2, 1, 4, 3, 6] fused
+   6  Unfold         5  axis=4 size=3 step=1 dilation=1 [2, 1, 4, 3, 4, 3] fused
+   7  Permute        6  order=[0, 2, 4, 1, 3, 5] [2, 4, 4, 1, 3, 3] fused
+   8  Reshape        7  shape=[32, 9]   [32, 9]      fused
+   9  Permute        1  order=[1, 2, 3, 0] [1, 3, 3, 2] freed after 10
+  10  Reshape        9  shape=[9, 2]    [9, 2]       freed after 11
+  11  MatMul         8, 10              [32, 2]      freed after 13
+  12  BroadcastAlong 2, 11  axis=0      [32, 2]      freed after 13
+  13  Add            11, 12             [32, 2]      freed after 14
+  14  Reshape        13  shape=[2, 4, 4, 2] [2, 4, 4, 2] freed after 15
+  15  Permute        14  order=[0, 3, 1, 2] [2, 2, 4, 4] freed after 17
+  16  Leaf                              [2, 2, 4, 4] freed after 17
+  17  Maximum        15, 16             [2, 2, 4, 4] freed after 29
+  18  Unfold         17  axis=2 size=2 step=2 dilation=1 [2, 2, 2, 2, 4] fused
+  19  Unfold         18  axis=4 size=2 step=2 dilation=1 [2, 2, 2, 2, 2, 2] fused
+  20  Permute        19  order=[0, 1, 2, 4, 3, 5] [2, 2, 2, 2, 2, 2] fused
+  21  Reshape        20  shape=[2, 2, 2, 2, 4] [2, 2, 2, 2, 4] fused
+  22  Narrow         21  axis=4 start=0 len=1 [2, 2, 2, 2, 1] fused
+  23  Narrow         21  axis=4 start=1 len=1 [2, 2, 2, 2, 1] fused
+  24  Maximum        22, 23             [2, 2, 2, 2, 1] fused
+  25  Narrow         21  axis=4 start=2 len=1 [2, 2, 2, 2, 1] fused
+  26  Maximum        24, 25             [2, 2, 2, 2, 1] fused
+  27  Narrow         21  axis=4 start=3 len=1 [2, 2, 2, 2, 1] fused
+  28  Maximum        26, 27             [2, 2, 2, 2, 1] fused
+  29  Reshape        28  shape=[2, 2, 2, 2] [2, 2, 2, 2] kept
 plan: forward; 30 of 30 nodes evaluated, 1 readable
 fused 2 groups, 17 nodes replaced
 live volume: peak 192 elements at node 13, retain-all 552

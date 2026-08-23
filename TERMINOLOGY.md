@@ -110,6 +110,27 @@ the iterator-based base constructor. In topos:
 [`Shape`](src/payload/shape.rs), reachable via `Value::shape` and
 `Differentiable::shape`.
 
+**Opcode / Node (the printable IR).** The public view of the spec:
+`Opcode` is the payload-free twin of the engine's operation enum — a
+closed set whose variants carry their parameters (`axis`, window
+fields, a reshape's target shape) — and `Node` is a detached
+snapshot of one recorded entry: its `Symbol`, opcode, operand
+symbols, and recorded shape. `describe` on `Tape`, `Network`, and
+`Plan` renders one line per node in allocation order — index, name,
+operand indices, parameters, shape — so the spec dump and the plan
+dump line up column for column (the plan appends its liveness
+verdict per line: kept, fused, freed after, releasable after,
+retained). That alignment is how rule 1 is checked by eye: every
+evaluated plan line is a spec line. `payload(symbol)` reads a
+source's stored payload (a leaf's constant, a parameter's initial,
+an input's default) explicitly — describe never prints payloads, so
+a 100M-element embedding cannot make the dump unusable. In topos:
+[`Opcode`, `Node`](src/graph/opcode.rs), `describe` on
+[`Tape`](src/graph/tape.rs) / [`Network`](src/graph/network.rs) /
+[`Plan`](src/engine/plan.rs), and `Plan::results` — the declared
+result order (roots as requested, then observes) that StableHLO
+emission returns verbatim.
+
 **Operation.** A differentiable primitive: how to compute a payload
 from operand payloads (`forward`, an inherent method over
 `Tensor<E>`) and the cotangent to hand back to each operand
