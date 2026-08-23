@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::ffi::c_void;
-use std::fmt;
 use std::ptr::NonNull;
 use std::sync::Mutex;
 
@@ -11,6 +10,7 @@ use objc2_metal::{
     MTLCommandQueue, MTLCompileOptions, MTLComputePipelineState, MTLCreateSystemDefaultDevice,
     MTLDataType, MTLDevice, MTLFunctionConstantValues, MTLLibrary,
 };
+use thiserror::Error;
 
 use super::pool::Pool;
 
@@ -32,19 +32,12 @@ pub(super) type ShapeKey = [u32; 7];
 /// simply declines and the GPU tests skip, while every other failure
 /// — a shader that does not compile, a missing kernel, a rejected
 /// pipeline — is a broken backend that the tests must report loudly.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub(super) enum SetupError {
+    #[error("no Metal device")]
     NoDevice,
+    #[error("{0}")]
     Failed(String),
-}
-
-impl fmt::Display for SetupError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NoDevice => write!(formatter, "no Metal device"),
-            Self::Failed(reason) => write!(formatter, "{reason}"),
-        }
-    }
 }
 
 /// The backend's one-time state: the device and queue, the compiled

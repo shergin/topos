@@ -1,7 +1,5 @@
-use std::error::Error;
-use std::fmt::{self, Display, Formatter};
-
 use static_assertions::assert_impl_all;
+use thiserror::Error;
 
 use super::accelerate::Accelerate;
 use super::coverage::{Coverage, Dispatch};
@@ -164,44 +162,21 @@ impl Backend {
 
 /// Why a [`Backend`] would decline all work in this build.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum BackendUnavailable {
     /// The backend's cargo feature is off in this build.
+    #[error("the backend's cargo feature is off in this build")]
     NotCompiled,
     /// The feature is on, but this platform has no such backend.
+    #[error("this platform has no such backend")]
     PlatformUnsupported,
     /// One-time setup failed; the reason is the message.
+    #[error("backend setup failed: {0}")]
     Initialization(String),
     /// Disabled after a runtime error; the reason is the message.
+    #[error("backend disabled after a runtime error: {0}")]
     Poisoned(String),
 }
-
-impl Display for BackendUnavailable {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            BackendUnavailable::NotCompiled => {
-                write!(
-                    formatter,
-                    "the backend's cargo feature is off in this build"
-                )
-            }
-            BackendUnavailable::PlatformUnsupported => {
-                write!(formatter, "this platform has no such backend")
-            }
-            BackendUnavailable::Initialization(reason) => {
-                write!(formatter, "backend setup failed: {reason}")
-            }
-            BackendUnavailable::Poisoned(reason) => {
-                write!(
-                    formatter,
-                    "backend disabled after a runtime error: {reason}"
-                )
-            }
-        }
-    }
-}
-
-impl Error for BackendUnavailable {}
 
 #[cfg(test)]
 #[path = "tests/backend_tests.rs"]

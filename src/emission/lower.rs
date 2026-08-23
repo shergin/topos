@@ -13,8 +13,9 @@
 //! envelope-based, never bitwise, because the target's reductions may
 //! reassociate.
 
-use std::error::Error;
-use std::fmt::{self, Display, Write};
+use std::fmt::Write;
+
+use thiserror::Error;
 
 use crate::engine::{BatchNormalization, Catalog, Pattern, ReduceWindow, WindowProduct};
 use crate::function::Function;
@@ -26,11 +27,12 @@ use super::builder::{
 };
 
 /// Why a plan declined to emit.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum EmitError {
     /// A node's operation has no StableHLO lowering; reserved for
     /// future operations, since every current operation lowers.
+    #[error("node {node} records {operation}, which has no StableHLO lowering yet")]
     Unsupported {
         /// The node's plan index.
         node: usize,
@@ -38,19 +40,6 @@ pub enum EmitError {
         operation: &'static str,
     },
 }
-
-impl Display for EmitError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            EmitError::Unsupported { node, operation } => write!(
-                formatter,
-                "node {node} records {operation}, which has no StableHLO lowering yet"
-            ),
-        }
-    }
-}
-
-impl Error for EmitError {}
 
 /// The running state of one emission: the SSA name of every lowered
 /// node and the accumulated body text.

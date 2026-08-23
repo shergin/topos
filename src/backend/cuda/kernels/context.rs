@@ -1,7 +1,7 @@
 use std::ffi::{CStr, c_char, c_void};
-use std::fmt;
 
 use libloading::Library;
+use thiserror::Error;
 
 use super::pool::Pool;
 
@@ -25,21 +25,14 @@ const INSUFFICIENT_DRIVER: i32 = 35;
 /// environment where the backend declines and the GPU tests skip,
 /// while every other failure is a broken backend that the tests
 /// must report loudly.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub(super) enum SetupError {
+    #[error("`{0}` is not available")]
     NoLibrary(&'static str),
+    #[error("no CUDA device")]
     NoDevice,
+    #[error("{0}")]
     Failed(String),
-}
-
-impl fmt::Display for SetupError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NoLibrary(name) => write!(formatter, "`{name}` is not available"),
-            Self::NoDevice => write!(formatter, "no CUDA device"),
-            Self::Failed(reason) => write!(formatter, "{reason}"),
-        }
-    }
 }
 
 /// The dlopen-resolved API surface: plain C function pointers

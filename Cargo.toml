@@ -39,6 +39,7 @@ malevich = { version = "1.15.0", features = ["evcxr"], optional = true }
 matrixmultiply = { version = "0.3.11", optional = true }
 smallvec = "1.15.2"
 static_assertions = "1.1"
+thiserror = "2.0"
 
 [dev-dependencies]
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
