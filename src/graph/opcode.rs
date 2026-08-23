@@ -49,8 +49,6 @@ pub enum Opcode {
     Step,
     /// The matrix product; ranks above two multiply batched.
     MatMul,
-    /// The two axes swapped.
-    Transpose,
     /// The sum of every element, shaped rank 0.
     Sum,
     /// One axis reduced by summation.
@@ -158,7 +156,6 @@ impl Opcode {
             Opcode::Maximum => "Maximum",
             Opcode::Step => "Step",
             Opcode::MatMul => "MatMul",
-            Opcode::Transpose => "Transpose",
             Opcode::Sum => "Sum",
             Opcode::SumAlong { .. } => "SumAlong",
             Opcode::Broadcast => "Broadcast",
@@ -182,7 +179,6 @@ impl Opcode {
             Opcode::Leaf | Opcode::Parameter | Opcode::Input => 0,
             Opcode::Neg
             | Opcode::Map { .. }
-            | Opcode::Transpose
             | Opcode::Sum
             | Opcode::SumAlong { .. }
             | Opcode::Reshape { .. }

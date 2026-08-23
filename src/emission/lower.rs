@@ -324,18 +324,6 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     tensor_type::<Element>(&shapes[table]),
                 ));
             }
-            Function::Transpose(_) => {
-                let source = operand(0);
-                if shapes[source].rank() < 2 {
-                    emitter.names[index] = Some(emitter.name(source).to_string());
-                    return Ok(());
-                }
-                emitter.line(format!(
-                    "{result} = stablehlo.transpose {}, dims = [1, 0] : ({}) -> {result_type}",
-                    emitter.name(source),
-                    tensor_type::<Element>(&shapes[source]),
-                ));
-            }
             Function::Permute(permute) => {
                 let source = operand(0);
                 emitter.line(format!(

@@ -160,10 +160,6 @@ impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
         Self::of(self.value.matmul(rhs.value))
     }
 
-    fn transpose(&self) -> Self {
-        Self::of(self.value.transpose())
-    }
-
     fn sum(&self) -> Self {
         Self::of(self.value.sum())
     }

@@ -7,7 +7,7 @@ use static_assertions::assert_impl_all;
 use super::{
     Add, Broadcast, BroadcastAlong, Cotangents, Div, Fold, Gather, Input, Leaf, LogSoftmax,
     LogSumExp, Map, MatMul, Maximum, Mul, Narrow, Neg, Operation, Pad, Parameter, Permute, Powf,
-    Reads, Reshape, Scatter, Step, Sub, Sum, SumAlong, Transpose, Unfold,
+    Reads, Reshape, Scatter, Step, Sub, Sum, SumAlong, Unfold,
 };
 
 // Entry-time thread-safety contract; the anchor rationale is documented
@@ -35,7 +35,6 @@ pub(crate) enum Function<Data> {
     Neg(Neg),
     Map(Map),
     MatMul(MatMul),
-    Transpose(Transpose),
     Sum(Sum),
     SumAlong(SumAlong),
     Broadcast(Broadcast),
@@ -105,11 +104,6 @@ impl<Data> Function<Data> {
     /// Creates the matrix product of the `[left, right]` operands.
     pub(crate) fn matmul() -> Self {
         Function::MatMul(MatMul)
-    }
-
-    /// Creates the transposition of the single operand.
-    pub(crate) fn transpose() -> Self {
-        Function::Transpose(Transpose)
     }
 
     /// Creates the sum of every value in the single operand.
@@ -229,7 +223,6 @@ impl<Data> Function<Data> {
         Function::Maximum(Maximum)
     }
 
-    /// Returns the operation's display name, for plan introspection.
     /// Returns the public opcode of this function: the payload-free
     /// snapshot the IR view prints, one variant per variant here.
     pub(crate) fn opcode(&self) -> Opcode {
@@ -244,7 +237,6 @@ impl<Data> Function<Data> {
             Function::Neg(_) => Opcode::Neg,
             Function::Map(map) => Opcode::Map { operation: map.op },
             Function::MatMul(_) => Opcode::MatMul,
-            Function::Transpose(_) => Opcode::Transpose,
             Function::Sum(_) => Opcode::Sum,
             Function::SumAlong(sum_along) => Opcode::SumAlong {
                 axis: sum_along.axis,
@@ -309,7 +301,6 @@ impl<Data> Function<Data> {
             Function::Neg(neg) => neg.reads(),
             Function::Map(map) => map.reads(),
             Function::MatMul(matmul) => matmul.reads(),
-            Function::Transpose(transpose) => transpose.reads(),
             Function::Sum(sum) => sum.reads(),
             Function::SumAlong(sum_along) => sum_along.reads(),
             Function::Broadcast(broadcast) => broadcast.reads(),
@@ -344,7 +335,6 @@ impl<Data> Function<Data> {
             Function::Neg(neg) => neg.arity(),
             Function::Map(map) => map.arity(),
             Function::MatMul(matmul) => matmul.arity(),
-            Function::Transpose(transpose) => transpose.arity(),
             Function::Sum(sum) => sum.arity(),
             Function::SumAlong(sum_along) => sum_along.arity(),
             Function::Broadcast(broadcast) => broadcast.arity(),
@@ -396,7 +386,6 @@ impl<E: Element> Function<Tensor<E>> {
             Function::Neg(neg) => neg.forward(operands),
             Function::Map(map) => map.forward(operands),
             Function::MatMul(matmul) => matmul.forward(operands),
-            Function::Transpose(transpose) => transpose.forward(operands),
             Function::Sum(sum) => sum.forward(operands),
             Function::SumAlong(sum_along) => sum_along.forward(operands),
             Function::Broadcast(broadcast) => broadcast.forward(operands),
@@ -438,7 +427,6 @@ impl<E: Element> Function<Tensor<E>> {
             Function::Neg(neg) => neg.infer_shape(operands),
             Function::Map(map) => map.infer_shape(operands),
             Function::MatMul(matmul) => matmul.infer_shape(operands),
-            Function::Transpose(transpose) => transpose.infer_shape(operands),
             Function::Sum(sum) => sum.infer_shape(operands),
             Function::SumAlong(sum_along) => sum_along.infer_shape(operands),
             Function::Broadcast(broadcast) => broadcast.infer_shape(operands),
@@ -487,7 +475,6 @@ impl<Data> Function<Data> {
             Function::Neg(neg) => neg.backward(operands, output, gradient),
             Function::Map(map) => map.backward(operands, output, gradient),
             Function::MatMul(matmul) => matmul.backward(operands, output, gradient),
-            Function::Transpose(transpose) => transpose.backward(operands, output, gradient),
             Function::Sum(sum) => sum.backward(operands, output, gradient),
             Function::SumAlong(sum_along) => sum_along.backward(operands, output, gradient),
             Function::Broadcast(broadcast) => broadcast.backward(operands, output, gradient),

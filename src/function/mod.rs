@@ -36,7 +36,6 @@ mod step;
 mod sub;
 mod sum;
 mod sum_along;
-mod transpose;
 mod unfold;
 
 pub(crate) use add::Add;
@@ -68,5 +67,4 @@ pub(crate) use step::Step;
 pub(crate) use sub::Sub;
 pub(crate) use sum::Sum;
 pub(crate) use sum_along::SumAlong;
-pub(crate) use transpose::Transpose;
 pub(crate) use unfold::Unfold;

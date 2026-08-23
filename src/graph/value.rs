@@ -251,15 +251,6 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.apply(Function::matmul(), &[self.id, rhs.id])
     }
 
-    /// Records the transposition of this value on the same tape and
-    /// returns a proxy to it.
-    ///
-    /// # Panics
-    /// Panics if this value's rank exceeds 2.
-    pub fn transpose(self) -> Self {
-        self.apply(Function::transpose(), &[self.id])
-    }
-
     /// Records the sum of every value in this payload on the same tape
     /// and returns a proxy to it.
     pub fn sum(self) -> Self {

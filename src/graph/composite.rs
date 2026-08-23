@@ -77,6 +77,20 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.sum_along(axis) / Tensor::counted(shape.without_axis(axis), extent)
     }
 
+    /// Records the transposition of this value — its axes reversed — as
+    /// a `permute` of the reversed order, and returns a proxy to it.
+    /// The once-dedicated opcode was retired as a strict special case:
+    /// `Permute { [1, 0] }` is the same O(1) view with the same
+    /// self-inverse gradient rule.
+    ///
+    /// # Panics
+    /// Panics if this value's rank exceeds 2.
+    pub fn transpose(self) -> Self {
+        let rank = self.shape().rank();
+        assert!(rank <= 2, "transpose supports rank 2 at most");
+        self.permute((0..rank).rev())
+    }
+
     /// Records this value with a new extent-1 axis inserted at `axis`:
     /// a `reshape` that leaves the elements unchanged.
     ///

@@ -1779,10 +1779,6 @@ impl<E: Element> Tensorial for Tensor<E> {
         Tensor::matmul(self, rhs)
     }
 
-    fn transpose(&self) -> Self {
-        Tensor::transpose(self)
-    }
-
     fn sum(&self) -> Self {
         Tensor::sum(self)
     }

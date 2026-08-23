@@ -165,7 +165,7 @@ operand that is data, like a gather's selection) for the engine to
 accumulate. No rule ever sees the tape, a `ValueId`, or a run
 buffer, so every rule is plain math, testable without a network.
 Each computed `Function` variant (`Add`, `Sub`, `Mul`, `Div`,
-`Neg`, `Map`, `Powf`, `Maximum`, `MatMul`, `Transpose`, `Sum`,
+`Neg`, `Map`, `Powf`, `Maximum`, `MatMul`, `Sum`,
 `SumAlong`, `Broadcast`, `BroadcastAlong`, `Reshape`, `Permute`,
 `Narrow`, `Gather`, `LogSoftmax` under
 [`src/function/`](src/function/)) carries both halves, dispatched
@@ -735,8 +735,9 @@ derivative knowledge, two interpretations, no panicking member.
 Everything a rule cannot call is deliberately outside the trait and
 inherent to `Tensor` alone: `max_along`, the `counted` constructor,
 and the fused executors. Batched `matmul` contracts the trailing
-two axes over identical leading batch axes; `transpose` stops at
-rank 2, with `permute` its rank-general generalization; the
+two axes over identical leading batch axes; `permute` reorders axes
+generally, with `transpose` a rank-2-at-most mnemonic recording a
+reversed-order permute; the
 axis-wise pair is rank-general; `reshape` reinterprets the elements
 in logical order. Summation
 and broadcasting are adjoint in two matched pairs: `sum` with
@@ -766,7 +767,7 @@ single value spread across a named reference's shape, or a payload
 repeated along one named axis of a reference — the axis is always
 written, and no operation aligns shapes implicitly. In topos: the
 [`Tensorial`](src/payload/tensorial.rs) trait, recorded into graphs via
-`Value::matmul`, `transpose`, `sum`, `sum_along`, `broadcast_like`,
+`Value::matmul`, `sum`, `sum_along`, `broadcast_like`,
 `broadcast_along`, `reshape`, `permute`, `narrow`, `gather`,
 `scatter`, `fold`, `step`, `log_softmax`, `logsumexp`, and the
 `reshape`-based `squeeze` and `unsqueeze`. The last three adjoints

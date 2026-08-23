@@ -84,15 +84,11 @@ impl<Rule: Tensorial> Operation<Rule> for MatMul {
     }
 }
 
-/// Returns `value` with its trailing two axes swapped: the dedicated
-/// transpose for rank two and below (where scalar payloads answer
-/// identity), `permute` for the batched ranks — so the adjoint closes
-/// inside the existing op set.
+/// Returns `value` with its trailing two axes swapped through
+/// `permute` — matmul operands are rank two or higher by its own
+/// contract, so the adjoint closes inside the existing op set.
 fn swapped<Rule: Tensorial>(value: &Rule) -> Rule {
     let rank = value.shape().rank();
-    if rank <= 2 {
-        return value.transpose();
-    }
     let mut order: Vec<usize> = (0..rank).collect();
     order.swap(rank - 2, rank - 1);
     value.permute(&order)

@@ -73,9 +73,6 @@ pub trait Tensorial:
     /// two multiply batched over identical leading axes.
     fn matmul(&self, rhs: &Self) -> Self;
 
-    /// Returns `self` with its two axes swapped.
-    fn transpose(&self) -> Self;
-
     /// Returns the sum of every value in `self`, shaped as a single
     /// value.
     fn sum(&self) -> Self;
