@@ -43,7 +43,7 @@
 //! Differentiation comes in a hierarchy of three, in this order of
 //! recommendation. [`Tape::differentiate`] records the chain rule as
 //! ordinary nodes and answers [`Adjoints`] — the derivative as spec:
-//! compile a forward-only plan over `adjoints.roots()` and fusion and
+//! lower a forward-only entry over `adjoints.roots()` and fusion and
 //! liveness apply to the chain rule itself, with
 //! [`Run::recorded_gradients`] bridging to `step`. [`Run::backward`]
 //! (the loop above) is the interpreter applying the same rules
@@ -51,6 +51,34 @@
 //! bitwise, shipped forever. [`Entry::backward`] is neither: a
 //! memory posture that retains what the engine scan reads, so a plan
 //! that did not record its derivative can still answer `backward`.
+//!
+//! # The stack: one spec, named interpretations
+//!
+//! The tape is the spec (rule 1); everything after it is a derived
+//! interpretation of the same columns, each with a printable
+//! artifact, and the whole compiler is this list:
+//!
+//! ```text
+//! spec       Tape / Network        record, describe
+//! shape      inferred at record    panics at the recording expression
+//! value      BoundEntry::interpret the oracle; Network::forward is the whole-spec form
+//! cotangent  Run::backward         the engine reverse scan, oracle of reverse mode
+//! trace      Tape::differentiate   the same rules recording themselves (Trace)
+//! schedule   BoundEntry::lower     Plan: keep-set, liveness, election; describe
+//! catalog    Plan::patterns        elected offers as data, never rewrites
+//! text       Plan::emit_stablehlo  the interchange boundary
+//! ```
+//!
+//! The value and cotangent rows compute over [`Tensor`]; the trace
+//! row records over [`Trace`] — one derivative-rule body, two
+//! interpretations of the recordable vocabulary ([`Tensorial`]).
+//! A new idea plugs in at a named seam, costed like an opcode: an
+//! element type at [`Element`], a transcendental at [`MapOperation`],
+//! a fusion as a pattern plus matcher, an AD mode as a recording
+//! interpretation proven against [`Run::backward`], an industrial
+//! target as an emission sibling consuming [`Plan`]. The core stays
+//! closed; the table is how the crate refuses a pass manager and
+//! still says yes to research.
 // The default build forbids `unsafe` outright. A backend feature
 // drops `forbid` but keeps the crate-wide `deny`, so `unsafe`
 // outside a scope-allowed backend module stays a compile error.
@@ -81,7 +109,7 @@ pub use backend::{
     Precision,
 };
 pub use emission::{EmitError, Emittable};
-pub use engine::{BoundEntry, Entry, Plan, Run};
+pub use engine::{BoundEntry, Entry, PatternKind, PatternMatch, Plan, Run};
 pub use graph::{
     Adjoints, Field, Gradients, Keep, Network, Node, Opcode, Parameters, Symbol, Tape, Trace,
     Value, concat, stack,

@@ -514,6 +514,34 @@ envelope. Matchers share one `View` (wanted,
 keep-set, consumer counts); dispatch everywhere is a plain enum
 `match`; the tape and the backends never see a pattern.
 
+**Interpretations (the stack as a table).** The crate's one spec has
+a named list of derived interpretations, each with a printable
+artifact: spec (`Tape`/`Network`, `describe`), shape (inferred at
+record, panics at the expression), value (`BoundEntry::interpret`,
+the oracle; `Network::forward` the whole-spec form), cotangent
+(`Run::backward`, the engine reverse scan), trace
+(`Tape::differentiate`, the same rules recording themselves through
+`Trace`), schedule (`BoundEntry::lower` into `Plan`, printed by
+`describe`), catalog (`Plan::candidates` / `Plan::patterns`, elected
+offers as data), and text (`Plan::emit_stablehlo`). The list is
+prose in the crate docs, deliberately not an enum: exhaustiveness of
+a fake `Interpretation` type would catch nothing. Adding a row costs
+what the crate-root table says it costs — an element type at
+`Element`, a transcendental at `MapOperation`, a fusion as a pattern
+plus matcher, an AD mode proven against `Run::backward`, a target
+beside `emit_stablehlo`.
+
+**PatternKind / PatternMatch.** A recognized pattern as data: the
+closed kind (`WindowProduct`, `ReduceWindow`, `BatchNormTraining`,
+`BatchNormInference` — deliberately not `Formula`, whose `Gemm` and
+`Map` are payload tasks, not graph shapes), the root whose result is
+the group's, and every claimed node in allocation order.
+`Plan::candidates` answers the discovered, posture-blind pool;
+`Plan::patterns` the home run's elected groups (empty on
+engine-backward plans), and every root `describe` prints as `fused`
+appears there — human dump and data agree by test. In topos:
+[`PatternKind`, `PatternMatch`](src/engine/pattern/kind.rs).
+
 **Fusion (window-GEMM).** The catalog's first pattern: the
 canonical im2col chain — pads, two unfolds, the permute, the patch
 reshape — feeding a `matmul`. The match lives in the catalog, and

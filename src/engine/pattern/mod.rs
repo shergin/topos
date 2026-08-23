@@ -18,14 +18,16 @@
 mod batch_norm;
 mod candidates;
 mod catalog;
+mod kind;
 mod pattern;
 mod reduce_window;
 mod view;
 mod window;
 
 pub(crate) use batch_norm::BatchNormalization;
-pub(crate) use candidates::Candidates;
+pub(crate) use candidates::{Candidate, Candidates};
 pub(crate) use catalog::Catalog;
+pub use kind::{PatternKind, PatternMatch};
 pub(crate) use pattern::Pattern;
 pub(crate) use reduce_window::ReduceWindow;
 pub(crate) use view::View;

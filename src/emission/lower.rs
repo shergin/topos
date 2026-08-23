@@ -112,7 +112,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
         // candidate pool by reading the `StableHlo` implementer's
         // coverage column, which is total — every pattern raises
         // here, on every memory posture — and stays total by test.
-        let catalog = Catalog::elect(self.candidates(), |pattern| {
+        let catalog = Catalog::elect(self.candidate_pool(), |pattern| {
             Backend::StableHlo.coverage(pattern.formula()).serves()
         });
 

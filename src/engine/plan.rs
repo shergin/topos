@@ -8,10 +8,13 @@ use crate::{Element, Numerics, Shape, Tensor};
 
 use crate::backend::{Backend, Formula, NumericsScope, Precision};
 use crate::function::Function;
-use crate::graph::{Network, Node, Operands, Origin, Parameters, SlotStore, Structure, Symbol};
+use crate::graph::{
+    Network, Node, Operands, Origin, Parameters, SlotStore, Structure, Symbol, ValueId,
+};
 
 use super::pattern::{
-    BatchNormalization, Candidates, Catalog, Pattern, ReduceWindow, View, WindowProduct,
+    BatchNormalization, Candidate, Candidates, Catalog, Pattern, PatternMatch, ReduceWindow, View,
+    WindowProduct,
 };
 use super::{Entry, Posture, Run};
 
@@ -364,8 +367,74 @@ impl<E: Element> Plan<E> {
     /// Returns the discovered pattern pool, for plan consumers such as
     /// the StableHLO emitter to elect their catalogs from —
     /// introspection siblings of `describe`.
-    pub(crate) fn candidates(&self) -> &Candidates {
+    pub(crate) fn candidate_pool(&self) -> &Candidates {
         &self.candidates
+    }
+
+    /// Returns every closed pattern candidate as data, in priority
+    /// order: the posture-blind pool every consumer elects from.
+    ///
+    /// A candidate here says "this group has the shape"; whether a
+    /// run fuses it is the home consumer's election
+    /// ([`Plan::patterns`]), and whether emission raises it is the
+    /// emitter's — same pool, per-consumer repertoires.
+    pub fn candidates(&self) -> Vec<PatternMatch> {
+        self.candidates
+            .iter()
+            .map(|candidate| self.pattern_match(candidate))
+            .collect()
+    }
+
+    /// Returns the home run's elected groups as data: what a forward
+    /// run of this plan actually fuses, first-wins in priority order.
+    /// Empty on engine-backward plans, whose memory contract forbids
+    /// fusing.
+    ///
+    /// Every root printed as `fused` by [`describe`](Plan::describe)
+    /// appears here, so the human dump and the data agree by test.
+    pub fn patterns(&self) -> Vec<PatternMatch> {
+        let mut claimed = vec![false; self.len()];
+        self.candidates
+            .iter()
+            .filter(|candidate| {
+                let elected = matches!(
+                    self.home.at(candidate.root),
+                    Some(pattern) if pattern.kind() == candidate.pattern.kind()
+                );
+                let first = elected && !claimed[candidate.root];
+                if first {
+                    claimed[candidate.root] = true;
+                }
+                first
+            })
+            .map(|candidate| self.pattern_match(candidate))
+            .collect::<Vec<_>>()
+    }
+
+    /// Builds the public form of one internal candidate.
+    fn pattern_match(&self, candidate: &Candidate) -> PatternMatch {
+        let mut indices: Vec<usize> = candidate
+            .interiors
+            .iter()
+            .chain(candidate.named.iter())
+            .copied()
+            .chain([candidate.root])
+            .collect();
+        indices.sort_unstable();
+        PatternMatch {
+            kind: candidate.pattern.kind(),
+            root: Symbol {
+                origin: self.origin,
+                id: ValueId(candidate.root),
+            },
+            nodes: indices
+                .into_iter()
+                .map(|index| Symbol {
+                    origin: self.origin,
+                    id: ValueId(index),
+                })
+                .collect(),
+        }
     }
 
     /// Returns the home consumer's catalog: what a forward run fuses.
@@ -681,3 +750,7 @@ impl<E: Element> Network<E> {
 #[cfg(test)]
 #[path = "tests/plan_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "tests/kind_tests.rs"]
+mod kind_tests;

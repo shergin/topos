@@ -9,6 +9,7 @@ mod plan;
 mod run;
 
 pub use entry::{BoundEntry, Entry};
+pub use pattern::{PatternKind, PatternMatch};
 pub use plan::Plan;
 pub use run::Run;
 
