@@ -67,6 +67,15 @@ impl Request {
     /// that never calls this compiles a forward-only plan, whose runs
     /// refuse `backward`; [`Plan::can_backward`](crate::Plan::can_backward)
     /// answers which kind a plan is.
+    ///
+    /// This is a memory posture, not a second compiler. For compiled
+    /// training, prefer recording the derivative with
+    /// [`Tape::differentiate`](crate::Tape::differentiate) and
+    /// compiling a forward-only plan over the adjoints' roots: fusion
+    /// and liveness then apply to the chain rule itself. `backward`'s
+    /// place is the oracle — an engine reverse scan over a plan that
+    /// did not record its derivative, for verification and quick
+    /// procedural use.
     pub fn backward(mut self) -> Self {
         self.backward = true;
         self

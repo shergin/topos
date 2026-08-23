@@ -206,6 +206,15 @@ impl<Data: Tensorial> Run<Data> {
     /// Propagates gradients backward from `output`, returning the
     /// gradient of `output` with respect to every value of this run.
     ///
+    /// It is the oracle of reverse mode: the interpreter applying the
+    /// same derivative rules
+    /// [`Tape::differentiate`](crate::Tape::differentiate) records,
+    /// without recording — the transform is proven against this scan
+    /// bitwise, and this scan ships forever. For compiled training,
+    /// prefer the recorded route: a forward-only plan over the
+    /// adjoints' roots, where fusion and liveness apply to the chain
+    /// rule itself.
+    ///
     /// The target must be a scalar (rank 0): a gradient is always of one
     /// chosen scalar, so a non-scalar value is reduced explicitly with
     /// `sum` before differentiation, never summed implicitly.

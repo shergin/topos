@@ -37,6 +37,18 @@
 //! let learned = *parameters.of(w);
 //! assert!((learned - 2.0).abs() < 1e-6);
 //! ```
+//!
+//! Differentiation comes in a hierarchy of three, in this order of
+//! recommendation. [`Tape::differentiate`] records the chain rule as
+//! ordinary nodes and answers [`Adjoints`] — the derivative as spec:
+//! compile a forward-only plan over `adjoints.roots()` and fusion and
+//! liveness apply to the chain rule itself, with
+//! [`Run::recorded_gradients`] bridging to `step`. [`Run::backward`]
+//! (the loop above) is the interpreter applying the same rules
+//! without recording — the oracle the transform is proven against
+//! bitwise, shipped forever. [`Request::backward`] is neither: a
+//! memory posture that retains what the engine scan reads, so a plan
+//! that did not record its derivative can still answer `backward`.
 // The default build forbids `unsafe` outright. A backend feature
 // drops `forbid` but keeps the crate-wide `deny`, so `unsafe`
 // outside a scope-allowed backend module stays a compile error.
@@ -67,7 +79,7 @@ pub use backend::{
 pub use emission::{EmitError, Emittable};
 pub use engine::{Plan, Request, Run};
 pub use graph::{
-    Adjoints, Field, Gradients, Network, Parameters, Symbol, Tape, Value, concat, stack,
+    Adjoints, Field, Gradients, Network, Parameters, Symbol, Tape, Trace, Value, concat, stack,
 };
 pub use neural::{
     Activation, Adam, AdamW, BatchNorm, Conv2d, Dropout, LayerNorm, Linear, Mlp, Module,

@@ -329,6 +329,9 @@ impl<Data: Tensorial> Tape<Data> {
     /// graph structure only, never payloads; recording appends to the
     /// tape and leaves every existing node untouched.
     ///
+    /// It is [`Tape::vjp`] with a recorded ones seed: the wrapper
+    /// mints the seed leaf and delegates, so the two share one scan.
+    ///
     /// # Panics
     /// Panics if `loss` is not a recorded scalar (reduce with `sum`
     /// first) or any symbol belongs to a different network.
@@ -343,19 +346,59 @@ impl<Data: Tensorial> Tape<Data> {
             0,
             "differentiate requires a scalar loss; reduce it with `sum` first"
         );
-        let output_index = loss_value.id().index();
+        let seed = loss_value.literal(Data::counted(loss_value.shape(), 1));
+        self.vjp(loss_value.symbol(), seed.symbol(), wrt)
+    }
+
+    /// Records the vector-Jacobian product of `target` with respect to
+    /// each `wrt` entry — reverse mode with an explicit `seed` planted
+    /// at `target` instead of [`Tape::differentiate`]'s ones — and
+    /// returns the [`Adjoints`] pairing each entry with its gradient.
+    ///
+    /// The explicit seed is what makes a non-scalar `target` honest:
+    /// the seed supplies the contraction weights a scalar loss would
+    /// have supplied implicitly, so the scalar rule (never sum
+    /// implicitly) stays intact while `J^T seed` becomes recordable
+    /// directly. A seed may itself be a computed value — a gradient
+    /// node from an earlier `differentiate` — which is how
+    /// Hessian-vector products and reverse-over-reverse stay ordinary
+    /// recording: `vjp(adjoints.of(x), vector, [x])`.
+    ///
+    /// The seed enters as the initial cotangent payload, not as a
+    /// graph edge: the transform treats it as a constant weight and
+    /// never differentiates through it.
+    ///
+    /// # Panics
+    /// Panics if `seed`'s recorded shape differs from `target`'s or
+    /// any symbol belongs to a different network.
+    pub fn vjp(
+        &self,
+        target: impl Into<Symbol>,
+        seed: impl Into<Symbol>,
+        wrt: impl IntoIterator<Item = impl Into<Symbol>>,
+    ) -> Adjoints {
+        let target_value = self.resolve(target.into());
+        let seed_value = self.resolve(seed.into());
+        assert_eq!(
+            seed_value.shape(),
+            target_value.shape(),
+            "a vjp seed must have the target's shape"
+        );
+        let output_index = target_value.id().index();
         let structure = self.structure_freeze();
         let trace = |index: usize| Trace::of(Value::bind(self, ValueId(index)));
 
         // The scan mirrors `Run::backward` deliberately and
-        // exactly — the ones seed, the ancestor marking through `Some`
-        // cotangents, the zero-seeded accumulation in reverse scan
-        // order — because the bitwise parity contract welds the two:
-        // any change to either scan's arithmetic must reach both.
+        // exactly — the seed planting, the ancestor marking through
+        // `Some` cotangents, the zero-seeded accumulation in reverse
+        // scan order — because the bitwise parity contract welds the
+        // two: any change to either scan's arithmetic must reach both.
+        // It stays a twin rather than one parameterized body because
+        // the two live in different phases with different asserts
+        // (posture and numerics here have no recording analogue);
+        // the closure suite is the weld.
         let mut cotangents: Vec<Option<Trace<'_, Data>>> = vec![None; output_index + 1];
-        cotangents[output_index] = Some(Trace::of(
-            loss_value.literal(Data::counted(loss_value.shape(), 1)),
-        ));
+        cotangents[output_index] = Some(Trace::of(seed_value));
         let mut ancestors = vec![false; output_index + 1];
         ancestors[output_index] = true;
         for index in (0..=output_index).rev() {
@@ -409,7 +452,7 @@ impl<Data: Tensorial> Tape<Data> {
                 (value.symbol(), gradient)
             })
             .collect();
-        Adjoints::new(loss_value.symbol(), pairs)
+        Adjoints::new(target_value.symbol(), pairs)
     }
 }
 

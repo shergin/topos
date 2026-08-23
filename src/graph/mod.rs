@@ -33,6 +33,7 @@ pub use network::Network;
 pub use parameters::Parameters;
 pub use symbol::Symbol;
 pub use tape::Tape;
+pub use trace::Trace;
 pub use value::Value;
 
 pub(crate) use operands::Operands;

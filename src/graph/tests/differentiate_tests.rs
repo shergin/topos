@@ -580,6 +580,114 @@ fn a_recorded_training_loop_matches_the_engine_bitwise() {
 }
 
 #[test]
+fn vjp_with_a_ones_seed_is_differentiate() {
+    // The wrapper claim, held on two identical recordings: an explicit
+    // recorded ones seed at the loss produces the same graph size and
+    // bitwise the same gradients as `differentiate`.
+    let build = |tape: &Tape<Tensor<f64>>| {
+        let x = tape.parameter(varied([2, 3], 1));
+        let loss = (x.tanh() * x).sum();
+        (x.symbol(), loss.symbol())
+    };
+
+    let plain_tape = Tape::new();
+    let (plain_x, plain_loss) = build(&plain_tape);
+    let plain = plain_tape.differentiate(plain_loss, [plain_x]);
+    let plain_len = plain_tape.len();
+    let plain_network = plain_tape.into_network();
+    let plain_run = plain_network.forward(&plain_network.parameters(), []);
+
+    let seeded_tape = Tape::new();
+    let (seeded_x, seeded_loss) = build(&seeded_tape);
+    let seed = seeded_tape
+        .leaf(Tensor::counted(crate::Shape::new([]), 1))
+        .symbol();
+    let seeded = seeded_tape.vjp(seeded_loss, seed, [seeded_x]);
+    assert_eq!(seeded_tape.len(), plain_len);
+    let seeded_network = seeded_tape.into_network();
+    let seeded_run = seeded_network.forward(&seeded_network.parameters(), []);
+
+    for (plain, seeded) in plain_run
+        .of(plain.of(plain_x))
+        .to_vec()
+        .iter()
+        .zip(seeded_run.of(seeded.of(seeded_x)).to_vec())
+    {
+        assert_eq!(plain.to_bits(), seeded.to_bits());
+    }
+}
+
+#[test]
+fn vjp_seeds_a_non_scalar_target() {
+    // `J^T s` two ways: an explicit seed at the vector output, and the
+    // dotted scalar loss differentiated. Payload-bitwise equal because
+    // multiplying by a broadcast ones is exact; the recorded graphs
+    // differ (the dotted route records the contraction).
+    let seeded_tape = Tape::new();
+    let x = seeded_tape.parameter(varied([3], 1));
+    let output = x.tanh() * x;
+    let seed = seeded_tape.leaf(varied([3], 5));
+    let x = x.symbol();
+    let adjoints = seeded_tape.vjp(output, seed, [x]);
+    let network = seeded_tape.into_network();
+    let run = network.forward(&network.parameters(), []);
+    let seeded = run.of(adjoints.of(x)).to_vec();
+
+    let dotted_tape = Tape::new();
+    let dotted_x = dotted_tape.parameter(varied([3], 1));
+    let dotted_output = dotted_x.tanh() * dotted_x;
+    let weights = dotted_tape.leaf(varied([3], 5));
+    let dotted_x = dotted_x.symbol();
+    let dotted = dotted_tape.differentiate((dotted_output * weights).sum(), [dotted_x]);
+    let dotted_network = dotted_tape.into_network();
+    let dotted_run = dotted_network.forward(&dotted_network.parameters(), []);
+
+    for (seeded, dotted) in seeded
+        .iter()
+        .zip(dotted_run.of(dotted.of(dotted_x)).to_vec())
+    {
+        assert_eq!(seeded.to_bits(), dotted.to_bits());
+    }
+}
+
+#[test]
+fn a_hessian_vector_product_is_a_vjp_of_the_gradient() {
+    // The non-scalar contract's payoff: a first-order gradient of a
+    // tensor parameter is a tensor, so seeding it directly is what
+    // makes second order ordinary recording. For `sum(x^3)` the
+    // Hessian is `diag(6x)` and the product is elementwise; all
+    // probe values are dyadic, so equality is exact.
+    let tape = Tape::new();
+    let x = tape.parameter(Tensor::new([3], [0.5_f64, -1.25, 2.0]));
+    let loss = (x * x * x).sum();
+    let x = x.symbol();
+    let first = tape.differentiate(loss, [x]);
+    let vector = tape.leaf(Tensor::new([3], [1.0_f64, -2.0, 0.5])).symbol();
+    let product = tape.vjp(first.of(x), vector, [x]);
+
+    let network = tape.into_network();
+    let run = network.forward(&network.parameters(), []);
+    let computed = run.of(product.of(x)).to_vec();
+    for ((computed, x), v) in computed
+        .iter()
+        .zip([0.5_f64, -1.25, 2.0])
+        .zip([1.0, -2.0, 0.5])
+    {
+        assert_eq!(*computed, 6.0 * x * v);
+    }
+}
+
+#[test]
+#[should_panic(expected = "target's shape")]
+fn vjp_rejects_a_mismatched_seed_shape() {
+    let tape = Tape::new();
+    let x = tape.parameter(varied([3], 1));
+    let output = x.tanh();
+    let seed = tape.leaf(varied([2], 2));
+    tape.vjp(output, seed, [x]);
+}
+
+#[test]
 #[should_panic(expected = "is not a parameter")]
 fn recorded_gradients_reject_non_parameter_wrt_entries() {
     let tape = Tape::new();

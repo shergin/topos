@@ -46,12 +46,13 @@ gradient buffer — no operation can assign where it should accumulate,
 because no operation ever touches the buffer.
 
 **Seed (cotangent).** The gradient planted at the target before the backward
-sweep; `one` for a plain gradient. Seeding several nodes with arbitrary
-weights computes a vector-Jacobian product, the general form of reverse
+sweep; `one` for a plain gradient. Seeding with arbitrary weights
+computes a vector-Jacobian product, the general form of reverse
 mode. In topos [`Run::backward`](src/engine/run.rs) seeds
 `one_like` at the target, which must be rank 0: a non-scalar value is
 reduced explicitly with `sum` before differentiation, never summed
-implicitly.
+implicitly. `Tape::vjp` makes the seed explicit — one recorded value
+planted at one target of any shape (see **VJP**).
 
 **Gradient descent.** Iteratively moving parameters against the gradient of
 a loss: `w <- w - learning_rate * dLoss/dw`. One step is
@@ -275,7 +276,38 @@ rewrites the gradient symbols (the emission consumers alias each
 through a same-shape reshape to pin emitted result order) while the
 pairing and target ride along. Plain detached data, like `Symbol`.
 In topos: [`Adjoints`](src/graph/adjoints.rs), returned by
-`Tape::differentiate`.
+`Tape::differentiate` and `Tape::vjp`.
+
+**VJP (vector-Jacobian product).** Reverse mode in its general form:
+`J^T seed`, the Jacobian of a target transposed against an explicit
+seed vector. `Tape::vjp(target, seed, wrt)` is the recorded scan's
+body — `differentiate` is this with a recorded ones seed at a scalar
+loss. The explicit seed is what makes a non-scalar target honest:
+it supplies the contraction weights a scalar loss supplies
+implicitly, so the never-sum-implicitly rule stays intact while
+`J^T seed` records directly. A seed may itself be a computed value —
+seeding a first-order gradient with a vector records a
+Hessian-vector product, which is how higher order stays ordinary
+recording rather than a new engine. The seed enters as the initial
+cotangent payload, never as a graph edge: the transform treats it as
+a constant weight. In topos: `Tape::vjp`
+([src/graph/tape.rs](src/graph/tape.rs)), pinned against
+`differentiate` and the dotted-loss formulation in
+`differentiate_tests.rs`.
+
+**Trace.** The payload that records instead of computing: the second
+interpretation of the derivative rules, and the crate's signature
+trick. Every rule is written against the payload traits, and `Trace`
+implements them by appending the corresponding node and answering a
+handle, so running a rule under `Data = Trace` emits the rule as
+recorded graph — interpretation and transformation are two payloads
+of one rule, and derivative knowledge cannot fork. Public, it hands
+the same trick to callers: code written once against the payload
+traits gains a recording interpretation beside its eager runs. It
+does not open new scans over the crate's own rules (the op set and
+graph walk stay private); two members no rule calls (`counted`,
+`max_along`) panic by design, with the closure suite as tripwire.
+In topos: [`Trace`](src/graph/trace.rs).
 
 **Symbol.** A detached, `Copy` name of a value: an origin plus a node
 position, and the sole currency of every phase after recording. Access

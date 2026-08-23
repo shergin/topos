@@ -8,33 +8,47 @@ use super::Value;
 /// A payload that records instead of computing: the second
 /// interpretation of the derivative rules.
 ///
-/// Every `Operation::backward` is written against the payload traits,
-/// not against a concrete number type. `Trace` implements those traits
-/// by appending the corresponding node to the tape and answering with
-/// a handle, so running a rule with `Data = Trace` emits the rule's
-/// computation as recorded graph — which is all
+/// Every derivative rule is written against the payload traits
+/// ([`Differentiable`], [`Elementary`], [`Tensorial`]), not against a
+/// concrete number type. `Trace` implements those traits by appending
+/// the corresponding node to the tape and answering with a handle, so
+/// running a rule with `Data = Trace` emits the rule's computation as
+/// recorded graph — which is all
 /// [`Tape::differentiate`](super::Tape::differentiate) does. The
 /// rules cannot tell the difference, and that indistinguishability is
 /// the design: derivative knowledge lives in exactly one place, and a
 /// rule change reaches the engine's backward and the recorded gradient
 /// alike, because both are the same code.
 ///
-/// Trait members no derivative rule calls (`counted`, `max_along`)
-/// panic with a named message; the per-variant closure tests run every
-/// rule under `Trace`, so a future rule widening the vocabulary fails
-/// its own test at introduction instead of hiding a latent trap.
-pub(crate) struct Trace<'tape, Data> {
+/// Public, the type hands the same trick to callers: an algorithm
+/// written once against the payload traits gains a recording
+/// interpretation — wrap recorded values with [`Trace::of`], run the
+/// generic code, unwrap with [`Trace::value`] — beside its eager runs
+/// over `f32` or [`Tensor`](crate::Tensor). What it does not open is
+/// new scans over the crate's own derivative rules: the op set and
+/// the graph walk stay crate-private, so new AD modes (forward mode,
+/// checkpointed reverse) are in-crate transforms until a read surface
+/// over the spec lands.
+///
+/// Two trait members no derivative rule calls panic by design:
+/// `counted` (a nullary constructor has no tape to record on) and
+/// `max_along` (no recorded operation exists for it). Generic code
+/// that reaches either cannot run under `Trace`; the per-variant
+/// closure tests keep the crate's own rules inside the recordable
+/// vocabulary, so a future rule widening it fails its own test at
+/// introduction instead of hiding a latent trap.
+pub struct Trace<'tape, Data> {
     value: Value<'tape, Data>,
 }
 
 impl<'tape, Data: Differentiable> Trace<'tape, Data> {
     /// Wraps a recorded value as a rule operand.
-    pub(crate) fn of(value: Value<'tape, Data>) -> Self {
+    pub fn of(value: Value<'tape, Data>) -> Self {
         Self { value }
     }
 
     /// Returns the recorded value this trace stands for.
-    pub(crate) fn value(&self) -> Value<'tape, Data> {
+    pub fn value(&self) -> Value<'tape, Data> {
         self.value
     }
 
