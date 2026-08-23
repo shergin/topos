@@ -14,7 +14,7 @@ use std::time::Instant;
 use rayon::prelude::*;
 
 use malevich::{Frame, Line, Plot};
-use topos::{Symbol, Tape};
+use topos::{Symbol, Tape, Tensor};
 
 fn main() {
     let tape = Tape::new();
@@ -56,10 +56,10 @@ fn main() {
         .par_iter()
         .map(|&sample_loss| {
             let gradients = run.backward(sample_loss);
-            *gradients.of(w)
+            gradients.of(w).scalar()
         })
         .collect();
-    let total_gradient = *run.backward(loss).of(w);
+    let total_gradient = run.backward(loss).of(w).scalar();
     println!("per-sample d/dw, computed on separate threads: {per_sample:?}");
     println!(
         "their sum {} equals the total-loss d/dw {} by linearity",
@@ -79,15 +79,20 @@ fn main() {
             let mut losses = Vec::with_capacity(501);
             for _ in 0..500 {
                 let run = network.forward(&parameters, []);
-                losses.push(*run.of(loss));
+                losses.push(run.of(loss).scalar());
                 let gradients = run.backward(loss).parameters(&parameters);
                 parameters = parameters.step(&gradients, |parameter, gradient| {
-                    parameter - learning_rate * gradient
+                    parameter.clone() - gradient.clone() * Tensor::from(learning_rate)
                 });
             }
             let run = network.forward(&parameters, []);
-            losses.push(*run.of(loss));
-            (learning_rate, losses, *parameters.of(w), *parameters.of(b))
+            losses.push(run.of(loss).scalar());
+            (
+                learning_rate,
+                losses,
+                parameters.of(w).scalar(),
+                parameters.of(b).scalar(),
+            )
         })
         .collect();
 

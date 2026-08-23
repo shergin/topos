@@ -10,7 +10,7 @@ use super::match_at;
 
 /// Records a `2 x 2 / 2` max pool over a rank-4 leaf and returns the
 /// network with the pooled root's index.
-fn pool_network() -> (Network<Tensor<f64>>, usize) {
+fn pool_network() -> (Network<f64>, usize) {
     let tape = Tape::new();
     let input = tape.leaf(Tensor::new(
         [1, 2, 4, 4],
@@ -24,7 +24,7 @@ fn pool_network() -> (Network<Tensor<f64>>, usize) {
 /// Builds a view over the whole network with every node wanted and
 /// only `readable` nodes readable.
 fn full_view<'plan>(
-    network: &'plan Network<Tensor<f64>>,
+    network: &'plan Network<f64>,
     wanted: &'plan [bool],
     readable: &'plan [bool],
 ) -> View<'plan, Tensor<f64>> {

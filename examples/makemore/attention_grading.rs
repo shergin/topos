@@ -126,7 +126,7 @@ fn recorded(
 
     let embeddings = tape.parameter(next());
     let positions_table = tape.parameter(next());
-    let heads: Vec<[Value<'_, Tensor<f32>>; 3]> = (0..HEAD_COUNT)
+    let heads: Vec<[Value<'_, f32>; 3]> = (0..HEAD_COUNT)
         .map(|_| {
             [
                 tape.parameter(next()),

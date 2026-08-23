@@ -7,7 +7,7 @@ use super::{named_restore, named_snapshot, restore, snapshot};
 /// Builds the same two-stage topology on `tape` with `fill`-valued
 /// parameters: the "same code" whose recording order both positional
 /// identities rely on.
-fn model(tape: &Tape<Tensor<f64>>, fill: f64) -> Sequential<Tensor<f64>> {
+fn model(tape: &Tape<f64>, fill: f64) -> Sequential<f64> {
     Sequential::new()
         .then(Linear::new(
             tape,
@@ -113,12 +113,12 @@ fn tied_parameters_restore_once() {
     /// One table announced under two paths, the way a tied head
     /// shares an embedding's weights.
     struct Tied(Symbol);
-    impl Module<Tensor<f64>> for Tied {
+    impl Module<f64> for Tied {
         fn express<'tape>(
             &self,
-            tape: &'tape Tape<Tensor<f64>>,
-            _input: Value<'tape, Tensor<f64>>,
-        ) -> Value<'tape, Tensor<f64>> {
+            tape: &'tape Tape<f64>,
+            _input: Value<'tape, f64>,
+        ) -> Value<'tape, f64> {
             tape.resolve(self.0)
         }
         fn visit(&self, visitor: &mut dyn Visitor) {

@@ -1,4 +1,4 @@
-use crate::{Differentiable, Parameters, Tensorial};
+use crate::{Differentiable, Element, Parameters, Tensor, Tensorial};
 
 /// A training-step strategy: how gradients and the current parameter
 /// state become the next state.
@@ -17,7 +17,7 @@ use crate::{Differentiable, Parameters, Tensorial};
 /// The learning rate is a per-step argument, not optimizer state:
 /// schedules stay caller-owned loop arithmetic, visible on the page
 /// like every other training decision.
-pub trait Optimizer<Data: Tensorial> {
+pub trait Optimizer<E: Element> {
     /// Returns `parameters` stepped by `gradients` at `learning_rate`,
     /// updating this optimizer's own state.
     ///
@@ -28,10 +28,10 @@ pub trait Optimizer<Data: Tensorial> {
     /// [`Field::parameters`](crate::Field::parameters).
     fn step(
         &mut self,
-        parameters: &Parameters<Data>,
-        gradients: &Parameters<Data>,
-        learning_rate: &Data,
-    ) -> Parameters<Data>;
+        parameters: &Parameters<E>,
+        gradients: &Parameters<E>,
+        learning_rate: &Tensor<E>,
+    ) -> Parameters<E>;
 }
 
 /// Plain stochastic gradient descent: the strategy every example's
@@ -41,13 +41,13 @@ pub trait Optimizer<Data: Tensorial> {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Sgd;
 
-impl<Data: Tensorial> Optimizer<Data> for Sgd {
+impl<E: Element> Optimizer<E> for Sgd {
     fn step(
         &mut self,
-        parameters: &Parameters<Data>,
-        gradients: &Parameters<Data>,
-        learning_rate: &Data,
-    ) -> Parameters<Data> {
+        parameters: &Parameters<E>,
+        gradients: &Parameters<E>,
+        learning_rate: &Tensor<E>,
+    ) -> Parameters<E> {
         parameters.step(gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)
         })
@@ -56,7 +56,7 @@ impl<Data: Tensorial> Optimizer<Data> for Sgd {
 
 /// Asserts that an optimizer hyperparameter holds exactly one value,
 /// the contract every scalar factor spreads from.
-pub(super) fn assert_single_value<Data: Differentiable>(payload: &Data, name: &str) {
+pub(super) fn assert_single_value<E: Element>(payload: &Tensor<E>, name: &str) {
     assert_eq!(
         payload.shape().volume(),
         1,

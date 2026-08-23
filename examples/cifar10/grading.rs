@@ -55,16 +55,16 @@ const FLAT_LEN: usize = FILTERS[2] * (IMAGE_SIDE / 8) * (IMAGE_SIDE / 8);
 /// The model's layers, holding parameter symbols; identical to
 /// `cifar10`, including every seed.
 struct Model {
-    conv_1: Conv2d<Tensor<f32>>,
-    conv_2: Conv2d<Tensor<f32>>,
-    conv_3: Conv2d<Tensor<f32>>,
-    head: Linear<Tensor<f32>>,
+    conv_1: Conv2d<f32>,
+    conv_2: Conv2d<f32>,
+    conv_3: Conv2d<f32>,
+    head: Linear<f32>,
 }
 
 impl Model {
     /// Allocates the parameters on `tape` exactly as `cifar10`
     /// does, so the routes train the same trajectory it would.
-    fn new(tape: &Tape<Tensor<f32>>) -> Self {
+    fn new(tape: &Tape<f32>) -> Self {
         let conv_1_weights =
             init::normal(21, (2.0 / 27.0_f64).sqrt())(&Shape::new([FILTERS[0], 3, 3, 3]));
         let conv_2_weights =
@@ -107,10 +107,10 @@ impl Model {
     /// flatten and score.
     fn express<'tape>(
         &self,
-        tape: &'tape Tape<Tensor<f32>>,
-        images: Value<'tape, Tensor<f32>>,
+        tape: &'tape Tape<f32>,
+        images: Value<'tape, f32>,
         rows: usize,
-    ) -> Value<'tape, Tensor<f32>> {
+    ) -> Value<'tape, f32> {
         let stage_1 = max_pool(self.conv_1.express(tape, images).relu(), 2, 2);
         let stage_2 = max_pool(self.conv_2.express(tape, stage_1).relu(), 2, 2);
         let stage_3 = max_pool(self.conv_3.express(tape, stage_2).relu(), 2, 2);

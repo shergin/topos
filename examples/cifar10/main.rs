@@ -53,17 +53,17 @@ const STEPS: usize = 2000;
 
 /// The model's layers, holding parameter symbols.
 struct Model {
-    conv_1: Conv2d<Tensor<f32>>,
-    conv_2: Conv2d<Tensor<f32>>,
-    conv_3: Conv2d<Tensor<f32>>,
-    head: Linear<Tensor<f32>>,
+    conv_1: Conv2d<f32>,
+    conv_2: Conv2d<f32>,
+    conv_3: Conv2d<f32>,
+    head: Linear<f32>,
 }
 
 impl Model {
     /// Allocates the parameters on `tape`: three 3x3 same-padded
     /// convolution stages with Kaiming-scaled kernels and zero biases,
     /// and an affine classification head.
-    fn new(tape: &Tape<Tensor<f32>>) -> Self {
+    fn new(tape: &Tape<f32>) -> Self {
         // Kaiming deviations by kernel fan-in: `sqrt(2 / (c * kh * kw))`.
         let conv_1_weights =
             init::normal(21, (2.0 / 27.0_f64).sqrt())(&Shape::new([FILTERS[0], 3, 3, 3]));
@@ -107,10 +107,10 @@ impl Model {
     /// three times, then flatten and score.
     fn express<'tape>(
         &self,
-        tape: &'tape Tape<Tensor<f32>>,
-        images: Value<'tape, Tensor<f32>>,
+        tape: &'tape Tape<f32>,
+        images: Value<'tape, f32>,
         rows: usize,
-    ) -> Value<'tape, Tensor<f32>> {
+    ) -> Value<'tape, f32> {
         let stage_1 = max_pool(self.conv_1.express(tape, images).relu(), 2, 2);
         let stage_2 = max_pool(self.conv_2.express(tape, stage_1).relu(), 2, 2);
         let stage_3 = max_pool(self.conv_3.express(tape, stage_2).relu(), 2, 2);
@@ -134,8 +134,8 @@ fn batch_payloads(split: &Split, indices: &[usize]) -> (Tensor<f32>, Tensor<f32>
 /// Counts correct predictions over `PROBE_LEN` test images from `start`,
 /// one probe-plan run.
 fn probe_correct(
-    parameters: &Parameters<Tensor<f32>>,
-    probe_plan: &Plan<Tensor<f32>>,
+    parameters: &Parameters<f32>,
+    probe_plan: &Plan<f32>,
     images_symbol: Symbol,
     logits_symbol: Symbol,
     test: &Split,

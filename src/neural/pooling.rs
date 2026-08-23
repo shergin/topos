@@ -5,7 +5,7 @@
 //! fold of the existing binary `maximum` over the window lanes, so
 //! ties route their gradient deterministically to the earliest lane.
 
-use crate::{Tensorial, Value};
+use crate::{Element, Value};
 
 /// Records the square windows of a pooling operation and returns them
 /// as `[batch, channels, out_height, out_width, size * size]` lanes.
@@ -13,11 +13,11 @@ use crate::{Tensorial, Value};
 /// It records the pooling head: two unfolds, the axis permutation,
 /// and the lane-merging reshape (a copy, since the window view
 /// overlaps for `stride < size`).
-fn window_lanes<'tape, Data: Tensorial>(
-    input: Value<'tape, Data>,
+fn window_lanes<'tape, E: Element>(
+    input: Value<'tape, E>,
     size: usize,
     stride: usize,
-) -> Value<'tape, Data> {
+) -> Value<'tape, E> {
     let shape = input.shape();
     assert_eq!(
         shape.rank(),
@@ -46,11 +46,11 @@ fn window_lanes<'tape, Data: Tensorial>(
 /// # Panics
 /// Panics if `input` is not rank 4, `size` or `stride` is zero, or a
 /// window does not fit the spatial extents.
-pub fn max_pool<'tape, Data: Tensorial>(
-    input: Value<'tape, Data>,
+pub fn max_pool<'tape, E: Element>(
+    input: Value<'tape, E>,
     size: usize,
     stride: usize,
-) -> Value<'tape, Data> {
+) -> Value<'tape, E> {
     let lanes = window_lanes(input, size, stride);
     let mut largest = lanes.narrow(4, 0, 1);
     for lane in 1..size * size {

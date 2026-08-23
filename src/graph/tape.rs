@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 use static_assertions::assert_impl_all;
 
 use crate::function::Function;
-use crate::{Differentiable, Shape, Tensorial};
+use crate::{Differentiable, Element, Shape, Tensor};
 
 use super::trace::Trace;
 use super::{Adjoints, Network, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId};
@@ -20,10 +20,10 @@ assert_impl_all!(Tape<f64>: Send, Sync);
 /// [`Parameters`](crate::Parameters), input defaults are spec that
 /// feeds overlay per run.
 #[derive(Debug)]
-struct TapeInner<Data> {
-    structure: Structure<Data>,
-    initials: SlotStore<Data>,
-    inputs: SlotStore<Data>,
+struct TapeInner<E> {
+    structure: Structure<Tensor<E>>,
+    initials: SlotStore<Tensor<E>>,
+    inputs: SlotStore<Tensor<E>>,
 }
 
 /// The construction phase of a network: an append-only record of every
@@ -46,12 +46,12 @@ struct TapeInner<Data> {
 /// mutated or removed, and linear extension never moves one, so a
 /// [`Symbol`] stays valid across every round trip.
 #[derive(Debug)]
-pub struct Tape<Data> {
+pub struct Tape<E> {
     origin: Origin,
-    inner: Mutex<TapeInner<Data>>,
+    inner: Mutex<TapeInner<E>>,
 }
 
-impl<Data: Differentiable> Tape<Data> {
+impl<E: Element> Tape<E> {
     /// Creates an empty `Tape`.
     pub fn new() -> Self {
         Self {
@@ -67,7 +67,7 @@ impl<Data: Differentiable> Tape<Data> {
     /// Reopens `network` for further recording: the inverse of
     /// [`Tape::into_network`], with the same origin, so every existing
     /// [`Symbol`] keeps naming its node.
-    pub(super) fn reopen(origin: Origin, network: Network<Data>) -> Self {
+    pub(super) fn reopen(origin: Origin, network: Network<E>) -> Self {
         let (structure, initials, inputs) = network.into_stores();
         Self {
             origin,
@@ -87,7 +87,7 @@ impl<Data: Differentiable> Tape<Data> {
     /// the later phases will name first: proxies borrow the tape, so
     /// the borrow checker rejects one outliving this call — the phase
     /// boundary is a compile error, not a runtime check.
-    pub fn into_network(self) -> Network<Data> {
+    pub fn into_network(self) -> Network<E> {
         let inner = self
             .inner
             .into_inner()
@@ -104,8 +104,8 @@ impl<Data: Differentiable> Tape<Data> {
     ///
     /// Constants are fixed at recording time; see `parameter` for
     /// trainable leaves and `input` for leaves fed per run.
-    pub fn leaf(&self, data: Data) -> Value<'_, Data> {
-        let id = self.record(Function::leaf(data), &[]);
+    pub fn leaf(&self, data: impl Into<Tensor<E>>) -> Value<'_, E> {
+        let id = self.record(Function::leaf(data.into()), &[]);
         Value::bind(self, id)
     }
 
@@ -116,7 +116,8 @@ impl<Data: Differentiable> Tape<Data> {
     /// starts from. Live payloads are caller-owned
     /// [`Parameters`](crate::Parameters) state; training never touches
     /// the recorded node.
-    pub fn parameter(&self, data: Data) -> Value<'_, Data> {
+    pub fn parameter(&self, data: impl Into<Tensor<E>>) -> Value<'_, E> {
+        let data = data.into();
         let shape = data.shape();
         let id = {
             let mut guard = self.lock();
@@ -136,7 +137,8 @@ impl<Data: Differentiable> Tape<Data> {
     /// `initial` supplies the input's recorded shape and its default
     /// payload — part of the spec, so a network with its defaults is
     /// runnable standalone; feeds overlay the defaults per run.
-    pub fn input(&self, initial: Data) -> Value<'_, Data> {
+    pub fn input(&self, initial: impl Into<Tensor<E>>) -> Value<'_, E> {
+        let initial = initial.into();
         let shape = initial.shape();
         let id = {
             let mut guard = self.lock();
@@ -155,7 +157,7 @@ impl<Data: Differentiable> Tape<Data> {
     /// # Panics
     /// Panics if `symbol` belongs to a different network or is not
     /// allocated on this tape.
-    pub fn resolve(&self, symbol: Symbol) -> Value<'_, Data> {
+    pub fn resolve(&self, symbol: Symbol) -> Value<'_, E> {
         assert!(
             symbol.origin == self.origin,
             "symbol belongs to a different network"
@@ -188,7 +190,7 @@ impl<Data: Differentiable> Tape<Data> {
     /// Panics if `operands` does not match the function's arity or
     /// references a node that is not recorded on this tape, or if the
     /// operands' shapes are incompatible.
-    pub(crate) fn record(&self, function: Function<Data>, operands: &[ValueId]) -> ValueId {
+    pub(crate) fn record(&self, function: Function<Tensor<E>>, operands: &[ValueId]) -> ValueId {
         assert_eq!(
             operands.len(),
             function.arity(),
@@ -225,7 +227,7 @@ impl<Data: Differentiable> Tape<Data> {
     ///
     /// # Panics
     /// Panics if `id` is not recorded on this tape.
-    pub(crate) fn payload_of(&self, id: ValueId) -> Option<Data> {
+    pub(crate) fn payload_of(&self, id: ValueId) -> Option<Tensor<E>> {
         let inner = self.lock();
         let function = inner
             .structure
@@ -277,7 +279,7 @@ impl<Data: Differentiable> Tape<Data> {
     pub(crate) fn with_node<Output>(
         &self,
         id: ValueId,
-        reader: impl FnOnce(&Function<Data>) -> Output,
+        reader: impl FnOnce(&Function<Tensor<E>>) -> Output,
     ) -> Output {
         let inner = self.lock();
         let function = inner
@@ -290,7 +292,7 @@ impl<Data: Differentiable> Tape<Data> {
 
     /// Returns an O(1) freeze of the recorded columns, so a scan can
     /// read them without holding the lock while new nodes record.
-    fn structure_freeze(&self) -> Structure<Data> {
+    fn structure_freeze(&self) -> Structure<Tensor<E>> {
         self.lock().structure.clone()
     }
 
@@ -301,14 +303,14 @@ impl<Data: Differentiable> Tape<Data> {
     /// program kept going — a state this crate's panics-mean-bugs
     /// contract does not support. The message names that cause so the
     /// debugging trail leads to the original panic.
-    fn lock(&self) -> MutexGuard<'_, TapeInner<Data>> {
+    fn lock(&self) -> MutexGuard<'_, TapeInner<E>> {
         self.inner
             .lock()
             .expect("tape is poisoned: a recording panicked earlier on this tape")
     }
 }
 
-impl<Data: Tensorial> Tape<Data> {
+impl<E: Element> Tape<E> {
     /// Records the reverse-mode gradient of `loss` with respect to each
     /// `wrt` entry as ordinary computed nodes on this tape, and returns
     /// the [`Adjoints`] pairing each entry with its gradient.
@@ -346,7 +348,7 @@ impl<Data: Tensorial> Tape<Data> {
             0,
             "differentiate requires a scalar loss; reduce it with `sum` first"
         );
-        let seed = loss_value.literal(Data::counted(loss_value.shape(), 1));
+        let seed = loss_value.literal(Tensor::counted(loss_value.shape(), 1));
         self.vjp(loss_value.symbol(), seed.symbol(), wrt)
     }
 
@@ -397,7 +399,7 @@ impl<Data: Tensorial> Tape<Data> {
         // the two live in different phases with different asserts
         // (posture and numerics here have no recording analogue);
         // the closure suite is the weld.
-        let mut cotangents: Vec<Option<Trace<'_, Data>>> = vec![None; output_index + 1];
+        let mut cotangents: Vec<Option<Trace<'_, E>>> = vec![None; output_index + 1];
         cotangents[output_index] = Some(Trace::of(seed_value));
         let mut ancestors = vec![false; output_index + 1];
         ancestors[output_index] = true;
@@ -419,9 +421,9 @@ impl<Data: Tensorial> Tape<Data> {
                 .functions
                 .get(index)
                 .expect("the freeze cannot shrink");
-            let operand_traces: SmallVec<[Trace<'_, Data>; 2]> =
+            let operand_traces: SmallVec<[Trace<'_, E>; 2]> =
                 links.iter().map(|link| trace(link.index())).collect();
-            let operands: SmallVec<[&Trace<'_, Data>; 2]> = operand_traces.iter().collect();
+            let operands: SmallVec<[&Trace<'_, E>; 2]> = operand_traces.iter().collect();
             let gradient = cotangents[index].expect("ancestors carry cotangents");
             let recorded = function.backward(&operands, &trace(index), &gradient);
             debug_assert_eq!(recorded.len(), links.len());
@@ -447,7 +449,7 @@ impl<Data: Tensorial> Tape<Data> {
                     // A non-ancestor's gradient is a recorded zero of
                     // its own shape, the tape twin of the zeros a
                     // gradient field holds there.
-                    None => value.literal(Data::counted(value.shape(), 0)).symbol(),
+                    None => value.literal(Tensor::counted(value.shape(), 0)).symbol(),
                 };
                 (value.symbol(), gradient)
             })
@@ -456,7 +458,7 @@ impl<Data: Tensorial> Tape<Data> {
     }
 }
 
-impl<Data: Differentiable> Default for Tape<Data> {
+impl<E: Element> Default for Tape<E> {
     fn default() -> Self {
         Self::new()
     }

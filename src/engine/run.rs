@@ -4,7 +4,7 @@ use std::sync::Arc;
 use smallvec::SmallVec;
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Numerics, Tensorial};
+use crate::{Differentiable, Element, Numerics, Tensor};
 
 use crate::backend::NumericsScope;
 use crate::function::{Function, SlotId};
@@ -72,22 +72,22 @@ impl Posture {
 /// and a reopened tape recording new nodes does not change its values
 /// or the operations differentiated by [`Run::backward`].
 #[derive(Debug)]
-pub struct Run<Data> {
+pub struct Run<E> {
     /// Frozen node columns for this run: functions, operands, and the
     /// shapes inferred at record time.
-    structure: Structure<Data>,
-    field: Field<Data>,
+    structure: Structure<Tensor<E>>,
+    field: Field<E>,
     posture: Posture,
     /// The numerics posture the forward producer executed under;
     /// `backward` re-enters it so gradients follow the same paths.
     numerics: Numerics,
 }
 
-impl<Data: Differentiable> Run<Data> {
+impl<E: Element> Run<E> {
     pub(crate) fn new(
-        structure: Structure<Data>,
+        structure: Structure<Tensor<E>>,
         origin: Origin,
-        values: Vec<Data>,
+        values: Vec<Tensor<E>>,
         posture: Posture,
         numerics: Numerics,
     ) -> Self {
@@ -139,7 +139,7 @@ impl<Data: Differentiable> Run<Data> {
     /// allocated after this run, or was skipped by a target-sliced run
     /// (see [`Network::forward_for`](crate::Network::forward_for)): a
     /// placeholder must never read as a result.
-    pub fn of(&self, symbol: Symbol) -> &Data {
+    pub fn of(&self, symbol: Symbol) -> &Tensor<E> {
         let index = self.locate(symbol);
         assert!(
             self.computed(index),
@@ -151,7 +151,7 @@ impl<Data: Differentiable> Run<Data> {
     /// Returns the run's computed values as a field, for the displays
     /// that plot a whole pass rather than read one value out of it.
     #[cfg(feature = "evcxr")]
-    pub(crate) fn field(&self) -> &Field<Data> {
+    pub(crate) fn field(&self) -> &Field<E> {
         &self.field
     }
 
@@ -174,8 +174,8 @@ impl<Data: Differentiable> Run<Data> {
     /// Panics as [`Run::of`] panics for either half of a pair,
     /// if a `wrt` entry is not a parameter, or if a gradient's
     /// payload shape differs from its parameter's recorded shape.
-    pub fn recorded_gradients(&self, adjoints: &Adjoints) -> Parameters<Data> {
-        let mut recorded: HashMap<usize, Data> = HashMap::new();
+    pub fn recorded_gradients(&self, adjoints: &Adjoints) -> Parameters<E> {
+        let mut recorded: HashMap<usize, Tensor<E>> = HashMap::new();
         for &(parameter, gradient) in adjoints.pairs() {
             let index = self.locate(parameter);
             assert!(
@@ -218,7 +218,7 @@ impl<Data: Differentiable> Run<Data> {
     }
 }
 
-impl<Data: Tensorial> Run<Data> {
+impl<E: Element> Run<E> {
     /// Propagates gradients backward from `output`, returning the
     /// gradient of `output` with respect to every value of this run.
     ///
@@ -251,7 +251,7 @@ impl<Data: Tensorial> Run<Data> {
     /// Panics if `output` is not a scalar, belongs to a different
     /// network, was allocated after this run, or was skipped by a
     /// target-sliced run.
-    pub fn backward(&self, output: Symbol) -> Gradients<Data> {
+    pub fn backward(&self, output: Symbol) -> Gradients<E> {
         let output_index = self.locate(output);
         let values = self.field.payloads();
         // A sliced run evaluates the whole ancestor closure of its
@@ -287,7 +287,7 @@ impl<Data: Tensorial> Run<Data> {
         // Gradients follow the forward pass's numerics posture, so an
         // exact run differentiates exactly.
         let _numerics = NumericsScope::enter(self.numerics);
-        let mut gradients: Vec<Data> = values.iter().map(|value| value.zero_like()).collect();
+        let mut gradients: Vec<Tensor<E>> = values.iter().map(|value| value.zero_like()).collect();
         gradients[output_index] = values[output_index].one_like();
         // The single reverse scan doubles as reachability marking: every
         // consumer lives at a higher index than its operands, so when the
@@ -317,7 +317,7 @@ impl<Data: Tensorial> Run<Data> {
             // Every payload a derivative rule reads is present:
             // interpreter runs hold everything, and engine-backward
             // plan runs retain what the read contract names.
-            let operands: SmallVec<[&Data; 2]> =
+            let operands: SmallVec<[&Tensor<E>; 2]> =
                 links.iter().map(|link| &values[link.index()]).collect();
             let gradient = gradients[index].clone();
             let cotangents = function.backward(&operands, &values[index], &gradient);
@@ -350,7 +350,7 @@ mod tests;
 // The forward entry points live here rather than on the spec's own
 // file for the same reason `compile` lives in `plan.rs`: running is
 // the executor's business, and the graph tier must not depend on it.
-impl<Data: Tensorial> Network<Data> {
+impl<E: Element> Network<E> {
     /// Evaluates every node in allocation order, materializing the
     /// payload of each value into a fresh [`Run`], reading parameter
     /// payloads from `parameters` and binding `feeds` to declared
@@ -371,15 +371,15 @@ impl<Data: Tensorial> Network<Data> {
     /// differs from the input's recorded shape.
     pub fn forward(
         &self,
-        parameters: &Parameters<Data>,
-        feeds: impl IntoIterator<Item = (Symbol, Data)>,
-    ) -> Run<Data> {
+        parameters: &Parameters<E>,
+        feeds: impl IntoIterator<Item = (Symbol, Tensor<E>)>,
+    ) -> Run<E> {
         self.run(parameters, None, feeds)
     }
 
     /// Panics unless `parameters` was born from this network's exact
     /// extent: the run-side kinship check.
-    fn assert_covering(&self, parameters: &Parameters<Data>) {
+    fn assert_covering(&self, parameters: &Parameters<E>) {
         assert!(
             parameters.origin() == self.origin(),
             "parameters belong to a different network"
@@ -412,10 +412,10 @@ impl<Data: Tensorial> Network<Data> {
     /// [`Network::forward`] panics.
     pub fn forward_for(
         &self,
-        parameters: &Parameters<Data>,
+        parameters: &Parameters<E>,
         targets: impl IntoIterator<Item = Symbol>,
-        feeds: impl IntoIterator<Item = (Symbol, Data)>,
-    ) -> Run<Data> {
+        feeds: impl IntoIterator<Item = (Symbol, Tensor<E>)>,
+    ) -> Run<E> {
         let targets: Vec<ValueId> = targets
             .into_iter()
             .map(|target| self.locate(target))
@@ -441,10 +441,10 @@ impl<Data: Tensorial> Network<Data> {
     /// node) and `forward_for` (the targets' ancestor closure).
     fn run(
         &self,
-        parameters: &Parameters<Data>,
+        parameters: &Parameters<E>,
         targets: Option<Vec<ValueId>>,
-        feeds: impl IntoIterator<Item = (Symbol, Data)>,
-    ) -> Run<Data> {
+        feeds: impl IntoIterator<Item = (Symbol, Tensor<E>)>,
+    ) -> Run<E> {
         self.assert_covering(parameters);
         let mut bindings = Vec::new();
         for (symbol, payload) in feeds {
@@ -512,9 +512,9 @@ impl<Data: Tensorial> Network<Data> {
                     .get(index)
                     .expect("shapes cover the network")
                     .clone();
-                Data::counted(shape, 0)
+                Tensor::counted(shape, 0)
             } else {
-                let operands: SmallVec<[&Data; 2]> = links
+                let operands: SmallVec<[&Tensor<E>; 2]> = links
                     .as_slice()
                     .iter()
                     .map(|link| &values[link.index()])

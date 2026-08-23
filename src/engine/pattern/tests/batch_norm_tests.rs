@@ -10,7 +10,7 @@ use super::super::view::View;
 /// Records the training-mode expression of a two-feature layer over a
 /// three-sample batch and returns the network with the root, mean,
 /// and variance indices.
-fn training_network() -> (Network<Tensor<f64>>, usize, usize, usize) {
+fn training_network() -> (Network<f64>, usize, usize, usize) {
     let tape = Tape::new();
     let layer = BatchNorm::new(
         &tape,
@@ -31,7 +31,7 @@ fn training_network() -> (Network<Tensor<f64>>, usize, usize, usize) {
 
 /// Builds a view over the whole network with every node wanted.
 fn full_view<'plan>(
-    network: &'plan Network<Tensor<f64>>,
+    network: &'plan Network<f64>,
     wanted: &'plan [bool],
     readable: &'plan [bool],
 ) -> View<'plan, Tensor<f64>> {

@@ -58,7 +58,7 @@ const SHARD_LEN: usize = 8;
 /// the shard count: the reduction runs its pairs concurrently and
 /// finishes in logarithmic depth, while the tree — not the scheduler —
 /// decides the order of additions, keeping the result deterministic.
-fn tree_sum(mut layer: Vec<Parameters<Tensor<f32>>>) -> Parameters<Tensor<f32>> {
+fn tree_sum(mut layer: Vec<Parameters<f32>>) -> Parameters<f32> {
     while layer.len() > 1 {
         layer = layer
             .par_chunks(2)
@@ -79,7 +79,7 @@ fn main() {
     shuffle(&mut samples, &mut shuffle_state);
     println!("loaded {} names, {} samples", names.len(), samples.len());
 
-    let tape: Tape<Tensor<f32>> = Tape::new();
+    let tape: Tape<f32> = Tape::new();
 
     // The same model as the serial examples, recorded at shard shape:
     // the batch size is baked into the graph, so the parallel plan is
@@ -135,7 +135,7 @@ fn main() {
 
         // Fan out: one immutable forward and backward run per shard,
         // all reading the same network and parameter state.
-        let shard_results: Vec<(f32, Parameters<Tensor<f32>>)> = (0..SHARD_COUNT)
+        let shard_results: Vec<(f32, Parameters<f32>)> = (0..SHARD_COUNT)
             .into_par_iter()
             .map(|shard| {
                 let rows = &batch[shard * SHARD_LEN..(shard + 1) * SHARD_LEN];
@@ -169,7 +169,7 @@ fn main() {
             })
             .collect();
 
-        let (shard_losses, shard_gradients): (Vec<f32>, Vec<Parameters<Tensor<f32>>>) =
+        let (shard_losses, shard_gradients): (Vec<f32>, Vec<Parameters<f32>>) =
             shard_results.into_iter().unzip();
         let batch_loss = shard_losses.iter().sum::<f32>() / SHARD_COUNT as f32;
         let gradients = tree_sum(shard_gradients)

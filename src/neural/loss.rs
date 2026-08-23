@@ -9,7 +9,7 @@
 //! recorded composition can perform — while everything around the core
 //! stays plain, readable composition.
 
-use crate::{Tensorial, Value};
+use crate::{Element, Value};
 
 /// Records the cross-entropy loss of `logits` against `targets` on their
 /// network and returns the rank-0 loss value.
@@ -41,10 +41,10 @@ use crate::{Tensorial, Value};
 /// # Panics
 /// Panics if the values belong to different networks, `logits` is not
 /// rank 2, or the shapes differ.
-pub fn cross_entropy<'tape, Data: Tensorial>(
-    logits: Value<'tape, Data>,
-    targets: Value<'tape, Data>,
-) -> Value<'tape, Data> {
+pub fn cross_entropy<'tape, E: Element>(
+    logits: Value<'tape, E>,
+    targets: Value<'tape, E>,
+) -> Value<'tape, E> {
     let logits_shape = logits.shape();
     assert_eq!(
         logits_shape.rank(),

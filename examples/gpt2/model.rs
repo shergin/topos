@@ -25,7 +25,7 @@
 
 use topos::checkpoint::named_restore;
 use topos::{
-    Elementary, LayerNorm, Linear, Module, Parameters, Path, Segment, Symbol, Tape, Tensor, Value,
+    Element, LayerNorm, Linear, Module, Parameters, Path, Segment, Symbol, Tape, Tensor, Value,
     Visitor, concat, named_parameters,
 };
 
@@ -65,7 +65,7 @@ struct Gelu {
 }
 
 impl Gelu {
-    fn new<E: Elementary + From<f32>>(tape: &Tape<Tensor<E>>) -> Self {
+    fn new<E: Element + From<f32>>(tape: &Tape<E>) -> Self {
         let scalar = |value: f32| tape.leaf(Tensor::filled([], E::from(value))).symbol();
         Self {
             half: scalar(0.5),
@@ -78,16 +78,12 @@ impl Gelu {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for Gelu {
+impl<E: Element> Module<E> for Gelu {
     /// Records `0.5 x (1 + tanh(sqrt(2/pi) (x + 0.044715 x^3)))`.
     ///
     /// The constants are leaves, not parameters, so the default no-op
     /// `visit` is right: the checkpoint has nothing to restore here.
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let half = tape.resolve(self.half);
         let one = tape.resolve(self.one);
         let root = tape.resolve(self.root);
@@ -101,9 +97,9 @@ impl<E: Elementary> Module<Tensor<E>> for Gelu {
 /// One decode step's results: the output row and the caches with the
 /// step's key and value rows appended.
 struct Decoded<'tape, E> {
-    output: Value<'tape, Tensor<E>>,
-    keys: Value<'tape, Tensor<E>>,
-    values: Value<'tape, Tensor<E>>,
+    output: Value<'tape, E>,
+    keys: Value<'tape, E>,
+    values: Value<'tape, E>,
 }
 
 /// Multi-head causal self-attention over the fused query-key-value
@@ -111,16 +107,16 @@ struct Decoded<'tape, E> {
 /// one `c_attn` output, and the heads concatenate back through
 /// `c_proj`.
 struct Attention<E> {
-    fused: Linear<Tensor<E>>,
-    projection: Linear<Tensor<E>>,
+    fused: Linear<E>,
+    projection: Linear<E>,
     mask: Symbol,
     scale: Symbol,
 }
 
-impl<E: Elementary + From<f32>> Attention<E> {
+impl<E: Element + From<f32>> Attention<E> {
     /// Allocates the projections with placeholder payloads; `mask` and
     /// `scale` are leaves shared by every block.
-    fn new(tape: &Tape<Tensor<E>>, mask: Symbol, scale: Symbol) -> Self {
+    fn new(tape: &Tape<E>, mask: Symbol, scale: Symbol) -> Self {
         let zeros = |shape: [usize; 2]| Tensor::filled(shape, E::from(0.0));
         let bias = |extent: usize| Tensor::filled([extent], E::from(0.0));
         Self {
@@ -132,7 +128,7 @@ impl<E: Elementary + From<f32>> Attention<E> {
     }
 }
 
-impl<E: Elementary> Attention<E> {
+impl<E: Element> Attention<E> {
     /// Records the one-token decode step: the row's fused projection
     /// appends its key and value rows into the caches (a `scatter`
     /// by the position one-hot over a still-zero row, so the append
@@ -141,12 +137,12 @@ impl<E: Elementary> Attention<E> {
     /// plays no part here.
     fn express_decode<'tape>(
         &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-        keys: Value<'tape, Tensor<E>>,
-        values: Value<'tape, Tensor<E>>,
-        position: Value<'tape, Tensor<E>>,
-        mask: Value<'tape, Tensor<E>>,
+        tape: &'tape Tape<E>,
+        input: Value<'tape, E>,
+        keys: Value<'tape, E>,
+        values: Value<'tape, E>,
+        position: Value<'tape, E>,
+        mask: Value<'tape, E>,
     ) -> Decoded<'tape, E> {
         let scale = tape.resolve(self.scale);
         let fused = self.fused.express(tape, input);
@@ -158,7 +154,7 @@ impl<E: Elementary> Attention<E> {
             + fused
                 .narrow(1, 2 * EMBED_DIM, EMBED_DIM)
                 .scatter(position, CONTEXT_LEN);
-        let heads: Vec<Value<'tape, Tensor<E>>> = (0..HEAD_COUNT)
+        let heads: Vec<Value<'tape, E>> = (0..HEAD_COUNT)
             .map(|head| {
                 let query = fused.narrow(1, head * HEAD_DIM, HEAD_DIM);
                 let key = keys.narrow(1, head * HEAD_DIM, HEAD_DIM);
@@ -176,16 +172,12 @@ impl<E: Elementary> Attention<E> {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for Attention<E> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+impl<E: Element> Module<E> for Attention<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let mask = tape.resolve(self.mask);
         let scale = tape.resolve(self.scale);
         let fused = self.fused.express(tape, input);
-        let heads: Vec<Value<'tape, Tensor<E>>> = (0..HEAD_COUNT)
+        let heads: Vec<Value<'tape, E>> = (0..HEAD_COUNT)
             .map(|head| {
                 let query = fused.narrow(1, head * HEAD_DIM, HEAD_DIM);
                 let key = fused.narrow(1, EMBED_DIM + head * HEAD_DIM, HEAD_DIM);
@@ -210,13 +202,13 @@ impl<E: Elementary> Module<Tensor<E>> for Attention<E> {
 
 /// The block's GELU MLP: up projection, activation, down projection.
 struct FeedForward<E> {
-    up: Linear<Tensor<E>>,
+    up: Linear<E>,
     activation: Gelu,
-    down: Linear<Tensor<E>>,
+    down: Linear<E>,
 }
 
-impl<E: Elementary + From<f32>> FeedForward<E> {
-    fn new(tape: &Tape<Tensor<E>>, activation: Gelu) -> Self {
+impl<E: Element + From<f32>> FeedForward<E> {
+    fn new(tape: &Tape<E>, activation: Gelu) -> Self {
         let zeros = |shape: [usize; 2]| Tensor::filled(shape, E::from(0.0));
         let bias = |extent: usize| Tensor::filled([extent], E::from(0.0));
         Self {
@@ -227,12 +219,8 @@ impl<E: Elementary + From<f32>> FeedForward<E> {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for FeedForward<E> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+impl<E: Element> Module<E> for FeedForward<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let lifted = self.up.express(tape, input);
         let hidden = self.activation.express(tape, lifted);
         self.down.express(tape, hidden)
@@ -251,14 +239,14 @@ impl<E: Elementary> Module<Tensor<E>> for FeedForward<E> {
 /// One pre-norm transformer block: attention and the MLP each read
 /// their own normalization of the stream and add back into it.
 struct Block<E> {
-    attention_norm: LayerNorm<Tensor<E>>,
+    attention_norm: LayerNorm<E>,
     attention: Attention<E>,
-    hidden_norm: LayerNorm<Tensor<E>>,
+    hidden_norm: LayerNorm<E>,
     feed_forward: FeedForward<E>,
 }
 
-impl<E: Elementary + From<f32>> Block<E> {
-    fn new(tape: &Tape<Tensor<E>>, mask: Symbol, scale: Symbol, activation: Gelu) -> Self {
+impl<E: Element + From<f32>> Block<E> {
+    fn new(tape: &Tape<E>, mask: Symbol, scale: Symbol, activation: Gelu) -> Self {
         Self {
             attention_norm: layer_norm(tape),
             attention: Attention::new(tape, mask, scale),
@@ -268,18 +256,18 @@ impl<E: Elementary + From<f32>> Block<E> {
     }
 }
 
-impl<E: Elementary> Block<E> {
+impl<E: Element> Block<E> {
     /// Records the block's one-token decode step over the stream row:
     /// the same pre-norm wiring as `express`, with attention reading
     /// and updating the layer's caches.
     fn express_decode<'tape>(
         &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-        keys: Value<'tape, Tensor<E>>,
-        values: Value<'tape, Tensor<E>>,
-        position: Value<'tape, Tensor<E>>,
-        mask: Value<'tape, Tensor<E>>,
+        tape: &'tape Tape<E>,
+        input: Value<'tape, E>,
+        keys: Value<'tape, E>,
+        values: Value<'tape, E>,
+        position: Value<'tape, E>,
+        mask: Value<'tape, E>,
     ) -> Decoded<'tape, E> {
         let attended = self.attention.express_decode(
             tape,
@@ -301,12 +289,8 @@ impl<E: Elementary> Block<E> {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for Block<E> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+impl<E: Element> Module<E> for Block<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let attended = self
             .attention
             .express(tape, self.attention_norm.express(tape, input));
@@ -335,7 +319,7 @@ impl<E: Elementary> Module<Tensor<E>> for Block<E> {
 
 /// Builds a layer norm with the conventional placeholder payloads and
 /// the epsilon the checkpoint was trained with.
-fn layer_norm<E: Elementary + From<f32>>(tape: &Tape<Tensor<E>>) -> LayerNorm<Tensor<E>> {
+fn layer_norm<E: Element + From<f32>>(tape: &Tape<E>) -> LayerNorm<E> {
     LayerNorm::new(
         tape,
         Tensor::filled([EMBED_DIM], E::from(1.0)),
@@ -352,10 +336,10 @@ pub struct Gpt2<E> {
     embeddings: Symbol,
     positions: Symbol,
     blocks: Vec<Block<E>>,
-    final_norm: LayerNorm<Tensor<E>>,
+    final_norm: LayerNorm<E>,
 }
 
-impl<E: Elementary + From<f32> + 'static> Gpt2<E> {
+impl<E: Element + From<f32> + 'static> Gpt2<E> {
     /// Allocates the model's parameters with placeholder payloads, in
     /// visit order.
     ///
@@ -363,7 +347,7 @@ impl<E: Elementary + From<f32> + 'static> Gpt2<E> {
     /// arguments are the parameters in recording order, so recording
     /// them in visit order makes the positional snapshot exactly the
     /// emitted argument list.
-    pub fn new(tape: &Tape<Tensor<E>>) -> Self {
+    pub fn new(tape: &Tape<E>) -> Self {
         let embeddings = tape
             .parameter(Tensor::filled([VOCABULARY_LEN, EMBED_DIM], E::from(0.0)))
             .symbol();
@@ -409,7 +393,7 @@ impl<E: Elementary + From<f32> + 'static> Gpt2<E> {
     }
 }
 
-impl<E: Elementary> Gpt2<E> {
+impl<E: Element> Gpt2<E> {
     /// Returns how many blocks the model stacks: one cache pair per
     /// block in the decode step.
     pub fn layers(&self) -> usize {
@@ -426,15 +410,12 @@ impl<E: Elementary> Gpt2<E> {
     /// order.
     pub fn express_decode<'tape>(
         &self,
-        tape: &'tape Tape<Tensor<E>>,
-        embedded: Value<'tape, Tensor<E>>,
-        caches: &[(Value<'tape, Tensor<E>>, Value<'tape, Tensor<E>>)],
-        position: Value<'tape, Tensor<E>>,
-        mask: Value<'tape, Tensor<E>>,
-    ) -> (
-        Value<'tape, Tensor<E>>,
-        Vec<(Value<'tape, Tensor<E>>, Value<'tape, Tensor<E>>)>,
-    ) {
+        tape: &'tape Tape<E>,
+        embedded: Value<'tape, E>,
+        caches: &[(Value<'tape, E>, Value<'tape, E>)],
+        position: Value<'tape, E>,
+        mask: Value<'tape, E>,
+    ) -> (Value<'tape, E>, Vec<(Value<'tape, E>, Value<'tape, E>)>) {
         assert_eq!(caches.len(), self.blocks.len(), "one cache pair per block");
         let positions = tape.resolve(self.positions);
         let row = positions.narrow(0, 0, CONTEXT_LEN).gather(position);
@@ -449,14 +430,10 @@ impl<E: Elementary> Gpt2<E> {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for Gpt2<E> {
+impl<E: Element> Module<E> for Gpt2<E> {
     /// Records the model over the embedded `[context, embed]` window:
     /// positions in, the block stack, the final norm.
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let positions = tape.resolve(self.positions);
         let context = input.shape().axes()[0];
         let stream = input + positions.narrow(0, 0, context);
@@ -521,11 +498,11 @@ fn foreign_name(path: &Path) -> String {
 /// checkpoint's spelling, and [`named_restore`] does the rest —
 /// missing tensors and shape mismatches fail loudly through the
 /// restore's existing validation.
-pub fn load<E: Elementary + From<f32>>(
-    parameters: &Parameters<Tensor<E>>,
+pub fn load<E: Element + From<f32>>(
+    parameters: &Parameters<E>,
     model: &Gpt2<E>,
     weights: &Weights,
-) -> Parameters<Tensor<E>> {
+) -> Parameters<E> {
     let entries: Vec<(Path, Tensor<E>)> = named_parameters(model)
         .into_iter()
         .map(|(path, _)| {

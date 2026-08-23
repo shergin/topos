@@ -4,7 +4,7 @@ use std::ptr;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Elementary, MapOperation, Shape, Tensorial};
+use crate::{Element, MapOperation, Shape, Tensor};
 
 use crate::function::Function;
 
@@ -53,14 +53,14 @@ impl ValueId {
 /// input; computed values are read from a [`Run`](crate::Run), live
 /// parameter payloads from [`Parameters`](crate::Parameters) — both by
 /// [`Symbol`].
-pub struct Value<'tape, Data> {
-    tape: &'tape Tape<Data>,
+pub struct Value<'tape, E> {
+    tape: &'tape Tape<E>,
     id: ValueId,
 }
 
-impl<'tape, Data: Differentiable> Value<'tape, Data> {
+impl<'tape, E: Element> Value<'tape, E> {
     /// Binds a proxy to the node `id` recorded on `tape`.
-    pub(crate) fn bind(tape: &'tape Tape<Data>, id: ValueId) -> Self {
+    pub(crate) fn bind(tape: &'tape Tape<E>, id: ValueId) -> Self {
         Self { tape, id }
     }
 
@@ -82,16 +82,16 @@ impl<'tape, Data: Differentiable> Value<'tape, Data> {
 
 /// The conversion form of [`Value::symbol`], for positions where a
 /// list must be homogeneous in `Symbol`: `[loss.into(), stored]`.
-impl<Data: Differentiable> From<Value<'_, Data>> for Symbol {
-    fn from(value: Value<'_, Data>) -> Symbol {
+impl<E: Element> From<Value<'_, E>> for Symbol {
+    fn from(value: Value<'_, E>) -> Symbol {
         value.symbol()
     }
 }
 
-impl<'tape, Data: Differentiable> Value<'tape, Data> {
+impl<'tape, E: Element> Value<'tape, E> {
     /// Returns a clone of the `Function` that produced this value.
     #[cfg(test)]
-    pub(crate) fn function(&self) -> Function<Data> {
+    pub(crate) fn function(&self) -> Function<Tensor<E>> {
         self.tape.with_node(self.id, |function| function.clone())
     }
 
@@ -113,13 +113,13 @@ impl<'tape, Data: Differentiable> Value<'tape, Data> {
     /// initial, and inputs their recorded default. Live parameter payloads
     /// are read from [`Parameters::of`](crate::Parameters::of), run results
     /// from [`Run::of`](crate::Run::of).
-    pub fn payload(&self) -> Option<Data> {
+    pub fn payload(&self) -> Option<Tensor<E>> {
         self.tape.payload_of(self.id)
     }
 
     /// Records a computed node produced by `function` over the positional
     /// `operands` on the same tape and returns a proxy to it.
-    fn apply(&self, function: Function<Data>, operands: &[ValueId]) -> Self {
+    fn apply(&self, function: Function<Tensor<E>>, operands: &[ValueId]) -> Self {
         let id = self.tape.record(function, operands);
         Self::bind(self.tape, id)
     }
@@ -129,7 +129,7 @@ impl<'tape, Data: Differentiable> Value<'tape, Data> {
     ///
     /// It backs the payload-literal operator sugar: every literal
     /// appearance records its own leaf.
-    pub(crate) fn literal(&self, data: Data) -> Self {
+    pub(crate) fn literal(&self, data: Tensor<E>) -> Self {
         Self::bind(self.tape, self.tape.record(Function::leaf(data), &[]))
     }
 
@@ -146,7 +146,7 @@ impl<'tape, Data: Differentiable> Value<'tape, Data> {
     }
 }
 
-impl<'tape, Data: Elementary> Value<'tape, Data> {
+impl<'tape, E: Element> Value<'tape, E> {
     /// Records the hyperbolic tangent of this value on the same tape
     /// and returns a proxy to it.
     pub fn tanh(self) -> Self {
@@ -217,7 +217,7 @@ impl<'tape, Data: Elementary> Value<'tape, Data> {
     }
 }
 
-impl<'tape, Data: Tensorial> Value<'tape, Data> {
+impl<'tape, E: Element> Value<'tape, E> {
     /// Records the matrix product of this value and `rhs` on the same
     /// network and returns a proxy to it.
     ///
@@ -442,16 +442,16 @@ impl<'tape, Data: Tensorial> Value<'tape, Data> {
 
 // Manual implementations avoid the `Data: Clone`/`Data: Copy` bounds a
 // derive would add: the proxy copies a borrow and an index, never `Data`.
-impl<Data> Clone for Value<'_, Data> {
+impl<E> Clone for Value<'_, E> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<Data> Copy for Value<'_, Data> {}
+impl<E> Copy for Value<'_, E> {}
 
 /// It prints only the node position to avoid dumping the whole network.
-impl<Data> fmt::Debug for Value<'_, Data> {
+impl<E> fmt::Debug for Value<'_, E> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("Value")
@@ -460,8 +460,8 @@ impl<Data> fmt::Debug for Value<'_, Data> {
     }
 }
 
-impl<'tape, Data: Differentiable> Add for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Add for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
     fn add(self, rhs: Self) -> Self::Output {
         self.assert_same_tape(&rhs);
@@ -469,8 +469,8 @@ impl<'tape, Data: Differentiable> Add for Value<'tape, Data> {
     }
 }
 
-impl<'tape, Data: Differentiable> Sub for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Sub for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         self.assert_same_tape(&rhs);
@@ -478,8 +478,8 @@ impl<'tape, Data: Differentiable> Sub for Value<'tape, Data> {
     }
 }
 
-impl<'tape, Data: Differentiable> Mul for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Mul for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
     fn mul(self, rhs: Self) -> Self::Output {
         self.assert_same_tape(&rhs);
@@ -487,8 +487,8 @@ impl<'tape, Data: Differentiable> Mul for Value<'tape, Data> {
     }
 }
 
-impl<'tape, Data: Differentiable> Div for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Div for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
     fn div(self, rhs: Self) -> Self::Output {
         self.assert_same_tape(&rhs);
@@ -496,47 +496,83 @@ impl<'tape, Data: Differentiable> Div for Value<'tape, Data> {
     }
 }
 
-impl<'tape, Data: Differentiable> Neg for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Neg for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
     fn neg(self) -> Self::Output {
         self.apply(Function::neg(), &[self.id])
     }
 }
 
-impl<'tape, Data: Differentiable> Add<Data> for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Add<Tensor<E>> for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
-    fn add(self, rhs: Data) -> Self::Output {
+    fn add(self, rhs: Tensor<E>) -> Self::Output {
         let literal = self.literal(rhs);
         self + literal
     }
 }
 
-impl<'tape, Data: Differentiable> Sub<Data> for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Sub<Tensor<E>> for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
-    fn sub(self, rhs: Data) -> Self::Output {
+    fn sub(self, rhs: Tensor<E>) -> Self::Output {
         let literal = self.literal(rhs);
         self - literal
     }
 }
 
-impl<'tape, Data: Differentiable> Mul<Data> for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Mul<Tensor<E>> for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
-    fn mul(self, rhs: Data) -> Self::Output {
+    fn mul(self, rhs: Tensor<E>) -> Self::Output {
         let literal = self.literal(rhs);
         self * literal
     }
 }
 
-impl<'tape, Data: Differentiable> Div<Data> for Value<'tape, Data> {
-    type Output = Value<'tape, Data>;
+impl<'tape, E: Element> Div<Tensor<E>> for Value<'tape, E> {
+    type Output = Value<'tape, E>;
 
-    fn div(self, rhs: Data) -> Self::Output {
+    fn div(self, rhs: Tensor<E>) -> Self::Output {
         let literal = self.literal(rhs);
         self / literal
+    }
+}
+
+// Element literals record a rank-0 leaf, so scalar-looking expressions
+// (`w * 2.0` on a rank-0 graph) keep their spelling; a ranked operand
+// still panics at the recording expression, because a rank-0 literal
+// never broadcasts implicitly.
+impl<'tape, E: Element> Add<E> for Value<'tape, E> {
+    type Output = Value<'tape, E>;
+
+    fn add(self, rhs: E) -> Self::Output {
+        self + Tensor::from(rhs)
+    }
+}
+
+impl<'tape, E: Element> Sub<E> for Value<'tape, E> {
+    type Output = Value<'tape, E>;
+
+    fn sub(self, rhs: E) -> Self::Output {
+        self - Tensor::from(rhs)
+    }
+}
+
+impl<'tape, E: Element> Mul<E> for Value<'tape, E> {
+    type Output = Value<'tape, E>;
+
+    fn mul(self, rhs: E) -> Self::Output {
+        self * Tensor::from(rhs)
+    }
+}
+
+impl<'tape, E: Element> Div<E> for Value<'tape, E> {
+    type Output = Value<'tape, E>;
+
+    fn div(self, rhs: E) -> Self::Output {
+        self / Tensor::from(rhs)
     }
 }
 

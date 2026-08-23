@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use crate::{Differentiable, Elementary, Shape, Tensorial};
+use crate::{Differentiable, Element, Elementary, Shape, Tensor, Tensorial};
 
 use super::Value;
 
@@ -37,80 +37,83 @@ use super::Value;
 /// closure tests keep the crate's own rules inside the recordable
 /// vocabulary, so a future rule widening it fails its own test at
 /// introduction instead of hiding a latent trap.
-pub struct Trace<'tape, Data> {
-    value: Value<'tape, Data>,
+pub struct Trace<'tape, E> {
+    value: Value<'tape, E>,
 }
 
-impl<'tape, Data: Differentiable> Trace<'tape, Data> {
+impl<'tape, E: Element> Trace<'tape, E> {
     /// Wraps a recorded value as a rule operand.
-    pub fn of(value: Value<'tape, Data>) -> Self {
+    pub fn of(value: Value<'tape, E>) -> Self {
         Self { value }
     }
 
     /// Returns the recorded value this trace stands for.
-    pub fn value(&self) -> Value<'tape, Data> {
+    pub fn value(&self) -> Value<'tape, E> {
         self.value
     }
 
     /// Records a literal leaf of `count` spread across this trace's
     /// recorded shape: the recording twin of `zero_like`/`one_like`.
     fn counted_like(&self, count: usize) -> Self {
-        Self::of(self.value.literal(Data::counted(self.value.shape(), count)))
+        Self::of(
+            self.value
+                .literal(Tensor::counted(self.value.shape(), count)),
+        )
     }
 }
 
 // Manual implementations avoid the `Data: Clone`/`Data: Copy` bounds a
 // derive would demand; a trace is an index pair like the value it wraps.
-impl<Data> Clone for Trace<'_, Data> {
+impl<E> Clone for Trace<'_, E> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<Data> Copy for Trace<'_, Data> {}
+impl<E> Copy for Trace<'_, E> {}
 
-impl<Data> fmt::Debug for Trace<'_, Data> {
+impl<E> fmt::Debug for Trace<'_, E> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.debug_struct("Trace").finish_non_exhaustive()
     }
 }
 
-impl<'tape, Data: Differentiable> Add for Trace<'tape, Data> {
+impl<'tape, E: Element> Add for Trace<'tape, E> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         Self::of(self.value + rhs.value)
     }
 }
 
-impl<'tape, Data: Differentiable> Sub for Trace<'tape, Data> {
+impl<'tape, E: Element> Sub for Trace<'tape, E> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
         Self::of(self.value - rhs.value)
     }
 }
 
-impl<'tape, Data: Differentiable> Mul for Trace<'tape, Data> {
+impl<'tape, E: Element> Mul for Trace<'tape, E> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self {
         Self::of(self.value * rhs.value)
     }
 }
 
-impl<'tape, Data: Differentiable> Div for Trace<'tape, Data> {
+impl<'tape, E: Element> Div for Trace<'tape, E> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self {
         Self::of(self.value / rhs.value)
     }
 }
 
-impl<'tape, Data: Differentiable> Neg for Trace<'tape, Data> {
+impl<'tape, E: Element> Neg for Trace<'tape, E> {
     type Output = Self;
     fn neg(self) -> Self {
         Self::of(-self.value)
     }
 }
 
-impl<'tape, Data: Tensorial> Differentiable for Trace<'tape, Data> {
+impl<'tape, E: Element> Differentiable for Trace<'tape, E> {
     /// A trace accumulates in itself: promotion would hide recorded
     /// arithmetic, and the underlying payload's accumulator already
     /// acts inside each recorded operation.
@@ -144,7 +147,7 @@ impl<'tape, Data: Tensorial> Differentiable for Trace<'tape, Data> {
     }
 }
 
-impl<'tape, Data: Tensorial> Elementary for Trace<'tape, Data> {
+impl<'tape, E: Element> Elementary for Trace<'tape, E> {
     fn exp(&self) -> Self {
         Self::of(self.value.exp())
     }
@@ -174,7 +177,7 @@ impl<'tape, Data: Tensorial> Elementary for Trace<'tape, Data> {
     }
 }
 
-impl<'tape, Data: Tensorial> Tensorial for Trace<'tape, Data> {
+impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
     fn matmul(&self, rhs: &Self) -> Self {
         Self::of(self.value.matmul(rhs.value))
     }

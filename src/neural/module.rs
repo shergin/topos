@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use crate::{Symbol, Tape, Tensorial, Value};
+use crate::{Element, Symbol, Tape, Value};
 
 /// A named, parameterized recording function: the unit of model
 /// composition.
@@ -19,14 +19,10 @@ use crate::{Symbol, Tape, Tensorial, Value};
 /// struct fields), never through names. [`Module::visit`] exists for
 /// the serialization boundary alone, where checkpoints need stable
 /// structured paths.
-pub trait Module<Data: Tensorial>: Send + Sync {
+pub trait Module<E: Element>: Send + Sync {
     /// Records this module's formula over `input` on `tape` and
     /// returns the output value.
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data>;
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E>;
 
     /// Walks this module's parameters and children in a stable order,
     /// announcing each parameter under its local name and each child
@@ -106,7 +102,7 @@ pub trait Visitor {
 
 /// Returns the symbols of every parameter in `module`'s tree, in
 /// visit order.
-pub fn parameters<Data: Tensorial, M: Module<Data> + ?Sized>(module: &M) -> Vec<Symbol> {
+pub fn parameters<E: Element, M: Module<E> + ?Sized>(module: &M) -> Vec<Symbol> {
     struct Collector(Vec<Symbol>);
     impl Visitor for Collector {
         fn parameter(&mut self, _name: &'static str, symbol: Symbol) {
@@ -122,9 +118,7 @@ pub fn parameters<Data: Tensorial, M: Module<Data> + ?Sized>(module: &M) -> Vec<
 
 /// Returns every parameter in `module`'s tree with its structured
 /// path, in visit order: the name map of the serialization boundary.
-pub fn named_parameters<Data: Tensorial, M: Module<Data> + ?Sized>(
-    module: &M,
-) -> Vec<(Path, Symbol)> {
+pub fn named_parameters<E: Element, M: Module<E> + ?Sized>(module: &M) -> Vec<(Path, Symbol)> {
     struct Collector {
         stack: Vec<Segment>,
         named: Vec<(Path, Symbol)>,

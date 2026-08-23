@@ -25,8 +25,8 @@ use std::marker::PhantomData;
 
 use topos::checkpoint::named_restore;
 use topos::{
-    Differentiable, Elementary, Module, Parameters, Path, RmsNorm, Segment, Sequential, Symbol,
-    Tape, Tensor, Value, Visitor, concat, named_parameters,
+    Differentiable, Element, Module, Parameters, Path, RmsNorm, Segment, Sequential, Symbol, Tape,
+    Tensor, Value, Visitor, concat, named_parameters,
 };
 
 use crate::family::Family;
@@ -49,10 +49,10 @@ struct Projection<E> {
     _marker: PhantomData<E>,
 }
 
-impl<E: Elementary + From<f32>> Projection<E> {
+impl<E: Element + From<f32>> Projection<E> {
     /// Allocates the `[inputs, outputs]` parameter with a placeholder
     /// payload.
-    fn new(tape: &Tape<Tensor<E>>, inputs: usize, outputs: usize) -> Self {
+    fn new(tape: &Tape<E>, inputs: usize, outputs: usize) -> Self {
         Self {
             weights: tape
                 .parameter(Tensor::filled([inputs, outputs], E::from(0.0)))
@@ -62,12 +62,8 @@ impl<E: Elementary + From<f32>> Projection<E> {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for Projection<E> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+impl<E: Element> Module<E> for Projection<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         input.matmul(tape.resolve(self.weights))
     }
 
@@ -89,7 +85,7 @@ struct Rope {
 }
 
 impl Rope {
-    fn new<E: Elementary + From<f32>>(tape: &Tape<Tensor<E>>, head_dim: usize) -> Self {
+    fn new<E: Element + From<f32>>(tape: &Tape<E>, head_dim: usize) -> Self {
         let half = head_dim / 2;
         let mut cosines = Vec::with_capacity(CONTEXT_LEN * head_dim);
         let mut sines = Vec::with_capacity(CONTEXT_LEN * head_dim);
@@ -118,11 +114,11 @@ impl Rope {
     /// Records the rotation of one head's `[context, head]` slice:
     /// `value * cos + rotate_half(value) * sin`, where `rotate_half`
     /// swaps the halves and negates the upper one.
-    fn rotate<'tape, E: Elementary>(
+    fn rotate<'tape, E: Element>(
         &self,
-        tape: &'tape Tape<Tensor<E>>,
-        value: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+        tape: &'tape Tape<E>,
+        value: Value<'tape, E>,
+    ) -> Value<'tape, E> {
         let half = self.head_dim / 2;
         let cos = tape.resolve(self.cos);
         let sin = tape.resolve(self.sin);
@@ -146,16 +142,10 @@ struct Attention<E> {
     scale: Symbol,
 }
 
-impl<E: Elementary + From<f32>> Attention<E> {
+impl<E: Element + From<f32>> Attention<E> {
     /// Allocates the projections with placeholder payloads; `rope`,
     /// `mask`, and `scale` are leaves shared by every block.
-    fn new(
-        tape: &Tape<Tensor<E>>,
-        family: Family,
-        rope: Rope,
-        mask: Symbol,
-        scale: Symbol,
-    ) -> Self {
+    fn new(tape: &Tape<E>, family: Family, rope: Rope, mask: Symbol, scale: Symbol) -> Self {
         let key_value_dim = family.key_value_head_count * family.head_dim();
         Self {
             family,
@@ -170,12 +160,8 @@ impl<E: Elementary + From<f32>> Attention<E> {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for Attention<E> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+impl<E: Element> Module<E> for Attention<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let head_dim = self.family.head_dim();
         let mask = tape.resolve(self.mask);
         let scale = tape.resolve(self.scale);
@@ -185,7 +171,7 @@ impl<E: Elementary> Module<Tensor<E>> for Attention<E> {
 
         // Each key/value head rotates and transposes once and serves
         // its whole group of query heads.
-        let keyed: Vec<Value<'tape, Tensor<E>>> = (0..self.family.key_value_head_count)
+        let keyed: Vec<Value<'tape, E>> = (0..self.family.key_value_head_count)
             .map(|group| {
                 self.rope
                     .rotate(tape, keys.narrow(1, group * head_dim, head_dim))
@@ -193,7 +179,7 @@ impl<E: Elementary> Module<Tensor<E>> for Attention<E> {
             })
             .collect();
 
-        let heads: Vec<Value<'tape, Tensor<E>>> = (0..self.family.head_count)
+        let heads: Vec<Value<'tape, E>> = (0..self.family.head_count)
             .map(|head| {
                 let group = head / self.family.group_size();
                 let query = self
@@ -232,10 +218,10 @@ struct FeedForward<E> {
     one: Symbol,
 }
 
-impl<E: Elementary + From<f32>> FeedForward<E> {
+impl<E: Element + From<f32>> FeedForward<E> {
     /// Allocates the projections with placeholder payloads; `one` is a
     /// scalar leaf shared by every block.
-    fn new(tape: &Tape<Tensor<E>>, family: Family, one: Symbol) -> Self {
+    fn new(tape: &Tape<E>, family: Family, one: Symbol) -> Self {
         Self {
             gate: Projection::new(tape, family.embed_dim, family.hidden_dim),
             up: Projection::new(tape, family.embed_dim, family.hidden_dim),
@@ -245,12 +231,8 @@ impl<E: Elementary + From<f32>> FeedForward<E> {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for FeedForward<E> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+impl<E: Element> Module<E> for FeedForward<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let one = tape.resolve(self.one);
         let gated = self.gate.express(tape, input);
         // SiLU as `x sigmoid(x)`, spelled `x / (1 + exp(-x))` from the
@@ -276,15 +258,15 @@ impl<E: Elementary> Module<Tensor<E>> for FeedForward<E> {
 /// One pre-norm transformer block: attention and the MLP each read
 /// their own normalization of the stream and add back into it.
 struct Block<E> {
-    attention_norm: RmsNorm<Tensor<E>>,
+    attention_norm: RmsNorm<E>,
     attention: Attention<E>,
-    hidden_norm: RmsNorm<Tensor<E>>,
+    hidden_norm: RmsNorm<E>,
     feed_forward: FeedForward<E>,
 }
 
-impl<E: Elementary + From<f32>> Block<E> {
+impl<E: Element + From<f32>> Block<E> {
     fn new(
-        tape: &Tape<Tensor<E>>,
+        tape: &Tape<E>,
         family: Family,
         rope: Rope,
         mask: Symbol,
@@ -300,12 +282,8 @@ impl<E: Elementary + From<f32>> Block<E> {
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for Block<E> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+impl<E: Element> Module<E> for Block<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let attended = self
             .attention
             .express(tape, self.attention_norm.express(tape, input));
@@ -334,10 +312,7 @@ impl<E: Elementary> Module<Tensor<E>> for Block<E> {
 
 /// Builds an RMS norm with the conventional placeholder payload and
 /// the epsilon the checkpoints were trained with.
-fn rms_norm<E: Elementary + From<f32>>(
-    tape: &Tape<Tensor<E>>,
-    embed_dim: usize,
-) -> RmsNorm<Tensor<E>> {
+fn rms_norm<E: Element + From<f32>>(tape: &Tape<E>, embed_dim: usize) -> RmsNorm<E> {
     RmsNorm::new(
         tape,
         Tensor::filled([embed_dim], E::from(1.0)),
@@ -350,12 +325,12 @@ fn rms_norm<E: Elementary + From<f32>>(
 /// position enters through [`Rope`] inside every attention.
 pub struct Llama<E> {
     embeddings: Symbol,
-    blocks: Sequential<Tensor<E>>,
-    final_norm: RmsNorm<Tensor<E>>,
+    blocks: Sequential<E>,
+    final_norm: RmsNorm<E>,
     head: Projection<E>,
 }
 
-impl<E: Elementary + From<f32> + 'static> Llama<E> {
+impl<E: Element + From<f32> + 'static> Llama<E> {
     /// Allocates the model's parameters with placeholder payloads, in
     /// visit order.
     ///
@@ -363,7 +338,7 @@ impl<E: Elementary + From<f32> + 'static> Llama<E> {
     /// arguments are the parameters in recording order, so recording
     /// them in visit order makes the positional snapshot exactly the
     /// emitted argument list.
-    pub fn new(tape: &Tape<Tensor<E>>, family: Family) -> Self {
+    pub fn new(tape: &Tape<E>, family: Family) -> Self {
         let embeddings = tape
             .parameter(Tensor::filled(
                 [VOCABULARY_LEN, family.embed_dim],
@@ -416,23 +391,15 @@ impl<E: Elementary + From<f32> + 'static> Llama<E> {
 
     /// Records the untied head over the extracted `[1, embed]` row and
     /// returns the `[1, vocabulary]` logits.
-    pub fn predict<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        last: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+    pub fn predict<'tape>(&self, tape: &'tape Tape<E>, last: Value<'tape, E>) -> Value<'tape, E> {
         self.head.express(tape, last)
     }
 }
 
-impl<E: Elementary> Module<Tensor<E>> for Llama<E> {
+impl<E: Element> Module<E> for Llama<E> {
     /// Records the model over the embedded `[context, embed]` window:
     /// the block stack, then the final norm.
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Tensor<E>>,
-        input: Value<'tape, Tensor<E>>,
-    ) -> Value<'tape, Tensor<E>> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         self.final_norm
             .express(tape, self.blocks.express(tape, input))
     }
@@ -509,11 +476,11 @@ fn transposed(tensor: &Tensor<f32>) -> Tensor<f32> {
 /// boundary. The embedding table is a lookup, not a matmul, and stays
 /// as released. A wrong choice here cannot pass silently:
 /// [`named_restore`]'s shape validation rejects it.
-pub fn load<E: Elementary + From<f32>>(
-    parameters: &Parameters<Tensor<E>>,
+pub fn load<E: Element + From<f32>>(
+    parameters: &Parameters<E>,
     model: &Llama<E>,
     weights: &Weights,
-) -> Parameters<Tensor<E>> {
+) -> Parameters<E> {
     let mut wanted: HashMap<String, Path> = named_parameters(model)
         .into_iter()
         .map(|(path, _)| (foreign_name(&path), path))

@@ -17,7 +17,7 @@
 
 use std::collections::HashMap;
 
-use crate::{Parameters, Symbol, Tensorial};
+use crate::{Element, Parameters, Symbol, Tensor};
 
 use super::module::{Module, Path, named_parameters, parameters};
 
@@ -27,10 +27,10 @@ use super::module::{Module, Path, named_parameters, parameters};
 /// # Panics
 /// Panics if a visited symbol does not name a parameter `state`
 /// carries.
-pub fn snapshot<Data: Tensorial, M: Module<Data> + ?Sized>(
-    state: &Parameters<Data>,
+pub fn snapshot<E: Element, M: Module<E> + ?Sized>(
+    state: &Parameters<E>,
     module: &M,
-) -> Vec<Data> {
+) -> Vec<Tensor<E>> {
     parameters(module)
         .into_iter()
         .map(|symbol| state.of(symbol).clone())
@@ -44,11 +44,11 @@ pub fn snapshot<Data: Tensorial, M: Module<Data> + ?Sized>(
 /// # Panics
 /// Panics if the payload count differs from the module's parameter
 /// count, or if a payload's shape differs from its parameter's.
-pub fn restore<Data: Tensorial, M: Module<Data> + ?Sized>(
-    state: &Parameters<Data>,
+pub fn restore<E: Element, M: Module<E> + ?Sized>(
+    state: &Parameters<E>,
     module: &M,
-    payloads: Vec<Data>,
-) -> Parameters<Data> {
+    payloads: Vec<Tensor<E>>,
+) -> Parameters<E> {
     let symbols = parameters(module);
     assert_eq!(
         payloads.len(),
@@ -66,10 +66,10 @@ pub fn restore<Data: Tensorial, M: Module<Data> + ?Sized>(
 ///
 /// # Panics
 /// Panics as [`snapshot`] panics.
-pub fn named_snapshot<Data: Tensorial, M: Module<Data> + ?Sized>(
-    state: &Parameters<Data>,
+pub fn named_snapshot<E: Element, M: Module<E> + ?Sized>(
+    state: &Parameters<E>,
     module: &M,
-) -> Vec<(Path, Data)> {
+) -> Vec<(Path, Tensor<E>)> {
     named_parameters(module)
         .into_iter()
         .map(|(path, symbol)| (path, state.of(symbol).clone()))
@@ -86,13 +86,13 @@ pub fn named_snapshot<Data: Tensorial, M: Module<Data> + ?Sized>(
 /// # Panics
 /// Panics if a module parameter has no entry, an entry matches no
 /// parameter, or a payload's shape differs from its parameter's.
-pub fn named_restore<Data: Tensorial, M: Module<Data> + ?Sized>(
-    state: &Parameters<Data>,
+pub fn named_restore<E: Element, M: Module<E> + ?Sized>(
+    state: &Parameters<E>,
     module: &M,
-    entries: impl IntoIterator<Item = (Path, Data)>,
-) -> Parameters<Data> {
-    let mut entries: HashMap<Path, Data> = entries.into_iter().collect();
-    let mut replacements: Vec<(Symbol, Data)> = Vec::new();
+    entries: impl IntoIterator<Item = (Path, Tensor<E>)>,
+) -> Parameters<E> {
+    let mut entries: HashMap<Path, Tensor<E>> = entries.into_iter().collect();
+    let mut replacements: Vec<(Symbol, Tensor<E>)> = Vec::new();
     let mut missing: Vec<String> = Vec::new();
     for (path, symbol) in named_parameters(module) {
         match entries.remove(&path) {

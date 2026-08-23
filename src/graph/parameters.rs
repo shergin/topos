@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Tensorial};
+use crate::{Differentiable, Element, Tensor, Tensorial};
 
 use super::Field;
 
@@ -34,15 +34,15 @@ assert_impl_all!(Parameters<f64>: Send, Sync);
 /// [`Field::parameters`](crate::Field::parameters) projects it onto
 /// these slots.
 #[derive(Debug, Clone)]
-pub struct Parameters<Data> {
+pub struct Parameters<E> {
     origin: Origin,
-    store: SlotStore<Data>,
+    store: SlotStore<Tensor<E>>,
 }
 
-impl<Data: Differentiable> Parameters<Data> {
+impl<E: Element> Parameters<E> {
     /// Wraps `store` as a parameter-aligned table of the `origin`
     /// family.
-    pub(crate) fn new(origin: Origin, store: SlotStore<Data>) -> Self {
+    pub(crate) fn new(origin: Origin, store: SlotStore<Tensor<E>>) -> Self {
         Self { origin, store }
     }
 
@@ -51,7 +51,7 @@ impl<Data: Differentiable> Parameters<Data> {
     /// gradients.
     pub(crate) fn from_rows(
         origin: Origin,
-        rows: impl IntoIterator<Item = (ValueId, Data)>,
+        rows: impl IntoIterator<Item = (ValueId, Tensor<E>)>,
     ) -> Self {
         Self {
             origin,
@@ -77,7 +77,7 @@ impl<Data: Differentiable> Parameters<Data> {
 
     /// Returns the payloads in slot order, for the engine's node
     /// evaluation.
-    pub(crate) fn payloads(&self) -> &[Data] {
+    pub(crate) fn payloads(&self) -> &[Tensor<E>] {
         self.store.payloads()
     }
 
@@ -86,7 +86,7 @@ impl<Data: Differentiable> Parameters<Data> {
     /// # Panics
     /// Panics if `symbol` belongs to a different network or does not
     /// name a parameter these parameters carry.
-    pub fn of(&self, symbol: Symbol) -> &Data {
+    pub fn of(&self, symbol: Symbol) -> &Tensor<E> {
         assert!(
             symbol.origin == self.origin,
             "symbol belongs to a different network"
@@ -98,7 +98,7 @@ impl<Data: Differentiable> Parameters<Data> {
     }
 
     /// Returns a table with every entry passed through `transform`.
-    pub fn map(&self, transform: impl Fn(&Data) -> Data) -> Self {
+    pub fn map(&self, transform: impl Fn(&Tensor<E>) -> Tensor<E>) -> Self {
         Self {
             origin: self.origin,
             store: self
@@ -112,7 +112,7 @@ impl<Data: Differentiable> Parameters<Data> {
     /// # Panics
     /// Panics if the tables belong to different networks or cover
     /// different parameter slots.
-    pub fn zip(&self, other: &Self, combine: impl Fn(&Data, &Data) -> Data) -> Self {
+    pub fn zip(&self, other: &Self, combine: impl Fn(&Tensor<E>, &Tensor<E>) -> Tensor<E>) -> Self {
         self.assert_compatible(other);
         Self {
             origin: self.origin,
@@ -134,7 +134,7 @@ impl<Data: Differentiable> Parameters<Data> {
     /// # Panics
     /// Panics if `field` belongs to a different network or does not
     /// cover every parameter slot.
-    pub(super) fn filled_from(&self, field: &Field<Data>) -> Self {
+    pub(super) fn filled_from(&self, field: &Field<E>) -> Self {
         assert!(
             field.origin() == self.origin,
             "field belongs to a different network"
@@ -188,8 +188,8 @@ impl<Data: Differentiable> Parameters<Data> {
     /// shape differs from the parameter's.
     pub fn step(
         &self,
-        direction: &Parameters<Data>,
-        mut rule: impl FnMut(&Data, &Data) -> Data,
+        direction: &Parameters<E>,
+        mut rule: impl FnMut(&Tensor<E>, &Tensor<E>) -> Tensor<E>,
     ) -> Self {
         self.step_each(direction, move |_, current, direction| {
             rule(current, direction)
@@ -211,8 +211,8 @@ impl<Data: Differentiable> Parameters<Data> {
     /// Panics as [`Parameters::step`] panics.
     pub fn step_each(
         &self,
-        direction: &Parameters<Data>,
-        mut rule: impl FnMut(Symbol, &Data, &Data) -> Data,
+        direction: &Parameters<E>,
+        mut rule: impl FnMut(Symbol, &Tensor<E>, &Tensor<E>) -> Tensor<E>,
     ) -> Self {
         assert!(
             direction.origin == self.origin,
@@ -251,7 +251,7 @@ impl<Data: Differentiable> Parameters<Data> {
     /// # Panics
     /// Panics if `network` belongs to a different family or records
     /// fewer parameters than this state carries.
-    pub fn carried(&self, network: &Network<Data>) -> Self {
+    pub fn carried(&self, network: &Network<E>) -> Self {
         assert!(
             network.origin() == self.origin,
             "parameters belong to a different network"
@@ -261,7 +261,7 @@ impl<Data: Differentiable> Parameters<Data> {
             self.len() <= fresh.len(),
             "parameters cover more slots than the network records"
         );
-        let mut payloads: Vec<Data> = Vec::with_capacity(fresh.len());
+        let mut payloads: Vec<Tensor<E>> = Vec::with_capacity(fresh.len());
         payloads.extend(self.store.payloads().iter().cloned());
         payloads.extend(fresh.store.payloads()[self.len()..].iter().cloned());
         Self {
@@ -280,7 +280,10 @@ impl<Data: Differentiable> Parameters<Data> {
     /// Panics if a symbol belongs to a different network or does not
     /// name a parameter, or if a replacement's shape differs from the
     /// parameter's.
-    pub fn with_payloads(&self, replacements: impl IntoIterator<Item = (Symbol, Data)>) -> Self {
+    pub fn with_payloads(
+        &self,
+        replacements: impl IntoIterator<Item = (Symbol, Tensor<E>)>,
+    ) -> Self {
         let mut payloads = self.store.payloads().to_vec();
         for (symbol, payload) in replacements {
             assert!(
@@ -304,7 +307,7 @@ impl<Data: Differentiable> Parameters<Data> {
     }
 }
 
-impl<Data: Tensorial> Parameters<Data> {
+impl<E: Element> Parameters<E> {
     /// Returns a table with every entry multiplied by the single-value
     /// `factor`, spread to each entry's shape.
     ///
@@ -315,23 +318,23 @@ impl<Data: Tensorial> Parameters<Data> {
     /// # Panics
     /// For tensor payloads, panics if `factor` holds more than one
     /// value.
-    pub fn scale(&self, factor: &Data) -> Self {
+    pub fn scale(&self, factor: &Tensor<E>) -> Self {
         self.map(|value| value.clone() * factor.broadcast_like(value))
     }
 }
 
-impl<Data: Differentiable> Add for &Parameters<Data> {
-    type Output = Parameters<Data>;
+impl<E: Element> Add for &Parameters<E> {
+    type Output = Parameters<E>;
 
-    fn add(self, rhs: Self) -> Parameters<Data> {
+    fn add(self, rhs: Self) -> Parameters<E> {
         self.zip(rhs, |left, right| left.clone() + right.clone())
     }
 }
 
-impl<Data: Differentiable> Add for Parameters<Data> {
-    type Output = Parameters<Data>;
+impl<E: Element> Add for Parameters<E> {
+    type Output = Parameters<E>;
 
-    fn add(self, rhs: Self) -> Parameters<Data> {
+    fn add(self, rhs: Self) -> Parameters<E> {
         &self + &rhs
     }
 }

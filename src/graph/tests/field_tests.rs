@@ -1,4 +1,4 @@
-use crate::Tape;
+use crate::{Tape, Tensor};
 
 #[test]
 fn algebra_combines_elementwise() {
@@ -15,17 +15,17 @@ fn algebra_combines_elementwise() {
     let d_sum = run.backward(sum);
 
     let combined = &d_product + &d_sum;
-    assert_eq!(*combined.of(a), 4.0);
-    assert_eq!(*combined.of(b), 3.0);
+    assert_eq!(combined.of(a).scalar(), 4.0);
+    assert_eq!(combined.of(b).scalar(), 3.0);
 
-    let result = combined.scale(&2.0);
-    assert_eq!(*result.of(a), 8.0);
+    let result = combined.scale(&2.0.into());
+    assert_eq!(result.of(a).scalar(), 8.0);
 
-    let squared = d_product.zip(&d_product, |left, right| left * right);
-    assert_eq!(*squared.of(a), 9.0);
+    let squared = d_product.zip(&d_product, |left, right| left.clone() * right.clone());
+    assert_eq!(squared.of(a).scalar(), 9.0);
 
-    let shifted = d_sum.map(|value| value + 1.0);
-    assert_eq!(*shifted.of(b), 2.0);
+    let shifted = d_sum.map(|value| value.clone() + Tensor::from(1.0));
+    assert_eq!(shifted.of(b).scalar(), 2.0);
 }
 
 #[test]
@@ -53,13 +53,17 @@ fn projected_fields_step_later_parameter_states() {
 
     let run = network.forward(&parameters, []);
     let gradients = run.backward(w);
-    assert_eq!(*gradients.of(w), 1.0);
+    assert_eq!(gradients.of(w).scalar(), 1.0);
 
     // A projected direction is detached state: it still steps
     // parameter states minted after the run it came from.
     let direction = gradients.parameters(&parameters);
-    let stepped = parameters.step(&direction, |parameter, direction| parameter - direction);
-    assert_eq!(*stepped.of(w), 0.0);
-    let again = stepped.step(&direction, |parameter, direction| parameter - direction);
-    assert_eq!(*again.of(w), -1.0);
+    let stepped = parameters.step(&direction, |parameter, direction| {
+        parameter.clone() - direction.clone()
+    });
+    assert_eq!(stepped.of(w).scalar(), 0.0);
+    let again = stepped.step(&direction, |parameter, direction| {
+        parameter.clone() - direction.clone()
+    });
+    assert_eq!(again.of(w).scalar(), -1.0);
 }

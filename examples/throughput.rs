@@ -43,7 +43,7 @@ fn main() {
         + 2 * batch_len * hidden_len * class_len) as f64
         * 3.0;
 
-    let tape: Tape<Tensor<f32>> = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let mut initializer = init::kaiming(7);
     let hidden_weights = tape.parameter(initializer(&Shape::new([feature_len, hidden_len])));
     let output_weights = tape.parameter(initializer(&Shape::new([hidden_len, class_len])));

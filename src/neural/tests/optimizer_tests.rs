@@ -2,7 +2,7 @@ use crate::{Adam, AdamW, Differentiable, Optimizer, Sgd, Symbol, Tape, Tensor};
 
 /// A tiny two-parameter model: `loss = (w * x + b)^2` summed over a
 /// fixed batch, with a rank-2 weight and a rank-1 bias.
-fn model(tape: &Tape<Tensor<f64>>) -> (Symbol, Symbol, Symbol) {
+fn model(tape: &Tape<f64>) -> (Symbol, Symbol, Symbol) {
     let weights = tape.parameter(Tensor::new([2, 2], [0.5_f64, -0.25, 1.0, 0.75]));
     let bias = tape.parameter(Tensor::new([2], [0.1_f64, -0.2]));
     let x = tape.leaf(Tensor::new([3, 2], [1.0_f64, 2.0, -1.0, 0.5, 0.25, -2.0]));
@@ -51,7 +51,7 @@ fn a_comparison_loop_runs_over_dynamic_optimizers() {
         conventional(1e-8),
         conventional(0.01),
     );
-    let strategies: [&mut dyn Optimizer<Tensor<f64>>; 3] = [&mut sgd, &mut adam, &mut adamw];
+    let strategies: [&mut dyn Optimizer<f64>; 3] = [&mut sgd, &mut adam, &mut adamw];
 
     for strategy in strategies {
         let tape = Tape::new();

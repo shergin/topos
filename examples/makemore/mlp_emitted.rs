@@ -71,10 +71,10 @@ fn initial_parameters() -> [Tensor<f32>; 5] {
 /// `[rows, vocab]` logits: embed, flatten the context window, squash,
 /// and score. `parameters` arrive in `initial_parameters` order.
 fn express<'tape>(
-    parameters: &[Value<'tape, Tensor<f32>>; 5],
-    contexts: Value<'tape, Tensor<f32>>,
+    parameters: &[Value<'tape, f32>; 5],
+    contexts: Value<'tape, f32>,
     rows: usize,
-) -> Value<'tape, Tensor<f32>> {
+) -> Value<'tape, f32> {
     let [
         embeddings,
         hidden_weights,

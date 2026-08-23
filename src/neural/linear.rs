@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Symbol, Tape, Tensorial, Value};
+use crate::{Differentiable, Element, Symbol, Tape, Tensor, Value};
 
 use super::{Module, Visitor};
 
@@ -22,13 +22,13 @@ assert_impl_all!(Linear<f64>: Send, Sync);
 /// are stored as [`Symbol`]s and resolved when the module records on
 /// the family's [`Tape`].
 #[derive(Debug, Clone)]
-pub struct Linear<Data> {
+pub struct Linear<E> {
     weights: Symbol,
     bias: Symbol,
-    _marker: PhantomData<Data>,
+    _marker: PhantomData<E>,
 }
 
-impl<Data: Differentiable> Linear<Data> {
+impl<E: Element> Linear<E> {
     /// Allocates the transform's parameters on `tape` from their
     /// initial payloads and returns the module.
     ///
@@ -41,7 +41,7 @@ impl<Data: Differentiable> Linear<Data> {
     /// # Panics
     /// Panics if `weights` is not rank 2, `bias` is not rank 1, or the
     /// two disagree on the number of outputs.
-    pub fn new(tape: &Tape<Data>, weights: Data, bias: Data) -> Self {
+    pub fn new(tape: &Tape<E>, weights: Tensor<E>, bias: Tensor<E>) -> Self {
         let weights_shape = weights.shape();
         let bias_shape = bias.shape();
         assert_eq!(
@@ -83,7 +83,7 @@ impl<Data: Differentiable> Linear<Data> {
     }
 }
 
-impl<Data: Tensorial> Module<Data> for Linear<Data> {
+impl<E: Element> Module<E> for Linear<E> {
     /// Records the transform over the `[batch, inputs]` value `input`
     /// and returns the `[batch, outputs]` output value.
     ///
@@ -91,11 +91,7 @@ impl<Data: Tensorial> Module<Data> for Linear<Data> {
     /// Panics if the parameters or `input` are not allocated on
     /// `tape`, or if `input` and the weights are not compatible
     /// rank-2 matrices.
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let weights = tape.resolve(self.weights);
         let bias = tape.resolve(self.bias);
         let product = input.matmul(weights);

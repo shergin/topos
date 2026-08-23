@@ -4,7 +4,7 @@ use cow_vec::CowVec;
 use smallvec::SmallVec;
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Numerics, Shape, Tensorial};
+use crate::{Differentiable, Element, Numerics, Shape, Tensor};
 
 use crate::backend::{Backend, Formula, NumericsScope, Precision};
 use crate::function::Function;
@@ -95,13 +95,13 @@ fn fed(formula: Formula) -> bool {
 /// invalidate. Reopening the network and recording more does not
 /// disturb a plan; it simply keeps serving its prefix.
 #[derive(Debug, Clone)]
-pub struct Plan<Data> {
+pub struct Plan<E> {
     origin: Origin,
     /// Frozen node columns for the plan's graph prefix.
-    structure: Structure<Data>,
+    structure: Structure<Tensor<E>>,
     /// The spec's input defaults, frozen at compile time; feeds
     /// overlay them per run.
-    inputs: Arc<SlotStore<Data>>,
+    inputs: Arc<SlotStore<Tensor<E>>>,
     /// How many parameter slots the plan's prefix draws on: the
     /// coverage a [`Parameters`] value must reach.
     parameter_slots: usize,
@@ -137,11 +137,11 @@ pub struct Plan<Data> {
     numerics: Numerics,
 }
 
-impl<Data: Differentiable> Plan<Data> {
+impl<E: Element> Plan<E> {
     /// Compiles the plan for `network`: reachability from the roots,
     /// the readable set, and the release analysis.
     fn new(
-        network: &Network<Data>,
+        network: &Network<E>,
         roots: &[Symbol],
         observe: &[Symbol],
         backward: bool,
@@ -308,7 +308,7 @@ impl<Data: Differentiable> Plan<Data> {
 
     /// Returns the plan's function column, for plan consumers such as
     /// the StableHLO emitter — introspection siblings of `describe`.
-    pub(crate) fn functions(&self) -> &CowVec<Function<Data>> {
+    pub(crate) fn functions(&self) -> &CowVec<Function<Tensor<E>>> {
         &self.structure.functions
     }
 
@@ -490,7 +490,7 @@ impl<Data: Differentiable> Plan<Data> {
     }
 }
 
-impl<Data: Tensorial> Plan<Data> {
+impl<E: Element> Plan<E> {
     /// Runs the plan with parameter payloads read from `parameters`
     /// and `feeds` bound to declared inputs for this run only,
     /// returning a run carrying the readable values.
@@ -513,9 +513,9 @@ impl<Data: Tensorial> Plan<Data> {
     /// shape differs from the input's recorded shape.
     pub fn forward(
         &self,
-        parameters: &Parameters<Data>,
-        feeds: impl IntoIterator<Item = (Symbol, Data)>,
-    ) -> Run<Data> {
+        parameters: &Parameters<E>,
+        feeds: impl IntoIterator<Item = (Symbol, Tensor<E>)>,
+    ) -> Run<E> {
         assert!(
             parameters.origin() == self.origin,
             "parameters belong to a different network"
@@ -563,10 +563,10 @@ impl<Data: Tensorial> Plan<Data> {
             Arc::new(overlaid)
         };
 
-        let mut values: Vec<Data> = Vec::with_capacity(self.len());
+        let mut values: Vec<Tensor<E>> = Vec::with_capacity(self.len());
         for index in 0..self.len() {
             let value = if !self.wanted[index] || self.home.interior(index) {
-                Data::counted(self.structure.shapes[index].clone(), 0)
+                Tensor::counted(self.structure.shapes[index].clone(), 0)
             } else if let Some(fusion) = self.home.at(index).and_then(fusable) {
                 // The fused call reads its sources directly; the chain
                 // between them was never materialized. A multi-result
@@ -593,7 +593,7 @@ impl<Data: Tensorial> Plan<Data> {
                     .operands
                     .get(index)
                     .expect("plan columns are fixed");
-                let operands: SmallVec<[&Data; 2]> = links
+                let operands: SmallVec<[&Tensor<E>; 2]> = links
                     .as_slice()
                     .iter()
                     .map(|link| &values[link.index()])
@@ -616,7 +616,7 @@ impl<Data: Tensorial> Plan<Data> {
             // backward reads.
             if !self.backward {
                 for &slot in &self.releases[index] {
-                    values[slot] = Data::counted(self.structure.shapes[slot].clone(), 0);
+                    values[slot] = Tensor::counted(self.structure.shapes[slot].clone(), 0);
                 }
             }
         }
@@ -640,7 +640,7 @@ impl<Data: Tensorial> Plan<Data> {
     }
 }
 
-impl<Data: Differentiable> Network<Data> {
+impl<E: Element> Network<E> {
     /// Compiles `request` into a [`Plan`]: the single lowering entry
     /// point, over the request's roots, observes, and engine-backward
     /// memory posture.
@@ -652,7 +652,7 @@ impl<Data: Differentiable> Network<Data> {
     ///
     /// # Panics
     /// Panics if a root or observe does not resolve in this network.
-    pub fn compile(&self, request: Request) -> Plan<Data> {
+    pub fn compile(&self, request: Request) -> Plan<E> {
         Plan::new(
             self,
             &request.roots,

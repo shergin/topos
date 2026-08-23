@@ -1,79 +1,80 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-use crate::{Differentiable, Tensor};
+use crate::{Bf16, Element, Tensor};
 
 use super::Value;
 
-// Coherence forbids the generic reverse (`impl Mul<Value<Data>> for Data`
-// leaves the `Data` parameter uncovered), so the foreign scalar payloads
-// get concrete implementations instead.
+// Coherence forbids the generic reverse (`impl Mul<Value<E>> for E`
+// leaves the `E` parameter uncovered), so the foreign element types
+// get concrete implementations instead; each records a rank-0 leaf,
+// like the forward-order element sugar.
 macro_rules! literal_operand_for {
-    ($($payload:ty),*) => {$(
-        impl<'tape> Add<Value<'tape, $payload>> for $payload {
-            type Output = Value<'tape, $payload>;
+    ($($element:ty),*) => {$(
+        impl<'tape> Add<Value<'tape, $element>> for $element {
+            type Output = Value<'tape, $element>;
 
-            fn add(self, rhs: Value<'tape, $payload>) -> Self::Output {
-                rhs.literal(self) + rhs
+            fn add(self, rhs: Value<'tape, $element>) -> Self::Output {
+                rhs.literal(Tensor::from(self)) + rhs
             }
         }
 
-        impl<'tape> Sub<Value<'tape, $payload>> for $payload {
-            type Output = Value<'tape, $payload>;
+        impl<'tape> Sub<Value<'tape, $element>> for $element {
+            type Output = Value<'tape, $element>;
 
-            fn sub(self, rhs: Value<'tape, $payload>) -> Self::Output {
-                rhs.literal(self) - rhs
+            fn sub(self, rhs: Value<'tape, $element>) -> Self::Output {
+                rhs.literal(Tensor::from(self)) - rhs
             }
         }
 
-        impl<'tape> Mul<Value<'tape, $payload>> for $payload {
-            type Output = Value<'tape, $payload>;
+        impl<'tape> Mul<Value<'tape, $element>> for $element {
+            type Output = Value<'tape, $element>;
 
-            fn mul(self, rhs: Value<'tape, $payload>) -> Self::Output {
-                rhs.literal(self) * rhs
+            fn mul(self, rhs: Value<'tape, $element>) -> Self::Output {
+                rhs.literal(Tensor::from(self)) * rhs
             }
         }
 
-        impl<'tape> Div<Value<'tape, $payload>> for $payload {
-            type Output = Value<'tape, $payload>;
+        impl<'tape> Div<Value<'tape, $element>> for $element {
+            type Output = Value<'tape, $element>;
 
-            fn div(self, rhs: Value<'tape, $payload>) -> Self::Output {
-                rhs.literal(self) / rhs
+            fn div(self, rhs: Value<'tape, $element>) -> Self::Output {
+                rhs.literal(Tensor::from(self)) / rhs
             }
         }
     )*};
 }
 
-literal_operand_for!(f32, f64);
+literal_operand_for!(f32, f64, Bf16);
 
 // `Tensor` is local, so its reversed literal operators can stay generic.
-impl<'tape, Element: Differentiable> Add<Value<'tape, Tensor<Element>>> for Tensor<Element> {
-    type Output = Value<'tape, Tensor<Element>>;
+impl<'tape, E: Element> Add<Value<'tape, E>> for Tensor<E> {
+    type Output = Value<'tape, E>;
 
-    fn add(self, rhs: Value<'tape, Tensor<Element>>) -> Self::Output {
+    fn add(self, rhs: Value<'tape, E>) -> Self::Output {
         rhs.literal(self) + rhs
     }
 }
 
-impl<'tape, Element: Differentiable> Sub<Value<'tape, Tensor<Element>>> for Tensor<Element> {
-    type Output = Value<'tape, Tensor<Element>>;
+impl<'tape, E: Element> Sub<Value<'tape, E>> for Tensor<E> {
+    type Output = Value<'tape, E>;
 
-    fn sub(self, rhs: Value<'tape, Tensor<Element>>) -> Self::Output {
+    fn sub(self, rhs: Value<'tape, E>) -> Self::Output {
         rhs.literal(self) - rhs
     }
 }
 
-impl<'tape, Element: Differentiable> Mul<Value<'tape, Tensor<Element>>> for Tensor<Element> {
-    type Output = Value<'tape, Tensor<Element>>;
+impl<'tape, E: Element> Mul<Value<'tape, E>> for Tensor<E> {
+    type Output = Value<'tape, E>;
 
-    fn mul(self, rhs: Value<'tape, Tensor<Element>>) -> Self::Output {
+    fn mul(self, rhs: Value<'tape, E>) -> Self::Output {
         rhs.literal(self) * rhs
     }
 }
 
-impl<'tape, Element: Differentiable> Div<Value<'tape, Tensor<Element>>> for Tensor<Element> {
-    type Output = Value<'tape, Tensor<Element>>;
+impl<'tape, E: Element> Div<Value<'tape, E>> for Tensor<E> {
+    type Output = Value<'tape, E>;
 
-    fn div(self, rhs: Value<'tape, Tensor<Element>>) -> Self::Output {
+    fn div(self, rhs: Value<'tape, E>) -> Self::Output {
         rhs.literal(self) / rhs
     }
 }

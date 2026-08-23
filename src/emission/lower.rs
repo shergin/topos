@@ -18,7 +18,7 @@ use std::fmt::{self, Display, Write};
 
 use crate::engine::{BatchNormalization, Catalog, Pattern, ReduceWindow, WindowProduct};
 use crate::function::Function;
-use crate::{Backend, MapOperation, Plan, Shape, Tensor};
+use crate::{Backend, MapOperation, Plan, Shape};
 
 use super::builder::{
     Emittable, dense_index_literal, dense_literal, index_tensor_type, named_tensor_type,
@@ -73,7 +73,7 @@ impl Emitter {
     }
 }
 
-impl<Element: Emittable> Plan<Tensor<Element>> {
+impl<Element: crate::Element + Emittable> Plan<Element> {
     /// Serializes this plan as a textual StableHLO module: one
     /// `func.func @main` whose arguments are the plan's parameters then
     /// its inputs, both in recording order, and whose results are the

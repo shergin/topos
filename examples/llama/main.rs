@@ -37,7 +37,7 @@ mod weights;
 use std::io::Write;
 use std::time::Instant;
 
-use topos::{Bf16, Elementary, Module, Plan, Request, Symbol, Tape, Tensor};
+use topos::{Bf16, Element, Module, Plan, Request, Symbol, Tape, Tensor};
 
 use family::{Family, LLAMA2_7B, TINYLLAMA};
 use model::{CONTEXT_LEN, Llama, load};
@@ -60,8 +60,8 @@ struct Sampler {
 /// Records the sampling expression over `model`: the embedded window
 /// and the extraction row are per-run inputs, and the logits are the
 /// untied head over the extracted row.
-fn record<E: Elementary + From<f32> + 'static>(
-    tape: &Tape<Tensor<E>>,
+fn record<E: Element + From<f32> + 'static>(
+    tape: &Tape<E>,
     family: Family,
     model: &Llama<E>,
 ) -> Sampler {
@@ -114,7 +114,7 @@ fn draw(logits: &[f32], temperature: f64, top: usize, state: &mut u64) -> usize 
 /// after `prompt`, reporting timings as `label`.
 fn run<E>(family: Family, prompt: &str, count: usize, label: &str)
 where
-    E: Elementary + From<f32> + Copy + 'static,
+    E: Element + From<f32> + Copy + 'static,
     f32: From<E>,
 {
     let loading = Instant::now();
@@ -149,7 +149,7 @@ where
     );
 
     let compiling = Instant::now();
-    let plan: Plan<Tensor<E>> = network.compile(Request::roots([sampler.logits]));
+    let plan: Plan<E> = network.compile(Request::roots([sampler.logits]));
     println!(
         "recorded {} nodes and compiled the plan in {:.1}s",
         network.len(),

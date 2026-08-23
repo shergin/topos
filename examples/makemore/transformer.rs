@@ -62,26 +62,26 @@ const KEEP: f64 = 0.9;
 
 /// One attention head's projections, each `[EMBED_DIM, HEAD_DIM]`.
 struct Head<'tape> {
-    query: Value<'tape, Tensor<f32>>,
-    key: Value<'tape, Tensor<f32>>,
-    value: Value<'tape, Tensor<f32>>,
+    query: Value<'tape, f32>,
+    key: Value<'tape, f32>,
+    value: Value<'tape, f32>,
 }
 
 /// The model's parameters as recorded proxies: embeddings, one
 /// pre-norm attention block, and the language-model head.
 struct Model<'tape> {
-    embeddings: Value<'tape, Tensor<f32>>,
-    positions: Value<'tape, Tensor<f32>>,
+    embeddings: Value<'tape, f32>,
+    positions: Value<'tape, f32>,
     heads: Vec<Head<'tape>>,
-    projection: Value<'tape, Tensor<f32>>,
-    attention_norm: RmsNorm<Tensor<f32>>,
-    hidden_weights: Value<'tape, Tensor<f32>>,
-    output_weights: Value<'tape, Tensor<f32>>,
-    hidden_norm: RmsNorm<Tensor<f32>>,
-    final_norm: RmsNorm<Tensor<f32>>,
-    logit_weights: Value<'tape, Tensor<f32>>,
-    logit_bias: Value<'tape, Tensor<f32>>,
-    scale: Value<'tape, Tensor<f32>>,
+    projection: Value<'tape, f32>,
+    attention_norm: RmsNorm<f32>,
+    hidden_weights: Value<'tape, f32>,
+    output_weights: Value<'tape, f32>,
+    hidden_norm: RmsNorm<f32>,
+    final_norm: RmsNorm<f32>,
+    logit_weights: Value<'tape, f32>,
+    logit_bias: Value<'tape, f32>,
+    scale: Value<'tape, f32>,
 }
 
 impl<'tape> Model<'tape> {
@@ -90,7 +90,7 @@ impl<'tape> Model<'tape> {
     /// two norms and feed-forward, the final norm, and the affine
     /// logit head. The attention scale `1 / sqrt(HEAD_DIM)` rides
     /// along as a single-value leaf.
-    fn new(tape: &'tape Tape<Tensor<f32>>) -> Self {
+    fn new(tape: &'tape Tape<f32>) -> Self {
         let mut weights = init::xavier(7);
         let ones = Tensor::filled([EMBED_DIM], 1.0);
         let epsilon = Tensor::filled([], 1e-5);
@@ -128,19 +128,19 @@ impl<'tape> Model<'tape> {
     /// `[rows, rows]`.
     fn states(
         &self,
-        tape: &'tape Tape<Tensor<f32>>,
-        tokens: Value<'tape, Tensor<f32>>,
-        positions: Value<'tape, Tensor<f32>>,
-        mask: Value<'tape, Tensor<f32>>,
-        dropouts: &[Dropout<Tensor<f32>>; 2],
-    ) -> Value<'tape, Tensor<f32>> {
+        tape: &'tape Tape<f32>,
+        tokens: Value<'tape, f32>,
+        positions: Value<'tape, f32>,
+        mask: Value<'tape, f32>,
+        dropouts: &[Dropout<f32>; 2],
+    ) -> Value<'tape, f32> {
         let stream = self.embeddings.gather(tokens) + self.positions.gather(positions);
 
         // Pre-norm attention: every head attends over the same
         // normalized stream, and `concat` joins the head outputs along
         // the feature axis.
         let normalized = self.attention_norm.express(tape, stream);
-        let heads: Vec<Value<'tape, Tensor<f32>>> = self
+        let heads: Vec<Value<'tape, f32>> = self
             .heads
             .iter()
             .map(|head| {
@@ -172,9 +172,9 @@ impl<'tape> Model<'tape> {
     /// `extraction` — the last context position of each packed sample.
     fn logits(
         &self,
-        states: Value<'tape, Tensor<f32>>,
-        extraction: Value<'tape, Tensor<f32>>,
-    ) -> Value<'tape, Tensor<f32>> {
+        states: Value<'tape, f32>,
+        extraction: Value<'tape, f32>,
+    ) -> Value<'tape, f32> {
         let product = states.gather(extraction).matmul(self.logit_weights);
         product + self.logit_bias.broadcast_along(0, product)
     }

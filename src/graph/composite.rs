@@ -16,11 +16,11 @@
 //! it earns a `Function` variant the moment floating point breaks the
 //! composed form, the way `log_softmax` did.
 
-use crate::{Elementary, Shape, Tensorial};
+use crate::{Differentiable, Element, Shape, Tensor};
 
 use super::Value;
 
-impl<'tape, Data: Elementary> Value<'tape, Data> {
+impl<'tape, E: Element> Value<'tape, E> {
     /// Records the absolute value of this value as the composition
     /// `self.maximum(-self)` and returns a proxy to it; the subgradient
     /// at zero is one, by `maximum`'s left-biased tie rule.
@@ -40,11 +40,11 @@ impl<'tape, Data: Elementary> Value<'tape, Data> {
     /// one activation-sized zero buffer per occurrence, and the fused
     /// form never measured past it.
     pub fn relu(self) -> Self {
-        self.maximum(self.literal(Data::counted(self.shape(), 0)))
+        self.maximum(self.literal(Tensor::counted(self.shape(), 0)))
     }
 }
 
-impl<'tape, Data: Tensorial> Value<'tape, Data> {
+impl<'tape, E: Element> Value<'tape, E> {
     /// Records the softmax probabilities of this value along `axis` as
     /// the composition `self.log_softmax(axis).exp()` and returns a proxy
     /// to it.
@@ -70,7 +70,7 @@ impl<'tape, Data: Tensorial> Value<'tape, Data> {
         let shape = self.shape();
         assert!(axis < shape.rank(), "mean_along axis {axis} is out of rank");
         let extent = shape.axes()[axis];
-        self.sum_along(axis) / Data::counted(shape.without_axis(axis), extent)
+        self.sum_along(axis) / Tensor::counted(shape.without_axis(axis), extent)
     }
 
     /// Records this value with a new extent-1 axis inserted at `axis`:
@@ -136,7 +136,7 @@ impl<'tape, Data: Tensorial> Value<'tape, Data> {
         // A single-element source reaches any shape in one node; the
         // reference operand carries only the target shape.
         if source.volume() == 1 {
-            let reference = self.literal(Data::counted(target, 0));
+            let reference = self.literal(Tensor::counted(target, 0));
             return self.broadcast_like(reference);
         }
         // Right-align the source under the target by prepending unit axes, so
@@ -159,7 +159,7 @@ impl<'tape, Data: Tensorial> Value<'tape, Data> {
             // whose reference is the current shape with this axis widened.
             let mut axes = current.shape().axes().to_vec();
             axes[axis] = aligned;
-            let reference = self.literal(Data::counted(Shape::new(axes), 0));
+            let reference = self.literal(Tensor::counted(Shape::new(axes), 0));
             current = current.squeeze(axis).broadcast_along(axis, reference);
         }
         current
@@ -179,10 +179,7 @@ impl<'tape, Data: Tensorial> Value<'tape, Data> {
 /// # Panics
 /// Panics if `values` is empty, the values belong to different networks,
 /// `axis` is out of rank, or the shapes disagree anywhere but `axis`.
-pub fn concat<'tape, Data: Tensorial>(
-    values: &[Value<'tape, Data>],
-    axis: usize,
-) -> Value<'tape, Data> {
+pub fn concat<'tape, E: Element>(values: &[Value<'tape, E>], axis: usize) -> Value<'tape, E> {
     let first = values.first().expect("concat requires at least one value");
     let reference = first.shape();
     assert!(
@@ -203,7 +200,7 @@ pub fn concat<'tape, Data: Tensorial>(
     }
     let combined: usize = values.iter().map(|value| value.shape().axes()[axis]).sum();
     let mut offset = 0;
-    let mut total: Option<Value<'tape, Data>> = None;
+    let mut total: Option<Value<'tape, E>> = None;
     for &value in values {
         let padded = value.pad(axis, offset, combined);
         offset += value.shape().axes()[axis];
@@ -222,12 +219,8 @@ pub fn concat<'tape, Data: Tensorial>(
 /// # Panics
 /// Panics if `values` is empty, the values belong to different networks,
 /// `axis` exceeds the values' rank, or the shapes differ.
-pub fn stack<'tape, Data: Tensorial>(
-    values: &[Value<'tape, Data>],
-    axis: usize,
-) -> Value<'tape, Data> {
-    let lifted: Vec<Value<'tape, Data>> =
-        values.iter().map(|&value| value.unsqueeze(axis)).collect();
+pub fn stack<'tape, E: Element>(values: &[Value<'tape, E>], axis: usize) -> Value<'tape, E> {
+    let lifted: Vec<Value<'tape, E>> = values.iter().map(|&value| value.unsqueeze(axis)).collect();
     concat(&lifted, axis)
 }
 

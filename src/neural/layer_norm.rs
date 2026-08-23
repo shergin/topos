@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Symbol, Tape, Tensorial, Value};
+use crate::{Differentiable, Element, Symbol, Tape, Tensor, Value};
 
 use super::{Module, Visitor};
 
@@ -34,14 +34,14 @@ assert_impl_all!(LayerNorm<f64>: Send, Sync);
 /// is recorded on the family's [`Tape`], like
 /// [`Linear`](super::Linear).
 #[derive(Debug, Clone)]
-pub struct LayerNorm<Data> {
+pub struct LayerNorm<E> {
     scale: Symbol,
     shift: Symbol,
     epsilon: Symbol,
-    _marker: PhantomData<Data>,
+    _marker: PhantomData<E>,
 }
 
-impl<Data: Differentiable> LayerNorm<Data> {
+impl<E: Element> LayerNorm<E> {
     /// Allocates the layer's parameters on `tape` from their initial
     /// payloads and returns the layer.
     ///
@@ -55,7 +55,7 @@ impl<Data: Differentiable> LayerNorm<Data> {
     /// # Panics
     /// Panics if `scale` is not rank 1, `shift` is not shaped like
     /// `scale`, or `epsilon` holds more than one value.
-    pub fn new(tape: &Tape<Data>, scale: Data, shift: Data, epsilon: Data) -> Self {
+    pub fn new(tape: &Tape<E>, scale: Tensor<E>, shift: Tensor<E>, epsilon: Tensor<E>) -> Self {
         let scale_shape = scale.shape();
         let shift_shape = shift.shape();
         let epsilon_shape = epsilon.shape();
@@ -88,7 +88,7 @@ impl<Data: Differentiable> LayerNorm<Data> {
     }
 }
 
-impl<Data: Tensorial> LayerNorm<Data> {
+impl<E: Element> LayerNorm<E> {
     /// Records the layer's expression over the `[batch, features]`
     /// value `input` on `tape` and returns the `[batch, features]`
     /// output value.
@@ -97,11 +97,7 @@ impl<Data: Tensorial> LayerNorm<Data> {
     /// Panics if the layer's parameters or `input` are not allocated on
     /// `tape`, or if `input` is not a rank-2 `[batch, features]`
     /// value agreeing with the parameters on the feature count.
-    pub fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let scale = tape.resolve(self.scale);
         let shift = tape.resolve(self.shift);
         let epsilon = tape.resolve(self.epsilon);
@@ -136,12 +132,8 @@ impl<Data: Tensorial> LayerNorm<Data> {
 #[path = "tests/layer_norm_tests.rs"]
 mod tests;
 
-impl<Data: Tensorial> Module<Data> for LayerNorm<Data> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+impl<E: Element> Module<E> for LayerNorm<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         LayerNorm::express(self, tape, input)
     }
 

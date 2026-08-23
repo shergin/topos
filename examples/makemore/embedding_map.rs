@@ -152,7 +152,7 @@ fn main() {
     shuffle(&mut samples, &mut shuffle_state);
     println!("loaded {} names, {} samples", names.len(), samples.len());
 
-    let tape: Tape<Tensor<f32>> = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let embeddings = tape.parameter(init::normal(8, 1.0)(&Shape::new([
         VOCABULARY_LEN,
         EMBED_DIM,

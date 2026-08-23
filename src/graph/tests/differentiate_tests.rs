@@ -8,7 +8,7 @@ use crate::{Differentiable, Request, Symbol, Tape, Tensor};
 /// a variant ships without adjoint closure, or if the two scans'
 /// arithmetic drifts apart. Sealing the tape is part of the fixture,
 /// so it consumes it.
-fn assert_closure(loss: Symbol, wrt: &[Symbol], tape: Tape<Tensor<f64>>) {
+fn assert_closure(loss: Symbol, wrt: &[Symbol], tape: Tape<f64>) {
     let adjoints = tape.differentiate(loss, wrt.iter().copied());
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
@@ -189,7 +189,7 @@ fn batched_matmul_matches_the_head_loop_bitwise() {
     // rank-2 head loops over narrowed slices. Products and operand
     // gradients agree bit for bit, because each batch slice runs the
     // same gemm.
-    let batched_tape = Tape::new();
+    let batched_tape: Tape<f64> = Tape::new();
     let a = batched_tape.parameter(varied([2, 3, 4], 1));
     let b = batched_tape.parameter(varied([2, 4, 5], 2));
     let product = a.matmul(b);
@@ -379,7 +379,7 @@ fn fan_out_accumulates_in_engine_order() {
 
 #[test]
 fn a_composed_loss_closes_through_a_plan() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     // The end-to-end shape of E2: a small dense model's loss,
     // differentiated, compiled with its gradients into one forward-only
     // plan, and checked bitwise against the engine's backward.
@@ -408,7 +408,7 @@ fn a_composed_loss_closes_through_a_plan() {
 
 #[test]
 fn non_ancestors_answer_recorded_zeros() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.parameter(varied([2], 1));
     let unrelated = tape.parameter(varied([3], 2)).symbol();
     let loss = a.sum();
@@ -434,7 +434,7 @@ fn singular_disconnected_expressions_stay_masked() {
 #[test]
 #[should_panic(expected = "scalar loss")]
 fn differentiate_rejects_non_scalar_losses() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.parameter(varied([2], 1));
     let doubled = a + a;
     tape.differentiate(doubled, [a]);
@@ -442,7 +442,7 @@ fn differentiate_rejects_non_scalar_losses() {
 
 #[test]
 fn second_derivative_of_a_cubic_is_exact() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.parameter(Tensor::new([3], [0.5_f64, -1.25, 2.0]));
     let loss = (x * x * x).sum();
     let x = x.symbol();
@@ -480,7 +480,7 @@ fn second_derivative_of_tanh_matches_finite_differences() {
 
 #[test]
 fn relu_hessians_are_exact_zeros() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     // The `Step` rule's `None` cotangents: differentiating a relu
     // gradient answers zero almost everywhere, never `NaN`.
     let x = tape.parameter(Tensor::new([3], [-2.0_f64, 0.5, 3.0]));
@@ -496,7 +496,7 @@ fn relu_hessians_are_exact_zeros() {
 
 #[test]
 fn tape_growth_stays_a_small_constant() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.input(varied([4, 3], 1));
     let weights = tape.parameter(varied([3, 4], 2));
     let logits = x
@@ -524,7 +524,7 @@ fn a_recorded_training_loop_matches_the_engine_bitwise() {
     // `[loss, gradients...]` forward-only plan and
     // `recorded_gradients` — every generation's parameters must agree
     // bit for bit, because both loops fold the same arithmetic.
-    let build = |tape: &Tape<Tensor<f64>>| {
+    let build = |tape: &Tape<f64>| {
         let x = tape.input(varied([4, 3], 1));
         let weights = tape.parameter(varied([3, 4], 2));
         let bias = tape.parameter(varied([4], 3));
@@ -584,7 +584,7 @@ fn vjp_with_a_ones_seed_is_differentiate() {
     // The wrapper claim, held on two identical recordings: an explicit
     // recorded ones seed at the loss produces the same graph size and
     // bitwise the same gradients as `differentiate`.
-    let build = |tape: &Tape<Tensor<f64>>| {
+    let build = |tape: &Tape<f64>| {
         let x = tape.parameter(varied([2, 3], 1));
         let loss = (x.tanh() * x).sum();
         (x.symbol(), loss.symbol())
@@ -597,7 +597,7 @@ fn vjp_with_a_ones_seed_is_differentiate() {
     let plain_network = plain_tape.into_network();
     let plain_run = plain_network.forward(&plain_network.parameters(), []);
 
-    let seeded_tape = Tape::new();
+    let seeded_tape: Tape<f64> = Tape::new();
     let (seeded_x, seeded_loss) = build(&seeded_tape);
     let seed = seeded_tape
         .leaf(Tensor::counted(crate::Shape::new([]), 1))
@@ -623,7 +623,7 @@ fn vjp_seeds_a_non_scalar_target() {
     // dotted scalar loss differentiated. Payload-bitwise equal because
     // multiplying by a broadcast ones is exact; the recorded graphs
     // differ (the dotted route records the contraction).
-    let seeded_tape = Tape::new();
+    let seeded_tape: Tape<f64> = Tape::new();
     let x = seeded_tape.parameter(varied([3], 1));
     let output = x.tanh() * x;
     let seed = seeded_tape.leaf(varied([3], 5));
@@ -657,7 +657,7 @@ fn a_hessian_vector_product_is_a_vjp_of_the_gradient() {
     // makes second order ordinary recording. For `sum(x^3)` the
     // Hessian is `diag(6x)` and the product is elementwise; all
     // probe values are dyadic, so equality is exact.
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.parameter(Tensor::new([3], [0.5_f64, -1.25, 2.0]));
     let loss = (x * x * x).sum();
     let x = x.symbol();
@@ -680,7 +680,7 @@ fn a_hessian_vector_product_is_a_vjp_of_the_gradient() {
 #[test]
 #[should_panic(expected = "target's shape")]
 fn vjp_rejects_a_mismatched_seed_shape() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.parameter(varied([3], 1));
     let output = x.tanh();
     let seed = tape.leaf(varied([2], 2));
@@ -689,7 +689,7 @@ fn vjp_rejects_a_mismatched_seed_shape() {
 
 #[test]
 fn recorded_gradients_zero_fill_unnamed_parameters() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.parameter(varied([2], 1));
     let b = tape.parameter(varied([3], 2));
     let loss = a.sum();
@@ -708,7 +708,7 @@ fn recorded_gradients_zero_fill_unnamed_parameters() {
 #[test]
 #[should_panic(expected = "is not a parameter")]
 fn recorded_gradients_reject_non_parameter_wrt_entries() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     // Swapped pairs became unrepresentable with `Adjoints`; the
     // remaining misuse is differentiating with respect to an interior
     // value and asking for a parameter field anyway.

@@ -42,7 +42,7 @@ fn training_step(criterion: &mut Criterion) {
             let evaluation = scalar.forward(&scalar_parameters, []);
             let gradients = evaluation.backward(loss).parameters(&scalar_parameters);
             scalar_parameters.step(&gradients, |parameter, gradient| {
-                parameter - 0.01 * gradient
+                parameter.clone() - gradient.clone() * Tensor::from(0.01)
             })
         });
     });
@@ -94,7 +94,7 @@ fn training_step(criterion: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("step", nodes), &nodes, |bencher, _| {
             bencher.iter(|| {
                 parameters.step(&direction, |parameter, gradient| {
-                    parameter - 0.01 * gradient
+                    parameter.clone() - gradient.clone() * Tensor::from(0.01)
                 })
             });
         });

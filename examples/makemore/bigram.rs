@@ -40,7 +40,7 @@ fn main() {
         samples.len()
     );
 
-    let tape: Tape<Tensor<f32>> = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let table = tape.parameter(init::normal(7, 0.01)(&Shape::new([
         VOCABULARY_LEN,
         VOCABULARY_LEN,

@@ -72,7 +72,7 @@ fn main() {
     let mut target_values = vec![1.0_f32; MOON_LEN];
     target_values.extend(vec![-1.0; MOON_LEN]);
 
-    let tape: Tape<Tensor<f32>> = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let mlp = Mlp::new(&tape, &[2, 16, 16, 1], init::xavier(7));
 
     let input = tape.input(Tensor::new([2 * MOON_LEN, 2], feature_values));

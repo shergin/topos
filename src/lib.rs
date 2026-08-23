@@ -8,7 +8,7 @@
 //! parameters — training never touches the graph:
 //!
 //! ```
-//! use topos::Tape;
+//! use topos::{Tape, Tensor};
 //!
 //! let tape = Tape::new();
 //! let w = tape.parameter(0.0_f64);
@@ -16,6 +16,8 @@
 //! let y = tape.input(0.0);
 //!
 //! // Operators record the graph; values are `Copy` and never consumed.
+//! // A scalar is a rank-0 tensor: the graph is always tensors, and the
+//! // element type (`f64` here) is the open seam.
 //! let error = w * x - y;
 //! let loss = error * error;
 //!
@@ -29,12 +31,14 @@
 //! let samples = [(1.0, 2.0), (2.0, 4.0), (3.0, 6.0)];
 //! for step in 0..100 {
 //!     let (sample_x, sample_y) = samples[step % samples.len()];
-//!     let run = network.forward(&parameters, [(x, sample_x), (y, sample_y)]);
+//!     let run = network.forward(&parameters, [(x, sample_x.into()), (y, sample_y.into())]);
 //!     let gradients = run.backward(loss).parameters(&parameters);
-//!     parameters = parameters.step(&gradients, |w, g| w - 0.02 * g);
+//!     parameters = parameters.step(&gradients, |w, g| {
+//!         w.clone() - g.clone() * Tensor::from(0.02)
+//!     });
 //! }
 //!
-//! let learned = *parameters.of(w);
+//! let learned = parameters.of(w).scalar();
 //! assert!((learned - 2.0).abs() < 1e-6);
 //! ```
 //!
@@ -89,6 +93,6 @@ pub use neural::{
     cross_entropy, init, max_pool, named_parameters, parameters,
 };
 pub use payload::{
-    BatchNormTask, Bf16, Differentiable, Elementary, GemmTask, MapOperation, Normalized, Shape,
-    Tensor, Tensorial,
+    BatchNormTask, Bf16, Differentiable, Element, Elementary, GemmTask, MapOperation, Normalized,
+    Shape, Tensor, Tensorial,
 };

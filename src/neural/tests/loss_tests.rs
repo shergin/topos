@@ -20,7 +20,7 @@ fn uniform_logits_cost_the_log_of_the_class_count() {
 
 #[test]
 fn confident_correct_logits_cost_nothing() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     // The extreme margin would overflow a naive softmax; the fused
     // log-softmax keeps the loss an exact zero.
     let logits = tape.leaf(Tensor::new([1, 2], [1000.0_f64, -1000.0]));
@@ -81,7 +81,7 @@ fn served_batches_vary_per_run() {
 #[test]
 #[should_panic(expected = "must be rank 2")]
 fn rejects_non_matrix_logits() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let logits = tape.leaf(Tensor::filled([3], 0.0_f64));
     let targets = tape.input(Tensor::selection(vec![0usize], 3, 1.0));
     cross_entropy(logits, targets);
@@ -90,7 +90,7 @@ fn rejects_non_matrix_logits() {
 #[test]
 #[should_panic(expected = "must be shaped like the logits")]
 fn rejects_mismatched_targets() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let logits = tape.leaf(Tensor::filled([2, 3], 0.0_f64));
     let targets = tape.input(Tensor::selection(vec![0usize], 3, 1.0));
     cross_entropy(logits, targets);
@@ -103,7 +103,7 @@ fn extreme_finite_logits_keep_the_loss_and_gradients_finite() {
     // zero and no gradient lane may turn NaN — in either class order,
     // for either selected class.
     for (row, class) in [([-1.0e308_f64, 1.0e308], 1_usize), ([1.0e308, -1.0e308], 0)] {
-        let tape = Tape::new();
+        let tape: Tape<f64> = Tape::new();
         let logits = tape.parameter(Tensor::new([1, 2], row));
         let targets = tape.input(Tensor::selection(vec![class], 2, 1.0));
 
@@ -122,7 +122,7 @@ fn extreme_finite_logits_keep_the_loss_and_gradients_finite() {
 
 #[test]
 fn extreme_finite_logits_keep_the_loss_finite_f32() {
-    let tape = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let logits = tape.leaf(Tensor::new([1, 2], [-3.0e38_f32, 3.0e38]));
     let targets = tape.input(Tensor::selection(vec![1_usize], 2, 1.0));
 
@@ -134,7 +134,7 @@ fn extreme_finite_logits_keep_the_loss_finite_f32() {
 
 #[test]
 fn zero_target_lanes_contribute_exact_zero() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     // A dense soft target with an explicit zero lane against the logit
     // whose log-probability underflows to -inf: the zero lane must
     // contribute zero, never `0 * -inf = NaN`.

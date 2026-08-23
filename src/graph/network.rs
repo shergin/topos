@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use static_assertions::assert_impl_all;
 
-use crate::Differentiable;
+use crate::{Element, Tensor};
 
 use super::{Origin, Parameters, SlotStore, Structure, Symbol, Tape, ValueId};
 
@@ -30,21 +30,21 @@ assert_impl_all!(Network<f64>: Send, Sync);
 /// into a divergent future, which is exactly what the ownership rule
 /// exists to make unrepresentable.
 #[derive(Debug)]
-pub struct Network<Data> {
+pub struct Network<E> {
     origin: Origin,
-    structure: Structure<Data>,
-    initials: SlotStore<Data>,
-    inputs: Arc<SlotStore<Data>>,
+    structure: Structure<Tensor<E>>,
+    initials: SlotStore<Tensor<E>>,
+    inputs: Arc<SlotStore<Tensor<E>>>,
 }
 
-impl<Data: Differentiable> Network<Data> {
+impl<E: Element> Network<E> {
     /// Seals the recorded columns and stores under `origin`: the body
     /// of [`Tape::into_network`].
     pub(super) fn seal(
         origin: Origin,
-        structure: Structure<Data>,
-        initials: SlotStore<Data>,
-        inputs: SlotStore<Data>,
+        structure: Structure<Tensor<E>>,
+        initials: SlotStore<Tensor<E>>,
+        inputs: SlotStore<Tensor<E>>,
     ) -> Self {
         Self {
             origin,
@@ -63,13 +63,19 @@ impl<Data: Differentiable> Network<Data> {
     /// histories unconstructible. State carried in a
     /// [`Parameters`] value survives the round trip through
     /// [`Parameters::carried`].
-    pub fn into_tape(self) -> Tape<Data> {
+    pub fn into_tape(self) -> Tape<E> {
         Tape::reopen(self.origin, self)
     }
 
     /// Hands the stores back for [`Tape::reopen`], unsharing the input
     /// defaults if a plan still holds them.
-    pub(super) fn into_stores(self) -> (Structure<Data>, SlotStore<Data>, SlotStore<Data>) {
+    pub(super) fn into_stores(
+        self,
+    ) -> (
+        Structure<Tensor<E>>,
+        SlotStore<Tensor<E>>,
+        SlotStore<Tensor<E>>,
+    ) {
         (
             self.structure,
             self.initials,
@@ -83,7 +89,7 @@ impl<Data: Differentiable> Network<Data> {
     /// Every call answers a new value, so initialization stays visible
     /// at the record site and what-if states are independent from
     /// birth.
-    pub fn parameters(&self) -> Parameters<Data> {
+    pub fn parameters(&self) -> Parameters<E> {
         Parameters::new(self.origin, self.initials.clone())
     }
 
@@ -103,12 +109,12 @@ impl<Data: Differentiable> Network<Data> {
     }
 
     /// Returns the recorded node columns.
-    pub(crate) fn structure(&self) -> &Structure<Data> {
+    pub(crate) fn structure(&self) -> &Structure<Tensor<E>> {
         &self.structure
     }
 
     /// Returns the input-default store, shared for plan freezes.
-    pub(crate) fn inputs(&self) -> &Arc<SlotStore<Data>> {
+    pub(crate) fn inputs(&self) -> &Arc<SlotStore<Tensor<E>>> {
         &self.inputs
     }
 

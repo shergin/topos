@@ -5,7 +5,7 @@ use super::Sequential;
 #[test]
 fn an_empty_chain_is_the_identity() {
     let tape = Tape::new();
-    let chain: Sequential<Tensor<f64>> = Sequential::new();
+    let chain: Sequential<f64> = Sequential::new();
     assert!(chain.is_empty());
     let input = tape.leaf(Tensor::filled([2], 1.0_f64));
     let output = chain.express(&tape, input);

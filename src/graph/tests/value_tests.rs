@@ -63,11 +63,11 @@ fn payload_literals_mix_into_expressions() {
     let (x, y, z) = (x.symbol(), y.symbol(), z.symbol());
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(*run.of(y), 7.0);
-    assert_eq!(*run.of(z), 2.0);
+    assert_eq!(run.of(y).scalar(), 7.0);
+    assert_eq!(run.of(z).scalar(), 2.0);
 
     let gradients = run.backward(y);
-    assert_eq!(*gradients.of(x), 2.0);
+    assert_eq!(gradients.of(x).scalar(), 2.0);
 }
 
 #[test]

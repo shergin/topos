@@ -4,7 +4,7 @@ use super::{Conv2d, conv2d};
 
 #[test]
 fn conv2d_matches_the_hand_computed_fixture() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new(
         [1, 1, 3, 3],
         (1..=9).map(|v| v as f64).collect::<Vec<_>>(),
@@ -24,7 +24,7 @@ fn conv2d_matches_the_hand_computed_fixture() {
 
 #[test]
 fn conv2d_mixes_channels_into_filters() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     // Two channels; 1x1 kernels make the channel mixing exact:
     // filter 0 sums the channels, filter 1 takes `2 * c0 + 3 * c1`.
     let input = tape.leaf(Tensor::new(
@@ -48,7 +48,7 @@ fn conv2d_mixes_channels_into_filters() {
 
 #[test]
 fn conv2d_strides_the_windows() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new([1, 1, 1, 5], [1.0, 2.0, 3.0, 4.0, 5.0]));
     let weights = tape.leaf(Tensor::new([1, 1, 1, 2], [1.0, 1.0]));
     let bias = tape.leaf(Tensor::filled([1], 0.0));
@@ -64,7 +64,7 @@ fn conv2d_strides_the_windows() {
 
 #[test]
 fn padding_surrounds_the_input_with_zeros() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new([1, 1, 2, 2], [1.0, 2.0, 3.0, 4.0]));
     // An all-ones 3x3 kernel over the zero-padded 2x2 input sums the
     // whole input at every output position.
@@ -82,7 +82,7 @@ fn padding_surrounds_the_input_with_zeros() {
 
 #[test]
 fn conv2d_gradients_flow_to_every_operand() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new(
         [1, 1, 3, 3],
         (1..=9).map(|v| v as f64).collect::<Vec<_>>(),
@@ -116,7 +116,7 @@ fn conv2d_gradients_flow_to_every_operand() {
 #[test]
 #[should_panic(expected = "disagree on channels")]
 fn conv2d_rejects_mismatched_channels() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::filled([1, 2, 3, 3], 0.0));
     let weights = tape.leaf(Tensor::filled([1, 3, 2, 2], 0.0));
     let bias = tape.leaf(Tensor::filled([1], 0.0));

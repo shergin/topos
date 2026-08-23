@@ -1,6 +1,6 @@
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Shape, Symbol, Tape, Tensorial, Value};
+use crate::{Element, Shape, Symbol, Tape, Tensor, Value};
 
 use super::{Activation, Linear, Module, Segment, Visitor};
 
@@ -17,11 +17,11 @@ assert_impl_all!(Mlp<f64>: Send, Sync);
 /// is affine alone. The contained stages retain parameter [`Symbol`]s,
 /// so the perceptron records in each compatible generation.
 #[derive(Debug, Clone)]
-pub struct Mlp<Data> {
-    stages: Vec<Linear<Data>>,
+pub struct Mlp<E> {
+    stages: Vec<Linear<E>>,
 }
 
-impl<Data: Differentiable> Mlp<Data> {
+impl<E: Element> Mlp<E> {
     /// Allocates the perceptron's stages on `tape` and returns it.
     ///
     /// `sizes` lists the value widths from the input width to the
@@ -37,9 +37,9 @@ impl<Data: Differentiable> Mlp<Data> {
     /// [`Linear::new`] validation failures if initialized weights and
     /// biases do not form valid parameter shapes.
     pub fn new(
-        tape: &Tape<Data>,
+        tape: &Tape<E>,
         sizes: &[usize],
-        mut initializer: impl FnMut(&Shape) -> Data,
+        mut initializer: impl FnMut(&Shape) -> Tensor<E>,
     ) -> Self {
         assert!(
             sizes.len() >= 2,
@@ -63,7 +63,7 @@ impl<Data: Differentiable> Mlp<Data> {
     }
 }
 
-impl<Data: Tensorial> Mlp<Data> {
+impl<E: Element> Mlp<E> {
     /// Records the perceptron's expression over the `[batch, inputs]`
     /// value `input` on `tape` and returns the `[batch, outputs]`
     /// output value.
@@ -71,11 +71,7 @@ impl<Data: Tensorial> Mlp<Data> {
     /// # Panics
     /// Panics if the parameters or `input` are not allocated on `tape`, or
     /// if `input` and the initialized stage shapes are incompatible.
-    pub fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let last = self.stages.len() - 1;
         self.stages
             .iter()
@@ -91,12 +87,8 @@ impl<Data: Tensorial> Mlp<Data> {
     }
 }
 
-impl<Data: Tensorial> Module<Data> for Mlp<Data> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+impl<E: Element> Module<E> for Mlp<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         Mlp::express(self, tape, input)
     }
 

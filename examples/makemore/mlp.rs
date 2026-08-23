@@ -39,18 +39,18 @@ const BATCH_LEN: usize = 64;
 /// The model's parameters as recorded proxies: what the `Mlp` facade
 /// would hold for us, laid out by hand.
 struct Model<'tape> {
-    embeddings: Value<'tape, Tensor<f32>>,
-    hidden_weights: Value<'tape, Tensor<f32>>,
-    hidden_bias: Value<'tape, Tensor<f32>>,
-    output_weights: Value<'tape, Tensor<f32>>,
-    output_bias: Value<'tape, Tensor<f32>>,
+    embeddings: Value<'tape, f32>,
+    hidden_weights: Value<'tape, f32>,
+    hidden_bias: Value<'tape, f32>,
+    output_weights: Value<'tape, f32>,
+    output_bias: Value<'tape, f32>,
 }
 
 impl<'tape> Model<'tape> {
     /// Allocates the parameters on `tape`: an embedding table, one
     /// tanh hidden layer, and an affine output layer, Xavier-scaled
     /// with zero biases.
-    fn new(tape: &'tape Tape<Tensor<f32>>) -> Self {
+    fn new(tape: &'tape Tape<f32>) -> Self {
         let mut weights = init::xavier(7);
         Self {
             embeddings: tape.parameter(init::normal(8, 1.0)(&Shape::new([
@@ -69,11 +69,7 @@ impl<'tape> Model<'tape> {
     /// `[rows * CONTEXT_LEN, vocab]` selection — and returns the
     /// `[rows, vocab]` logits: embed, flatten the context window,
     /// squash, and score.
-    fn express(
-        &self,
-        contexts: Value<'tape, Tensor<f32>>,
-        rows: usize,
-    ) -> Value<'tape, Tensor<f32>> {
+    fn express(&self, contexts: Value<'tape, f32>, rows: usize) -> Value<'tape, f32> {
         let embedded = self
             .embeddings
             .gather(contexts)

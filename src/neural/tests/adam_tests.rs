@@ -215,7 +215,7 @@ fn moments_cover_parameter_slots_not_graph_nodes() {
 fn adam_descends_faster_than_sgd_on_a_skewed_bowl() {
     // A quadratic bowl with wildly different curvatures per axis: the
     // fixed problem where per-coordinate step normalization pays.
-    let run = |strategy: &mut dyn Optimizer<Tensor<f64>>| {
+    let run = |strategy: &mut dyn Optimizer<f64>| {
         let tape = Tape::new();
         let w = tape.parameter(Tensor::new([2], [5.0_f64, 5.0]));
         let curvatures = tape.leaf(Tensor::new([2], [100.0_f64, 0.01]));

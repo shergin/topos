@@ -10,7 +10,7 @@ use super::Catalog;
 /// Records `count` convolutions and returns the network; `shared`
 /// routes every convolution through one input value, so their chains
 /// share a source.
-fn conv_network(count: usize, shared: bool) -> Network<Tensor<f64>> {
+fn conv_network(count: usize, shared: bool) -> Network<f64> {
     let tape = Tape::new();
     let shared_input = tape.leaf(Tensor::new(
         [1, 1, 4, 4],
@@ -41,7 +41,7 @@ fn conv_network(count: usize, shared: bool) -> Network<Tensor<f64>> {
 
 /// Discovers the pool over the whole network with every node wanted
 /// and none readable.
-fn discover(network: &Network<Tensor<f64>>) -> Candidates {
+fn discover(network: &Network<f64>) -> Candidates {
     let length = network.structure().len();
     let wanted = vec![true; length];
     let readable = vec![false; length];

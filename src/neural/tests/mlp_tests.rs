@@ -32,7 +32,7 @@ fn new_builds_the_topology() {
 #[test]
 #[should_panic(expected = "input and an output width")]
 fn new_rejects_degenerate_topologies() {
-    let tape = Tape::<Tensor<f64>>::new();
+    let tape = Tape::<f64>::new();
     Mlp::new(&tape, &[3], deterministic_initializer());
 }
 

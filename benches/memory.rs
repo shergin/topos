@@ -87,7 +87,7 @@ fn main() {
         let evaluation = scalar.forward(&scalar_parameters, []);
         let gradients = evaluation.backward(target).parameters(&scalar_parameters);
         scalar_parameters = scalar_parameters.step(&gradients, |parameter, gradient| {
-            parameter - 0.01 * gradient
+            parameter.clone() - gradient.clone() * Tensor::from(0.01)
         });
     });
 

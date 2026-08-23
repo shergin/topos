@@ -14,7 +14,7 @@ use std::marker::PhantomData;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Symbol, Tape, Tensorial, Value};
+use crate::{Differentiable, Element, Symbol, Tape, Tensor, Value};
 
 use super::{Module, Visitor};
 
@@ -50,13 +50,13 @@ assert_impl_all!(Conv2d<f64>: Send, Sync);
 /// Panics if the values belong to different networks, the ranks are
 /// not 4/4/1, the channel or filter counts disagree, `stride` is zero,
 /// or the padded extents cannot hold one kernel window.
-pub fn conv2d<'tape, Data: Tensorial>(
-    input: Value<'tape, Data>,
-    weights: Value<'tape, Data>,
-    bias: Value<'tape, Data>,
+pub fn conv2d<'tape, E: Element>(
+    input: Value<'tape, E>,
+    weights: Value<'tape, E>,
+    bias: Value<'tape, E>,
     stride: usize,
     padding: usize,
-) -> Value<'tape, Data> {
+) -> Value<'tape, E> {
     let input_shape = input.shape();
     let weights_shape = weights.shape();
     let bias_shape = bias.shape();
@@ -142,15 +142,15 @@ pub fn conv2d<'tape, Data: Tensorial>(
 /// recorded on the family's [`Tape`], like
 /// [`Linear`](super::Linear).
 #[derive(Debug, Clone)]
-pub struct Conv2d<Data> {
+pub struct Conv2d<E> {
     weights: Symbol,
     bias: Symbol,
     stride: usize,
     padding: usize,
-    _marker: PhantomData<Data>,
+    _marker: PhantomData<E>,
 }
 
-impl<Data: Differentiable> Conv2d<Data> {
+impl<E: Element> Conv2d<E> {
     /// Allocates the layer's parameters on `tape` from their initial
     /// payloads and returns the layer.
     ///
@@ -163,9 +163,9 @@ impl<Data: Differentiable> Conv2d<Data> {
     /// Panics if `weights` is not rank 4, `bias` is not rank 1, the two
     /// disagree on filters, or `stride` is zero.
     pub fn new(
-        tape: &Tape<Data>,
-        weights: Data,
-        bias: Data,
+        tape: &Tape<E>,
+        weights: Tensor<E>,
+        bias: Tensor<E>,
         stride: usize,
         padding: usize,
     ) -> Self {
@@ -204,7 +204,7 @@ impl<Data: Differentiable> Conv2d<Data> {
     }
 }
 
-impl<Data: Tensorial> Conv2d<Data> {
+impl<E: Element> Conv2d<E> {
     /// Records the layer's expression over the `[batch, channels,
     /// height, width]` value `input` on `tape` and returns the
     /// `[batch, filters, out_height, out_width]` output value.
@@ -212,11 +212,7 @@ impl<Data: Tensorial> Conv2d<Data> {
     /// # Panics
     /// Panics as documented on [`conv2d`], or if the layer's parameters
     /// or `input` are not allocated on `tape`.
-    pub fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let weights = tape.resolve(self.weights);
         let bias = tape.resolve(self.bias);
         conv2d(input, weights, bias, self.stride, self.padding)
@@ -227,7 +223,7 @@ impl<Data: Tensorial> Conv2d<Data> {
 #[path = "tests/convolution_tests.rs"]
 mod tests;
 
-impl<Data: Differentiable> Conv2d<Data> {
+impl<E: Element> Conv2d<E> {
     /// Returns the symbol of the `[filters, channels, kernel_height,
     /// kernel_width]` weight bank.
     pub fn weights(&self) -> Symbol {
@@ -240,12 +236,8 @@ impl<Data: Differentiable> Conv2d<Data> {
     }
 }
 
-impl<Data: Tensorial> Module<Data> for Conv2d<Data> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+impl<E: Element> Module<E> for Conv2d<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         Conv2d::express(self, tape, input)
     }
 

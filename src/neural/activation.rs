@@ -1,4 +1,4 @@
-use crate::{Elementary, Tape, Tensorial, Value};
+use crate::{Element, Tape, Value};
 
 use super::Module;
 
@@ -37,7 +37,7 @@ impl Activation {
 
     /// Records this activation's expression over `value` and returns
     /// the result: one node per variant.
-    pub fn express<'tape, Data: Elementary>(self, value: Value<'tape, Data>) -> Value<'tape, Data> {
+    pub fn express<'tape, E: Element>(self, value: Value<'tape, E>) -> Value<'tape, E> {
         match self {
             Activation::Tanh => value.tanh(),
             Activation::Relu => value.relu(),
@@ -49,14 +49,10 @@ impl Activation {
 #[path = "tests/activation_tests.rs"]
 mod tests;
 
-impl<Data: Tensorial> Module<Data> for Activation {
+impl<E: Element> Module<E> for Activation {
     /// A stateless stage: the network is unused, and the default
     /// no-op `visit` stands.
-    fn express<'tape>(
-        &self,
-        _tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+    fn express<'tape>(&self, _tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         Activation::express(*self, input)
     }
 }

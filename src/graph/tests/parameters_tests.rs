@@ -8,15 +8,17 @@ fn parameters_materialize_the_record_site_initials() {
 
     let parameters = network.parameters();
     assert_eq!(parameters.len(), 1);
-    assert_eq!(*parameters.of(weight), 1.5);
+    assert_eq!(parameters.of(weight).scalar(), 1.5);
 
     // Every call answers an independent state: stepping one leaves a
     // fresh materialization at the initials.
     let run = network.forward(&parameters, []);
     let gradients = run.backward(weight).parameters(&parameters);
-    let stepped = parameters.step(&gradients, |parameter, gradient| parameter - gradient);
-    assert_eq!(*stepped.of(weight), 0.5);
-    assert_eq!(*network.parameters().of(weight), 1.5);
+    let stepped = parameters.step(&gradients, |parameter, gradient| {
+        parameter.clone() - gradient.clone()
+    });
+    assert_eq!(stepped.of(weight).scalar(), 0.5);
+    assert_eq!(network.parameters().of(weight).scalar(), 1.5);
 }
 
 #[test]
@@ -32,13 +34,13 @@ fn step_each_passes_the_parameter_symbol() {
     let gradients = run.backward(loss).parameters(&parameters);
     let stepped = parameters.step_each(&gradients, |symbol, current, direction| {
         if symbol == first {
-            current - direction
+            current.clone() - direction.clone()
         } else {
-            *current
+            current.clone()
         }
     });
-    assert_eq!(*stepped.of(first), -1.0);
-    assert_eq!(*stepped.of(second), 2.0);
+    assert_eq!(stepped.of(first).scalar(), -1.0);
+    assert_eq!(stepped.of(second).scalar(), 2.0);
 }
 
 #[test]
@@ -52,10 +54,12 @@ fn cloned_states_diverge_independently() {
     let fast = parameters.clone();
     let run = network.forward(&fast, []);
     let gradients = run.backward(loss).parameters(&fast);
-    let fast = fast.step(&gradients, |parameter, _| parameter + 1.0);
+    let fast = fast.step(&gradients, |parameter, _| {
+        parameter.clone() + Tensor::from(1.0)
+    });
 
-    assert_eq!(*fast.of(weight), 1.0);
-    assert_eq!(*parameters.of(weight), 0.0);
+    assert_eq!(fast.of(weight).scalar(), 1.0);
+    assert_eq!(parameters.of(weight).scalar(), 0.0);
 }
 
 #[test]
@@ -97,7 +101,7 @@ fn step_rejects_foreign_directions() {
     let second = second.into_network();
     second
         .parameters()
-        .step(&direction, |parameter, _| *parameter);
+        .step(&direction, |parameter, _| parameter.clone());
 }
 
 #[test]
@@ -119,7 +123,7 @@ fn step_rejects_directions_over_different_slots() {
     tape.parameter(2.0);
     let network = tape.into_network();
     let carried = parameters.carried(&network);
-    carried.step(&direction, |parameter, _| *parameter);
+    carried.step(&direction, |parameter, _| parameter.clone());
 }
 
 #[test]
@@ -130,8 +134,10 @@ fn carried_keeps_payloads_and_seeds_new_slots() {
     let initial = network.parameters();
     let run = network.forward(&initial, []);
     let gradients = run.backward(old).parameters(&initial);
-    let parameters = initial.step(&gradients, |parameter, gradient| parameter + gradient);
-    assert_eq!(*parameters.of(old), 2.0);
+    let parameters = initial.step(&gradients, |parameter, gradient| {
+        parameter.clone() + gradient.clone()
+    });
+    assert_eq!(parameters.of(old).scalar(), 2.0);
 
     let tape = network.into_tape();
     let new = tape.parameter(7.0).symbol();
@@ -139,8 +145,8 @@ fn carried_keeps_payloads_and_seeds_new_slots() {
 
     let carried = parameters.carried(&network);
     assert_eq!(carried.len(), 2);
-    assert_eq!(*carried.of(old), 2.0);
-    assert_eq!(*carried.of(new), 7.0);
+    assert_eq!(carried.of(old).scalar(), 2.0);
+    assert_eq!(carried.of(new).scalar(), 7.0);
 }
 
 #[test]
@@ -190,21 +196,27 @@ fn algebra_combines_tables_entry_by_entry() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let doubled = parameters.map(|value| value * 2.0);
-    assert_eq!(*doubled.of(first), 4.0);
-    assert_eq!(*doubled.of(second), 6.0);
+    let doubled = parameters.map(|value| value.clone() * Tensor::from(2.0));
+    assert_eq!(doubled.of(first).scalar(), 4.0);
+    assert_eq!(doubled.of(second).scalar(), 6.0);
 
     let summed = &parameters + &doubled;
-    assert_eq!(*summed.of(first), 6.0);
-    assert_eq!(*summed.of(second), 9.0);
+    assert_eq!(summed.of(first).scalar(), 6.0);
+    assert_eq!(summed.of(second).scalar(), 9.0);
 
-    let scaled = parameters.scale(&0.5);
-    assert_eq!(*scaled.of(first), 1.0);
-    assert_eq!(*scaled.of(second), 1.5);
+    let scaled = parameters.scale(&0.5.into());
+    assert_eq!(scaled.of(first).scalar(), 1.0);
+    assert_eq!(scaled.of(second).scalar(), 1.5);
 
-    let least = parameters.zip(&doubled, |left, right| left.min(*right));
-    assert_eq!(*least.of(first), 2.0);
-    assert_eq!(*least.of(second), 3.0);
+    let least = parameters.zip(&doubled, |left, right| {
+        if left.scalar() <= right.scalar() {
+            left.clone()
+        } else {
+            right.clone()
+        }
+    });
+    assert_eq!(least.of(first).scalar(), 2.0);
+    assert_eq!(least.of(second).scalar(), 3.0);
 }
 
 #[test]
@@ -218,7 +230,7 @@ fn zip_rejects_foreign_tables() {
     second.parameter(1.0_f64);
     let second = second.into_network().parameters();
 
-    first.zip(&second, |left, _| *left);
+    first.zip(&second, |left, _| left.clone());
 }
 
 #[test]
@@ -234,12 +246,12 @@ fn zip_rejects_tables_over_different_slots() {
     let network = tape.into_network();
     let wide = network.parameters();
 
-    narrow.zip(&wide, |left, _| *left);
+    narrow.zip(&wide, |left, _| left.clone());
 }
 
 #[test]
 fn projection_reads_every_parameter_out_of_a_field() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let weights = tape.parameter(Tensor::new([2], [1.0_f64, -2.0]));
     let bias = tape.parameter(Tensor::new([2], [0.5_f64, 3.0]));
     let loss = ((weights * bias).sum() * (weights * bias).sum()).symbol();

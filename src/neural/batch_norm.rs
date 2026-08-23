@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Symbol, Tape, Tensorial, Value};
+use crate::{Differentiable, Element, Symbol, Tape, Tensor, Value};
 
 // Request-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
@@ -38,14 +38,14 @@ assert_impl_all!(BatchNorm<f64>: Send, Sync);
 /// is recorded on the family's [`Tape`], like
 /// [`Linear`](super::Linear).
 #[derive(Debug, Clone)]
-pub struct BatchNorm<Data> {
+pub struct BatchNorm<E> {
     scale: Symbol,
     shift: Symbol,
     epsilon: Symbol,
-    _marker: PhantomData<Data>,
+    _marker: PhantomData<E>,
 }
 
-impl<Data: Differentiable> BatchNorm<Data> {
+impl<E: Element> BatchNorm<E> {
     /// Allocates the layer's parameters on `tape` from their initial
     /// payloads and returns the layer.
     ///
@@ -58,7 +58,7 @@ impl<Data: Differentiable> BatchNorm<Data> {
     /// # Panics
     /// Panics if `scale` is not rank 1, `shift` is not shaped like
     /// `scale`, or `epsilon` holds more than one value.
-    pub fn new(tape: &Tape<Data>, scale: Data, shift: Data, epsilon: Data) -> Self {
+    pub fn new(tape: &Tape<E>, scale: Tensor<E>, shift: Tensor<E>, epsilon: Tensor<E>) -> Self {
         let scale_shape = scale.shape();
         let shift_shape = shift.shape();
         let epsilon_shape = epsilon.shape();
@@ -91,7 +91,7 @@ impl<Data: Differentiable> BatchNorm<Data> {
     }
 }
 
-impl<Data: Tensorial> BatchNorm<Data> {
+impl<E: Element> BatchNorm<E> {
     /// Records the training-mode expression over the `[batch, features]`
     /// value `input` on `tape` — normalization by the batch's own
     /// mean and biased variance — and returns the output together with
@@ -103,9 +103,9 @@ impl<Data: Tensorial> BatchNorm<Data> {
     /// value agreeing with the parameters on the feature count.
     pub fn express<'tape>(
         &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Normalization<'tape, Data> {
+        tape: &'tape Tape<E>,
+        input: Value<'tape, E>,
+    ) -> Normalization<'tape, E> {
         let mean = input.mean_along(0);
         let centered = input - mean.broadcast_along(0, input);
         // The biased (population) variance, which normalization uses at
@@ -135,11 +135,11 @@ impl<Data: Tensorial> BatchNorm<Data> {
     /// `[features]` values.
     pub fn express_with<'tape>(
         &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-        mean: Value<'tape, Data>,
-        variance: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+        tape: &'tape Tape<E>,
+        input: Value<'tape, E>,
+        mean: Value<'tape, E>,
+        variance: Value<'tape, E>,
+    ) -> Value<'tape, E> {
         let centered = input - mean.broadcast_along(0, input);
         self.normalize(tape, centered, variance)
     }
@@ -148,10 +148,10 @@ impl<Data: Tensorial> BatchNorm<Data> {
     /// epsilon-stabilized deviation and the learned affine.
     fn normalize<'tape>(
         &self,
-        tape: &'tape Tape<Data>,
-        centered: Value<'tape, Data>,
-        variance: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+        tape: &'tape Tape<E>,
+        centered: Value<'tape, E>,
+        variance: Value<'tape, E>,
+    ) -> Value<'tape, E> {
         let scale = tape.resolve(self.scale);
         let shift = tape.resolve(self.shift);
         let epsilon = tape.resolve(self.epsilon);
@@ -183,24 +183,24 @@ impl<Data: Tensorial> BatchNorm<Data> {
 /// [`Run`](crate::Run) to maintain the running
 /// estimates that [`BatchNorm::express_with`] consumes at inference.
 #[derive(Debug)]
-pub struct Normalization<'tape, Data> {
+pub struct Normalization<'tape, E> {
     /// The normalized, affine-transformed `[batch, features]` output.
-    pub output: Value<'tape, Data>,
+    pub output: Value<'tape, E>,
     /// The batch's per-feature `[features]` mean.
-    pub mean: Value<'tape, Data>,
+    pub mean: Value<'tape, E>,
     /// The batch's per-feature `[features]` biased variance.
-    pub variance: Value<'tape, Data>,
+    pub variance: Value<'tape, E>,
 }
 
-// Manual implementations avoid the `Data: Copy` bound a derive would
-// add: the struct copies three proxies, never `Data`.
-impl<Data> Clone for Normalization<'_, Data> {
+// Manual implementations avoid the `Tensor<E>: Copy` bound a derive would
+// add: the struct copies three proxies, never `Tensor<E>`.
+impl<E> Clone for Normalization<'_, E> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<Data> Copy for Normalization<'_, Data> {}
+impl<E> Copy for Normalization<'_, E> {}
 
 #[cfg(test)]
 #[path = "tests/batch_norm_tests.rs"]

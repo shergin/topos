@@ -1,4 +1,4 @@
-use crate::{Parameters, Symbol, Tensorial};
+use crate::{Differentiable, Element, Elementary, Parameters, Symbol, Tensor, Tensorial};
 
 use super::Optimizer;
 use super::optimizer::assert_single_value;
@@ -17,29 +17,29 @@ use super::optimizer::assert_single_value;
 /// step is pure parameter-table algebra over pure payload arithmetic,
 /// so two identical runs cannot differ.
 #[derive(Debug, Clone)]
-pub struct Adam<Data> {
-    beta1: Data,
-    beta2: Data,
-    epsilon: Data,
+pub struct Adam<E> {
+    beta1: Tensor<E>,
+    beta2: Tensor<E>,
+    epsilon: Tensor<E>,
     /// `1 - beta`, precomputed once: the incoming gradient's share of
     /// each moment update.
-    first_share: Data,
-    second_share: Data,
-    first: Option<Parameters<Data>>,
-    second: Option<Parameters<Data>>,
+    first_share: Tensor<E>,
+    second_share: Tensor<E>,
+    first: Option<Parameters<E>>,
+    second: Option<Parameters<E>>,
     /// The running `beta^t` each correction divides out of its moment.
-    beta1_power: Data,
-    beta2_power: Data,
+    beta1_power: Tensor<E>,
+    beta2_power: Tensor<E>,
 }
 
-impl<Data: Tensorial> Adam<Data> {
+impl<E: Element> Adam<E> {
     /// Creates the optimizer with the given decay rates and the
     /// denominator's stabilizer; the conventional values are `0.9`,
     /// `0.999`, and `1e-8`.
     ///
     /// # Panics
     /// Panics if any hyperparameter holds more than one value.
-    pub fn new(beta1: Data, beta2: Data, epsilon: Data) -> Self {
+    pub fn new(beta1: Tensor<E>, beta2: Tensor<E>, epsilon: Tensor<E>) -> Self {
         assert_single_value(&beta1, "beta1");
         assert_single_value(&beta2, "beta2");
         assert_single_value(&epsilon, "epsilon");
@@ -60,7 +60,7 @@ impl<Data: Tensorial> Adam<Data> {
     /// bias-corrected update direction
     /// `first / (sqrt(second) + epsilon)`: the shared core of `Adam`
     /// and [`AdamW`].
-    fn direction(&mut self, gradients: &Parameters<Data>) -> Parameters<Data> {
+    fn direction(&mut self, gradients: &Parameters<E>) -> Parameters<E> {
         let zeros = || gradients.map(|gradient| gradient.zero_like());
         let first = self.first.take().unwrap_or_else(zeros);
         let second = self.second.take().unwrap_or_else(zeros);
@@ -86,13 +86,13 @@ impl<Data: Tensorial> Adam<Data> {
     }
 }
 
-impl<Data: Tensorial> Optimizer<Data> for Adam<Data> {
+impl<E: Element> Optimizer<E> for Adam<E> {
     fn step(
         &mut self,
-        parameters: &Parameters<Data>,
-        gradients: &Parameters<Data>,
-        learning_rate: &Data,
-    ) -> Parameters<Data> {
+        parameters: &Parameters<E>,
+        gradients: &Parameters<E>,
+        learning_rate: &Tensor<E>,
+    ) -> Parameters<E> {
         let direction = self.direction(gradients);
         parameters.step(&direction, |parameter, direction| {
             parameter.clone() - direction.clone() * learning_rate.broadcast_like(direction)
@@ -111,18 +111,18 @@ impl<Data: Tensorial> Optimizer<Data> for Adam<Data> {
 /// identity-aware [`Parameters::step_each`]. Any other policy is a
 /// caller predicate through [`AdamW::step_where`].
 #[derive(Debug, Clone)]
-pub struct AdamW<Data> {
-    adam: Adam<Data>,
-    decay: Data,
+pub struct AdamW<E> {
+    adam: Adam<E>,
+    decay: Tensor<E>,
 }
 
-impl<Data: Tensorial> AdamW<Data> {
+impl<E: Element> AdamW<E> {
     /// Creates the optimizer; `decay` is the decoupled weight-decay
     /// factor applied per step alongside the conventional Adam rates.
     ///
     /// # Panics
     /// Panics if any hyperparameter holds more than one value.
-    pub fn new(beta1: Data, beta2: Data, epsilon: Data, decay: Data) -> Self {
+    pub fn new(beta1: Tensor<E>, beta2: Tensor<E>, epsilon: Tensor<E>, decay: Tensor<E>) -> Self {
         assert_single_value(&decay, "decay");
         Self {
             adam: Adam::new(beta1, beta2, epsilon),
@@ -137,11 +137,11 @@ impl<Data: Tensorial> AdamW<Data> {
     /// parameter's shape).
     pub fn step_where(
         &mut self,
-        parameters: &Parameters<Data>,
-        gradients: &Parameters<Data>,
-        learning_rate: &Data,
-        mut policy: impl FnMut(Symbol, &Data) -> bool,
-    ) -> Parameters<Data> {
+        parameters: &Parameters<E>,
+        gradients: &Parameters<E>,
+        learning_rate: &Tensor<E>,
+        mut policy: impl FnMut(Symbol, &Tensor<E>) -> bool,
+    ) -> Parameters<E> {
         let direction = self.adam.direction(gradients);
         parameters.step_each(&direction, |symbol, current, direction| {
             let stepped =
@@ -158,13 +158,13 @@ impl<Data: Tensorial> AdamW<Data> {
     }
 }
 
-impl<Data: Tensorial> Optimizer<Data> for AdamW<Data> {
+impl<E: Element> Optimizer<E> for AdamW<E> {
     fn step(
         &mut self,
-        parameters: &Parameters<Data>,
-        gradients: &Parameters<Data>,
-        learning_rate: &Data,
-    ) -> Parameters<Data> {
+        parameters: &Parameters<E>,
+        gradients: &Parameters<E>,
+        learning_rate: &Tensor<E>,
+    ) -> Parameters<E> {
         self.step_where(parameters, gradients, learning_rate, |_, parameter| {
             parameter.shape().rank() >= 2
         })

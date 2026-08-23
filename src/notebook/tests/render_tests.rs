@@ -31,7 +31,7 @@ fn shapes_render_as_axis_lists() {
 
 #[test]
 fn a_scalar_payload_renders_as_one_number() {
-    let (html, text) = body(Theme::DARK, &2.5_f64);
+    let (html, text) = body(Theme::DARK, &Tensor::from(2.5_f64));
     assert!(html.contains("2.5"));
     assert_eq!(text, "2.5");
     assert!(!html.contains("<table"));
@@ -127,6 +127,6 @@ fn the_theme_changes_the_card_and_nothing_else() {
 #[test]
 fn f32_and_bf16_payloads_name_their_element_type() {
     assert_eq!(<Tensor<f32> as Renderable>::element_name(), "f32");
-    assert_eq!(<f64 as Renderable>::element_name(), "f64");
-    assert_eq!(<crate::Bf16 as Renderable>::element_name(), "bf16");
+    assert_eq!(<Tensor<f64> as Renderable>::element_name(), "f64");
+    assert_eq!(<Tensor<crate::Bf16> as Renderable>::element_name(), "bf16");
 }

@@ -20,7 +20,10 @@ fn assert_gradients_match<const INPUTS: usize>(
         let tape = Tape::new();
         let target = expression(point.map(|value| tape.leaf(value))).symbol();
         let network = tape.into_network();
-        *network.forward(&network.parameters(), []).of(target)
+        network
+            .forward(&network.parameters(), [])
+            .of(target)
+            .scalar()
     };
 
     let tape = Tape::new();
@@ -37,7 +40,7 @@ fn assert_gradients_match<const INPUTS: usize>(
         let mut nudged_down = inputs;
         nudged_down[index] -= STEP;
         let numeric = (evaluate(nudged_up) - evaluate(nudged_down)) / (2.0 * STEP);
-        let analytic = *gradients.of(*leaf);
+        let analytic = gradients.of(*leaf).scalar();
         assert!(
             (analytic - numeric).abs() <= TOLERANCE * (1.0 + numeric.abs()),
             "gradient of input {index} diverges: analytic {analytic}, numeric {numeric}"
@@ -233,8 +236,8 @@ fn forward_materializes_every_value() {
     let network = tape.into_network();
 
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(*run.of(a), 2.0);
-    assert_eq!(*run.of(expression), -20.0);
+    assert_eq!(run.of(a).scalar(), 2.0);
+    assert_eq!(run.of(expression).scalar(), -20.0);
 }
 
 #[test]
@@ -247,12 +250,12 @@ fn backward_accumulates_gradients_through_fan_out() {
     let network = tape.into_network();
 
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(*run.of(output), 8.0);
+    assert_eq!(run.of(output).scalar(), 8.0);
 
     let gradients = run.backward(output);
-    assert_eq!(*gradients.of(output), 1.0);
-    assert_eq!(*gradients.of(a), 4.0);
-    assert_eq!(*gradients.of(b), 2.0);
+    assert_eq!(gradients.of(output).scalar(), 1.0);
+    assert_eq!(gradients.of(a).scalar(), 4.0);
+    assert_eq!(gradients.of(b).scalar(), 2.0);
 }
 
 #[test]
@@ -264,8 +267,8 @@ fn backward_routes_negation() {
     let network = tape.into_network();
 
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(*run.of(output), -4.0);
-    assert_eq!(*run.backward(output).of(input), -4.0);
+    assert_eq!(run.of(output).scalar(), -4.0);
+    assert_eq!(run.backward(output).of(input).scalar(), -4.0);
 }
 
 #[test]
@@ -280,8 +283,8 @@ fn subtraction_routes_signed_gradients() {
     let gradients = network
         .forward(&network.parameters(), [])
         .backward(difference);
-    assert_eq!(*gradients.of(left), 1.0);
-    assert_eq!(*gradients.of(right), -1.0);
+    assert_eq!(gradients.of(left).scalar(), 1.0);
+    assert_eq!(gradients.of(right).scalar(), -1.0);
 }
 
 #[test]
@@ -296,8 +299,8 @@ fn division_reuses_its_output_in_backward() {
     let gradients = network
         .forward(&network.parameters(), [])
         .backward(quotient);
-    assert_eq!(*gradients.of(left), 0.5);
-    assert_eq!(*gradients.of(right), -1.5);
+    assert_eq!(gradients.of(left).scalar(), 0.5);
+    assert_eq!(gradients.of(right).scalar(), -1.5);
 }
 
 #[test]
@@ -310,7 +313,7 @@ fn tanh_routes_gradient_through_its_output() {
 
     let run = network.forward(&network.parameters(), []);
     let expected = 1.0 - 0.5_f64.tanh().powi(2);
-    assert!((run.backward(output).of(input) - expected).abs() < 1e-12);
+    assert!((run.backward(output).of(input).scalar() - expected).abs() < 1e-12);
 }
 
 #[test]
@@ -322,9 +325,9 @@ fn exp_reuses_its_output_in_backward() {
     let network = tape.into_network();
 
     let run = network.forward(&network.parameters(), []);
-    let value = *run.of(output);
+    let value = run.of(output).scalar();
     assert!((value - std::f64::consts::E).abs() < 1e-12);
-    assert!((run.backward(output).of(input) - value).abs() < 1e-12);
+    assert!((run.backward(output).of(input).scalar() - value).abs() < 1e-12);
 }
 
 #[test]
@@ -336,7 +339,7 @@ fn ln_routes_gradient_through_its_operand() {
     let network = tape.into_network();
 
     let gradients = network.forward(&network.parameters(), []).backward(output);
-    assert!((gradients.of(input) - 0.5).abs() < 1e-12);
+    assert!((gradients.of(input).scalar() - 0.5).abs() < 1e-12);
 }
 
 #[test]
@@ -349,8 +352,8 @@ fn sigmoid_composes_from_primitives() {
     let network = tape.into_network();
 
     let run = network.forward(&network.parameters(), []);
-    assert!((run.of(sigmoid) - 0.5).abs() < 1e-12);
-    assert!((run.backward(sigmoid).of(input) - 0.25).abs() < 1e-12);
+    assert!((run.of(sigmoid).scalar() - 0.5).abs() < 1e-12);
+    assert!((run.backward(sigmoid).of(input).scalar() - 0.25).abs() < 1e-12);
 }
 
 #[test]
@@ -365,7 +368,7 @@ fn backward_survives_later_recordings() {
     let tape = network.into_tape();
     let _late = tape.leaf(3.0).symbol();
 
-    assert_eq!(*run.backward(input).of(input), 1.0);
+    assert_eq!(run.backward(input).of(input).scalar(), 1.0);
 }
 
 #[test]
@@ -384,9 +387,9 @@ fn backward_skips_disconnected_nodes() {
     let network = tape.into_network();
 
     let gradients = network.forward(&network.parameters(), []).backward(target);
-    assert_eq!(*gradients.of(input), 4.0);
-    assert_eq!(*gradients.of(unrelated), 0.0);
-    assert_eq!(*gradients.of(quotient), 0.0);
+    assert_eq!(gradients.of(input).scalar(), 4.0);
+    assert_eq!(gradients.of(unrelated).scalar(), 0.0);
+    assert_eq!(gradients.of(quotient).scalar(), 0.0);
 }
 
 #[test]
@@ -399,7 +402,7 @@ fn backward_ignores_singular_paths_through_shared_leaves() {
     let network = tape.into_network();
 
     let gradients = network.forward(&network.parameters(), []).backward(target);
-    assert_eq!(*gradients.of(input), 0.0);
+    assert_eq!(gradients.of(input).scalar(), 0.0);
 }
 
 #[test]
@@ -418,20 +421,20 @@ fn backward_skips_singular_producers_of_broadcast_references() {
     let network = tape.into_network();
 
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(*run.of(output), 2.0);
+    assert_eq!(run.of(output).scalar(), 2.0);
 
     // The reference contributes only its shape, so the target has no
     // differentiable dependence on `input`: its gradient is exactly
     // zero, never the NaN of the singular quotient's derivative rule.
     let gradients = run.backward(output);
-    assert_eq!(*gradients.of(input), 0.0);
-    assert_eq!(*gradients.of(singular_reference), 0.0);
-    assert_eq!(*gradients.of(source), 1.0);
+    assert_eq!(gradients.of(input).scalar(), 0.0);
+    assert_eq!(gradients.of(singular_reference).scalar(), 0.0);
+    assert_eq!(gradients.of(source).scalar(), 1.0);
 }
 
 #[test]
 fn backward_skips_singular_producers_of_axis_references() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new([2, 2], [0.0_f64, 1.0, 2.0, 3.0]));
     let singular_reference = input / input;
     let source = tape.leaf(Tensor::new([2], [5.0_f64, 7.0]));
@@ -466,9 +469,9 @@ fn backward_skips_nodes_recorded_after_the_target() {
     let network = tape.into_network();
 
     let gradients = network.forward(&network.parameters(), []).backward(target);
-    assert_eq!(*gradients.of(input), 4.0);
-    assert_eq!(*gradients.of(late), 0.0);
-    assert_eq!(*gradients.of(quotient), 0.0);
+    assert_eq!(gradients.of(input).scalar(), 4.0);
+    assert_eq!(gradients.of(late).scalar(), 0.0);
+    assert_eq!(gradients.of(quotient).scalar(), 0.0);
 }
 
 #[test]
@@ -499,7 +502,7 @@ fn backward_rejects_foreign_targets() {
 
 #[test]
 fn pad_places_the_window_and_narrows_the_gradient() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 2], [1.0_f64, 2.0, 3.0, 4.0]));
     let padded = x.pad(1, 1, 4);
     // Distinct weights make the narrowed-back gradient unambiguous.
@@ -524,7 +527,7 @@ fn pad_places_the_window_and_narrows_the_gradient() {
 
 #[test]
 fn unfold_slides_windows_and_folds_the_gradient() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new(
         [8],
         (1..=8).map(|v| v as f64).collect::<Vec<_>>(),
@@ -551,7 +554,7 @@ fn unfold_slides_windows_and_folds_the_gradient() {
 
 #[test]
 fn narrow_of_pad_roundtrips_the_value() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([3], [1.0_f64, 2.0, 3.0]));
     let roundtrip = x.pad(0, 2, 7).narrow(0, 2, 3);
     let loss = roundtrip.sum();
@@ -566,15 +569,14 @@ fn narrow_of_pad_roundtrips_the_value() {
 }
 
 #[test]
-#[should_panic(expected = "cannot take shape")]
-fn scalar_reshape_to_rank_one_is_rejected_at_forward() {
-    // Record-time inference cannot reject this (a rank-0 tensor may
-    // legitimately take shape [1]), so the scalar payload rejects the
-    // capability mismatch when the rule runs, keeping the recorded and
-    // payload views of every shape coherent.
+fn scalar_reshape_to_rank_one_is_a_tensor_reshape() {
+    // A scalar is a rank-0 tensor, so reshaping it to [1] is an
+    // ordinary volume-preserving reshape — the scalar-payload
+    // capability mismatch this once rejected no longer exists.
     let tape = Tape::new();
     let x = tape.leaf(2.0_f64);
-    let _reshaped = x.reshape([1]);
+    let reshaped = x.reshape([1]).symbol();
     let network = tape.into_network();
-    network.forward(&network.parameters(), []);
+    let run = network.forward(&network.parameters(), []);
+    assert_eq!(run.of(reshaped).to_vec(), vec![2.0]);
 }

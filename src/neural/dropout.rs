@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Shape, Symbol, Tape, Tensorial, Value};
+use crate::{Differentiable, Element, Shape, Symbol, Tape, Tensor, Value};
 
 use super::Module;
 
@@ -28,17 +28,17 @@ assert_impl_all!(Dropout<f64>: Send, Sync);
 /// It carries no parameters, so [`Module::visit`] keeps its stateless
 /// default.
 #[derive(Debug, Clone)]
-pub struct Dropout<Data> {
+pub struct Dropout<E> {
     mask: Symbol,
-    _marker: PhantomData<Data>,
+    _marker: PhantomData<E>,
 }
 
-impl<Data: Differentiable> Dropout<Data> {
+impl<E: Element> Dropout<E> {
     /// Declares the mask input on `tape`, shaped like the values
     /// the module will express over, with the all-ones identity
     /// default.
-    pub fn new(tape: &Tape<Data>, shape: impl Into<Shape>) -> Self {
-        let mask = tape.input(Data::counted(shape.into(), 1));
+    pub fn new(tape: &Tape<E>, shape: impl Into<Shape>) -> Self {
+        let mask = tape.input(Tensor::counted(shape.into(), 1));
         Self {
             mask: mask.symbol(),
             _marker: PhantomData,
@@ -57,21 +57,13 @@ impl<Data: Differentiable> Dropout<Data> {
     /// Panics if `input`'s shape differs from the declared mask
     /// shape, or if the module's mask does not resolve on `tape`
     /// generation.
-    pub fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         input * tape.resolve(self.mask)
     }
 }
 
-impl<Data: Tensorial> Module<Data> for Dropout<Data> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+impl<E: Element> Module<E> for Dropout<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         Dropout::express(self, tape, input)
     }
 }

@@ -1,13 +1,13 @@
 use crate::{Numerics, Request, Symbol, Tape, Tensor, concat};
 
 /// The empty feed set, typed for the scalar tests.
-fn no_feeds() -> std::iter::Empty<(Symbol, f64)> {
+fn no_feeds() -> std::iter::Empty<(Symbol, Tensor<f64>)> {
     std::iter::empty()
 }
 
 #[test]
 fn plan_forward_matches_the_interpreter_bitwise() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 2], [1.0_f64, 2.0, 3.0, 4.0]));
     let y = tape.leaf(Tensor::new([2, 2], [0.5, -0.5, 1.5, -1.5]));
     let target = ((x.matmul(y) + x).tanh() * y).sum().symbol();
@@ -31,7 +31,7 @@ fn plan_skips_what_the_targets_cannot_observe() {
 
     let plan = network.compile(Request::roots([wanted]));
     let run = plan.forward(&network.parameters(), no_feeds());
-    assert_eq!(*run.of(wanted), 4.0);
+    assert_eq!(run.of(wanted).scalar(), 4.0);
 }
 
 #[test]
@@ -62,8 +62,8 @@ fn keep_makes_an_interior_value_readable() {
 
     let plan = network.compile(Request::roots([target]).observe([interior]));
     let run = plan.forward(&network.parameters(), no_feeds());
-    assert_eq!(*run.of(target), 6.0);
-    assert_eq!(*run.of(interior), 4.0);
+    assert_eq!(run.of(target).scalar(), 6.0);
+    assert_eq!(run.of(interior).scalar(), 4.0);
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn forward_only_plans_refuse_backward() {
 
 #[test]
 fn training_plans_differentiate_like_the_interpreter() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let w = tape.parameter(Tensor::new([2], [1.0_f64, -2.0]));
     let x = tape.leaf(Tensor::new([2], [3.0, 4.0]));
     let loss = ((w * x).tanh() * x).sum().symbol();
@@ -134,7 +134,7 @@ fn liveness_frees_only_after_the_last_consumer() {
     // A diamond: `shared` feeds two later consumers, so freeing after
     // the first would corrupt the second. Bitwise agreement with the
     // interpreter is the proof.
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2], [1.5_f64, -2.5]));
     let shared = x.tanh();
     let early = shared * x;
@@ -213,13 +213,13 @@ fn plans_keep_serving_their_prefix_after_extension() {
     let parameters = parameters.carried(&network);
 
     let run = plan.forward(&parameters, no_feeds());
-    assert_eq!(*run.of(target), 4.0);
-    assert_eq!(*network.forward(&parameters, []).of(late), 7.0);
+    assert_eq!(run.of(target).scalar(), 4.0);
+    assert_eq!(network.forward(&parameters, []).of(late).scalar(), 7.0);
 }
 
 #[test]
 fn describe_reports_the_liveness_story() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([4], [1.0_f64, 2.0, 3.0, 4.0]));
     let target = (x.tanh() * x).sum().symbol();
     let network = tape.into_network();
@@ -240,7 +240,7 @@ fn training_liveness_matches_the_interpreter_on_a_convnet() {
     // bitwise agreement of loss and every parameter gradient.
     use crate::{conv2d, cross_entropy, max_pool};
 
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new(
         [2, 1, 4, 4],
         (0..32).map(|v| (v as f64) / 16.0 - 1.0).collect::<Vec<_>>(),
@@ -318,10 +318,10 @@ fn training_liveness_matches_the_interpreter_on_every_value_reader() {
     let planned = plan.forward(&parameters, no_feeds());
     let interpreted = network.forward(&parameters, []);
 
-    assert_eq!(*planned.of(loss), *interpreted.of(loss));
+    assert_eq!(planned.of(loss).scalar(), interpreted.of(loss).scalar());
     assert_eq!(
-        *planned.backward(loss).of(w),
-        *interpreted.backward(loss).of(w)
+        planned.backward(loss).of(w).scalar(),
+        interpreted.backward(loss).of(w).scalar()
     );
 }
 
@@ -330,7 +330,7 @@ fn training_liveness_retains_the_gather_selection() {
     // The scatter in gather's backward reads the selection payload
     // itself; freeing it would panic, not merely corrupt. Bitwise
     // agreement proves retention kept it.
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let table = tape.parameter(Tensor::new(
         [4, 2],
         (0..8).map(|v| v as f64 * 0.5).collect::<Vec<_>>(),
@@ -356,7 +356,7 @@ fn training_liveness_retains_the_gather_selection() {
 fn forward_only_plans_fuse_and_agree() {
     use crate::{conv2d, max_pool};
 
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new(
         [2, 1, 4, 4],
         (0..32).map(|v| (v as f64) / 10.0 - 1.5).collect::<Vec<_>>(),
@@ -386,7 +386,7 @@ fn describe_snapshots_the_fused_forward_plan() {
     // extract cannot silently reword what `contains` checks miss.
     use crate::{conv2d, max_pool};
 
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new(
         [2, 1, 4, 4],
         (0..32).map(|v| (v as f64) / 10.0 - 1.5).collect::<Vec<_>>(),
@@ -449,7 +449,7 @@ live volume: peak 192 elements at node 13, retain-all 552
 fn kept_interiors_bar_fusion() {
     // Keeping the im2col matrix readable is a fusion barrier: the
     // chain must materialize so the keep-set can answer.
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new(
         [1, 1, 4, 4],
         (0..16).map(|v| v as f64 * 0.3 - 2.0).collect::<Vec<_>>(),
@@ -488,7 +488,7 @@ fn kept_interiors_bar_fusion() {
 fn batched_products_do_not_fuse() {
     // The window-GEMM matcher keys on the rank-2 im2col shape; a
     // batched product must leave it indifferent.
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let lhs = tape
         .leaf(Tensor::new(
             [72],
@@ -516,7 +516,7 @@ fn batched_products_do_not_fuse() {
 fn shared_windows_bar_fusion() {
     // A second consumer inside the chain bars fusion, and results
     // stay bitwise either way.
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new(
         [1, 1, 4, 4],
         (0..16).map(|v| v as f64 * 0.5 - 3.0).collect::<Vec<_>>(),
@@ -548,7 +548,7 @@ fn the_numerics_posture_is_a_value_on_the_plan() {
     // definition the built-in path is bit-identical to.
     let a_data: Vec<f32> = (0..1024).map(|v| (v % 37) as f32 * 0.21 - 3.7).collect();
     let b_data: Vec<f32> = (0..1024).map(|v| (v % 29) as f32 * 0.17 - 2.3).collect();
-    let tape = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let a = tape.parameter(Tensor::new([32, 32], a_data.clone()));
     let b = tape.parameter(Tensor::new([32, 32], b_data.clone()));
     let product = a.matmul(b).symbol();
@@ -685,7 +685,7 @@ fn fused_max_pool_matches_the_interpreter_bitwise() {
     // Signed values with repeated ties, so the fold order is load
     // bearing; overlapping windows in the second case.
     for (size, stride) in [(2, 2), (3, 1)] {
-        let tape = Tape::new();
+        let tape: Tape<f64> = Tape::new();
         let input = tape.leaf(Tensor::new(
             [2, 3, 6, 6],
             (0..216)
@@ -739,7 +739,7 @@ fn decode_carry_matches_the_full_context_plan_bitwise() {
             .collect()
     };
 
-    let tape = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let layers: Vec<(Symbol, Symbol)> = (0..LAYERS)
         .map(|layer| {
             (

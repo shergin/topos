@@ -3,9 +3,9 @@
 use malevich::Theme;
 
 use super::html;
-use crate::{Differentiable, Tape};
+use crate::{Element, Tape};
 
-impl<Data: Differentiable> Tape<Data> {
+impl<E: Element> Tape<E> {
     /// Renders the tape as a self-contained HTML card: how much graph
     /// is recorded so far, and the reminder that sealing is the way
     /// out of the phase.

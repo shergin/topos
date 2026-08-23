@@ -8,12 +8,12 @@
 
 use malevich::{Frame, Line, Plot, Theme};
 
-use super::render::Renderable;
+use super::render::{Renderable, Scalar};
 use super::{html, render};
-use crate::Field;
+use crate::{Element, Field};
 
 /// The Euclidean norm of every node's payload, in tape order.
-fn norms<Data: Renderable>(field: &Field<Data>) -> Vec<f64> {
+fn norms<E: Element + Scalar>(field: &Field<E>) -> Vec<f64> {
     field
         .payloads()
         .iter()
@@ -55,10 +55,10 @@ fn summary(label: &str, norms: &[f64]) -> String {
 }
 
 /// Renders a per-node magnitude profile as a self-contained HTML card.
-pub(crate) fn profile_card<Data: Renderable>(
+pub(crate) fn profile_card<E: Element + Scalar>(
     theme: Theme,
     label: &str,
-    field: &Field<Data>,
+    field: &Field<E>,
 ) -> String {
     let norms = norms(field);
     let header = html::escape(&summary(label, &norms));
@@ -79,7 +79,7 @@ pub(crate) fn profile_card<Data: Renderable>(
 }
 
 /// Renders a per-node magnitude profile as plain text.
-pub(crate) fn profile_text<Data: Renderable>(label: &str, field: &Field<Data>) -> String {
+pub(crate) fn profile_text<E: Element + Scalar>(label: &str, field: &Field<E>) -> String {
     let norms = norms(field);
     let header = summary(label, &norms);
     if norms.len() < 2 {
@@ -99,7 +99,7 @@ pub(crate) fn profile_text<Data: Renderable>(label: &str, field: &Field<Data>) -
 // can name the trait, so there is no leak to close. Silencing it also
 // keeps `cargo check` warning-free, which Evcxr requires.
 #[allow(private_bounds)]
-impl<Data: Renderable> Field<Data> {
+impl<E: Element + Scalar> Field<E> {
     /// Renders the field as a self-contained HTML card: one Euclidean
     /// norm per recorded node, plotted along the tape.
     ///

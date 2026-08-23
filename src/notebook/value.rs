@@ -2,9 +2,9 @@
 
 use malevich::Theme;
 
-use super::render::Renderable;
+use super::render::Scalar;
 use super::{html, render};
-use crate::{Run, Symbol, Value};
+use crate::{Element, Run, Symbol, Value};
 
 // `Renderable` is deliberately crate private: it names the closed set of
 // payload types a card can draw, and it is a rendering detail rather
@@ -13,7 +13,7 @@ use crate::{Run, Symbol, Value};
 // can name the trait, so there is no leak to close. Silencing it also
 // keeps `cargo check` warning-free, which Evcxr requires.
 #[allow(private_bounds)]
-impl<Data: Renderable> Value<'_, Data> {
+impl<E: Element + Scalar> Value<'_, E> {
     /// Renders the proxy's stored payload as a self-contained HTML
     /// card.
     ///
@@ -83,7 +83,7 @@ impl Symbol {
 // can name the trait, so there is no leak to close. Silencing it also
 // keeps `cargo check` warning-free, which Evcxr requires.
 #[allow(private_bounds)]
-impl<Data: Renderable> Run<Data> {
+impl<E: Element + Scalar> Run<E> {
     /// Renders the run as a self-contained HTML card.
     ///
     /// A run holds a value per node, so the card shows the profile of

@@ -4,7 +4,7 @@ use super::{Module, named_parameters, parameters};
 
 /// Builds a small tree exercising positional segments and stateless
 /// stages.
-fn tree(tape: &Tape<Tensor<f64>>) -> Sequential<Tensor<f64>> {
+fn tree(tape: &Tape<f64>) -> Sequential<f64> {
     let entry = Linear::new(
         tape,
         Tensor::filled([3, 4], 0.0_f64),

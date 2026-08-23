@@ -1,4 +1,4 @@
-use crate::{Tape, Tensorial, Value};
+use crate::{Element, Tape, Value};
 
 use super::{Module, Segment, Visitor};
 
@@ -10,18 +10,18 @@ use super::{Module, Segment, Visitor};
 /// run, while the static alternative (tuple arities behind macros)
 /// cannot hold a depth chosen at runtime. [`Sequential::then`] boxes
 /// internally, so call sites never spell `Box`.
-pub struct Sequential<Data> {
-    stages: Vec<Box<dyn Module<Data>>>,
+pub struct Sequential<E> {
+    stages: Vec<Box<dyn Module<E>>>,
 }
 
-impl<Data: Tensorial> Sequential<Data> {
+impl<E: Element> Sequential<E> {
     /// Creates an empty chain: the identity until stages arrive.
     pub fn new() -> Self {
         Self { stages: Vec::new() }
     }
 
     /// Appends `stage` to the chain and returns it, builder style.
-    pub fn then(mut self, stage: impl Module<Data> + 'static) -> Self {
+    pub fn then(mut self, stage: impl Module<E> + 'static) -> Self {
         self.stages.push(Box::new(stage));
         self
     }
@@ -37,18 +37,14 @@ impl<Data: Tensorial> Sequential<Data> {
     }
 }
 
-impl<Data: Tensorial> Default for Sequential<Data> {
+impl<E: Element> Default for Sequential<E> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<Data: Tensorial> Module<Data> for Sequential<Data> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+impl<E: Element> Module<E> for Sequential<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         self.stages
             .iter()
             .fold(input, |value, stage| stage.express(tape, value))

@@ -430,7 +430,7 @@ fn pooled_plans_raise_to_reduce_window() {
 fn a_hand_rolled_pool_fold_raises_identically() {
     // Provenance-blind matching: the facade's exact spelling written
     // by hand raises to the same module.
-    let tape = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let image = Tensor::new(
         [1, 2, 4, 4],
         (0..32)
@@ -575,7 +575,7 @@ fn engine_backward_plans_still_raise_the_pool() {
     // fold at home and still raises it abroad.
     use crate::max_pool;
 
-    let tape = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let image_value = tape.parameter(Tensor::new(
         [1, 2, 4, 4],
         (0..32)
@@ -597,7 +597,7 @@ fn engine_backward_plans_emit_the_same_module() {
     // the old posture gate wrongly kept primitive.
     use crate::conv2d;
 
-    let tape = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let image = tape.parameter(Tensor::new(
         [1, 1, 3, 3],
         (0..9)

@@ -5,7 +5,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 use crate::backend;
 
 use super::gemm::{self, GemmTask};
-use super::{Differentiable, Elementary, Shape, Tensorial};
+use super::{Differentiable, Element, Elementary, Shape, Tensorial};
 
 /// A brain-float 16 payload: the top half of an `f32`, one sign bit,
 /// eight exponent bits, and seven stored mantissa bits.
@@ -275,6 +275,8 @@ impl Elementary for Bf16 {
         Some(product.into_iter().map(Self::from_f32).collect())
     }
 }
+
+impl Element for Bf16 {}
 
 impl Tensorial for Bf16 {
     /// Scalar payloads use identity semantics: the patches are the

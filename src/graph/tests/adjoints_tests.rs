@@ -3,7 +3,7 @@ use crate::{Adjoints, Symbol, Tape, Tensor};
 /// Records a two-parameter loss and differentiates it, answering the
 /// carrier beside the symbols the assertions name.
 fn differentiated() -> (Adjoints, Symbol, Symbol, Symbol) {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.parameter(Tensor::new([2], [1.0_f64, -2.0]));
     let b = tape.parameter(Tensor::new([2], [0.5_f64, 3.0]));
     let loss = (a * b).sum();
@@ -52,7 +52,7 @@ fn roots_lead_with_the_target() {
 
 #[test]
 fn map_gradients_rewrites_gradients_and_keeps_the_pairing() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.parameter(Tensor::new([2], [1.5_f64, -0.75]));
     let loss = (a * a).sum();
     let (a, loss) = (a.symbol(), loss.symbol());

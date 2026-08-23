@@ -22,7 +22,7 @@ fn forward_reads_parameters_from_the_callers_state() {
     let network = tape.into_network();
 
     let parameters = network.parameters();
-    assert_eq!(*network.forward(&parameters, []).of(output), 3.0);
+    assert_eq!(network.forward(&parameters, []).of(output).scalar(), 3.0);
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn input_defaults_flow_through_forward() {
     let doubled = (input * 2.0).symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
-    assert_eq!(*network.forward(&parameters, []).of(doubled), 6.0);
+    assert_eq!(network.forward(&parameters, []).of(doubled).scalar(), 6.0);
 }
 
 #[test]
@@ -44,12 +44,12 @@ fn feeds_override_inputs_per_run() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let fed = network.forward(&parameters, [(input, 10.0)]);
-    assert_eq!(*fed.of(doubled), 20.0);
+    let fed = network.forward(&parameters, [(input, 10.0.into())]);
+    assert_eq!(fed.of(doubled).scalar(), 20.0);
 
     // Feeds are run-local: an unfed forward returns to the default,
     // which lives in the spec untouched.
-    assert_eq!(*network.forward(&parameters, []).of(doubled), 2.0);
+    assert_eq!(network.forward(&parameters, []).of(doubled).scalar(), 2.0);
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn feeds_reject_non_inputs() {
     let tape = Tape::new();
     let constant = tape.leaf(1.0_f64).symbol();
     let network = tape.into_network();
-    network.forward(&network.parameters(), [(constant, 2.0)]);
+    network.forward(&network.parameters(), [(constant, 2.0.into())]);
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn feeds_reject_foreign_symbols() {
     let tape = Tape::<f64>::new();
     let network = tape.into_network();
     let foreign = Tape::new().input(1.0_f64).symbol();
-    network.forward(&network.parameters(), [(foreign, 2.0)]);
+    network.forward(&network.parameters(), [(foreign, 2.0.into())]);
 }
 
 #[test]
@@ -97,8 +97,8 @@ fn concurrent_forwards_share_one_network_and_state() {
             let network = &network;
             let parameters = &parameters;
             scope.spawn(move || {
-                let run = network.forward(parameters, [(input, fed)]);
-                assert_eq!(*run.of(squared), fed * fed);
+                let run = network.forward(parameters, [(input, fed.into())]);
+                assert_eq!(run.of(squared).scalar(), fed * fed);
             });
         }
     });
@@ -124,17 +124,17 @@ fn training_steps_state_without_touching_the_network() {
         let (sample_input, sample_target) = samples[step % samples.len()];
         let run = network.forward(
             &parameters,
-            [(input, sample_input), (target, sample_target)],
+            [(input, sample_input.into()), (target, sample_target.into())],
         );
         let gradients = run.backward(loss).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| {
-            parameter - 0.05 * gradient
+            parameter.clone() - gradient.clone() * Tensor::from(0.05)
         });
     }
 
     assert_eq!(network.len(), recorded);
-    assert!((*parameters.of(weight) - 2.0).abs() < 1e-3);
-    assert!((*parameters.of(bias) - 1.0).abs() < 1e-3);
+    assert!((parameters.of(weight).scalar() - 2.0).abs() < 1e-3);
+    assert!((parameters.of(bias).scalar() - 1.0).abs() < 1e-3);
 }
 
 #[test]
@@ -153,9 +153,11 @@ fn gradient_descent_converges() {
             .forward(&parameters, [])
             .backward(loss)
             .parameters(&parameters);
-        parameters = parameters.step(&gradients, |parameter, gradient| parameter - 0.3 * gradient);
+        parameters = parameters.step(&gradients, |parameter, gradient| {
+            parameter.clone() - gradient.clone() * Tensor::from(0.3)
+        });
     }
-    assert!((*parameters.of(parameter) - 3.0).abs() < 1e-6);
+    assert!((parameters.of(parameter).scalar() - 3.0).abs() < 1e-6);
 }
 
 #[test]
@@ -176,18 +178,20 @@ fn momentum_descent_converges() {
             .backward(loss)
             .parameters(&parameters);
         let step = match velocity {
-            Some(previous) => previous.scale(&0.5) + gradients,
+            Some(previous) => previous.scale(&0.5.into()) + gradients,
             None => gradients,
         };
-        parameters = parameters.step(&step, |parameter, direction| parameter - 0.1 * direction);
+        parameters = parameters.step(&step, |parameter, direction| {
+            parameter.clone() - direction.clone() * Tensor::from(0.1)
+        });
         velocity = Some(step);
     }
-    assert!((*parameters.of(parameter) - 3.0).abs() < 1e-3);
+    assert!((parameters.of(parameter).scalar() - 3.0).abs() < 1e-3);
 }
 
 #[test]
 fn forward_for_evaluates_only_the_ancestor_closure() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2], [2.0_f64, 3.0]));
     let wanted = (x * x).sum().symbol();
     let _unwanted = (x + x).sum();
@@ -281,7 +285,7 @@ fn reopened_networks_serve_old_runs_and_new_expressions() {
     let network = tape.into_network();
     let parameters = network.parameters();
     let run = network.forward(&parameters, []);
-    assert_eq!(*run.of(squared), 4.0);
+    assert_eq!(run.of(squared).scalar(), 4.0);
 
     // Linear extension: reopen, record, reseal. The old run keeps
     // answering, and the extended spec serves the new expression.
@@ -290,6 +294,6 @@ fn reopened_networks_serve_old_runs_and_new_expressions() {
     let network = tape.into_network();
     let parameters = parameters.carried(&network);
 
-    assert_eq!(*run.of(squared), 4.0);
-    assert_eq!(*network.forward(&parameters, []).of(cubed), 8.0);
+    assert_eq!(run.of(squared).scalar(), 4.0);
+    assert_eq!(network.forward(&parameters, []).of(cubed).scalar(), 8.0);
 }

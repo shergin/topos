@@ -1,5 +1,6 @@
 mod bf16;
 mod differentiable;
+mod element;
 mod elementary;
 // Reachable for the `reference` facade's re-exports.
 pub(crate) mod gemm;
@@ -13,6 +14,7 @@ pub(crate) mod tensorial;
 
 pub use bf16::Bf16;
 pub use differentiable::Differentiable;
+pub use element::Element;
 pub use elementary::{Elementary, MapOperation};
 pub use gemm::GemmTask;
 pub use normalized::{BatchNormTask, Normalized};

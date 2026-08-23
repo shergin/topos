@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Tensorial};
+use crate::{Element, Tensor, Tensorial};
 
 use super::{Origin, Parameters, Symbol};
 
@@ -27,9 +27,9 @@ assert_impl_all!(Field<f64>: Send, Sync);
 /// recording still covers its original prefix; accessing a newer node or
 /// projecting onto parameters it does not cover is rejected.
 #[derive(Debug, Clone)]
-pub struct Field<Data> {
+pub struct Field<E> {
     origin: Origin,
-    payloads: Vec<Data>,
+    payloads: Vec<Tensor<E>>,
 }
 
 /// The gradients of one backward run: the derivative of the run's target with
@@ -43,10 +43,10 @@ pub struct Field<Data> {
 /// [`Run::backward`](crate::Run::backward), while the type keeps
 /// the one invariant it actually enforces: alignment to a graph, not
 /// differentiation.
-pub type Gradients<Data> = Field<Data>;
+pub type Gradients<E> = Field<E>;
 
-impl<Data: Differentiable> Field<Data> {
-    pub(crate) fn new(origin: Origin, payloads: Vec<Data>) -> Self {
+impl<E: Element> Field<E> {
+    pub(crate) fn new(origin: Origin, payloads: Vec<Tensor<E>>) -> Self {
         Self { origin, payloads }
     }
 
@@ -66,7 +66,7 @@ impl<Data: Differentiable> Field<Data> {
     /// # Panics
     /// Panics if `symbol` belongs to a different network or was
     /// allocated after this field was produced.
-    pub fn of(&self, symbol: Symbol) -> &Data {
+    pub fn of(&self, symbol: Symbol) -> &Tensor<E> {
         assert!(
             symbol.origin == self.origin,
             "symbol belongs to a different network"
@@ -79,7 +79,7 @@ impl<Data: Differentiable> Field<Data> {
     }
 
     /// Returns a field with every entry passed through `transform`.
-    pub fn map(&self, transform: impl Fn(&Data) -> Data) -> Self {
+    pub fn map(&self, transform: impl Fn(&Tensor<E>) -> Tensor<E>) -> Self {
         Self {
             origin: self.origin,
             payloads: self.payloads.iter().map(transform).collect(),
@@ -91,7 +91,7 @@ impl<Data: Differentiable> Field<Data> {
     /// # Panics
     /// Panics if the fields belong to different networks or cover
     /// different numbers of nodes.
-    pub fn zip(&self, other: &Self, combine: impl Fn(&Data, &Data) -> Data) -> Self {
+    pub fn zip(&self, other: &Self, combine: impl Fn(&Tensor<E>, &Tensor<E>) -> Tensor<E>) -> Self {
         self.assert_compatible(other);
         Self {
             origin: self.origin,
@@ -107,7 +107,7 @@ impl<Data: Differentiable> Field<Data> {
     /// Returns every node's payload in tape order, for engine scans
     /// and the displays that plot a whole field rather than read one
     /// value out of it.
-    pub(crate) fn payloads(&self) -> &[Data] {
+    pub(crate) fn payloads(&self) -> &[Tensor<E>] {
         &self.payloads
     }
 
@@ -125,7 +125,7 @@ impl<Data: Differentiable> Field<Data> {
     /// Panics if `parameters` belongs to a different network or this
     /// field does not cover every parameter slot (it is stale: the
     /// recording grew parameters after the field was produced).
-    pub fn parameters(&self, parameters: &Parameters<Data>) -> Parameters<Data> {
+    pub fn parameters(&self, parameters: &Parameters<E>) -> Parameters<E> {
         parameters.filled_from(self)
     }
 
@@ -143,7 +143,7 @@ impl<Data: Differentiable> Field<Data> {
     }
 }
 
-impl<Data: Tensorial> Field<Data> {
+impl<E: Element> Field<E> {
     /// Returns a field with every entry multiplied by the single-value
     /// `factor`, spread to each entry's shape.
     ///
@@ -155,23 +155,23 @@ impl<Data: Tensorial> Field<Data> {
     /// # Panics
     /// For tensor payloads, panics if `factor` holds more than one
     /// value.
-    pub fn scale(&self, factor: &Data) -> Self {
+    pub fn scale(&self, factor: &Tensor<E>) -> Self {
         self.map(|value| value.clone() * factor.broadcast_like(value))
     }
 }
 
-impl<Data: Differentiable> Add for &Field<Data> {
-    type Output = Field<Data>;
+impl<E: Element> Add for &Field<E> {
+    type Output = Field<E>;
 
-    fn add(self, rhs: Self) -> Field<Data> {
+    fn add(self, rhs: Self) -> Field<E> {
         self.zip(rhs, |left, right| left.clone() + right.clone())
     }
 }
 
-impl<Data: Differentiable> Add for Field<Data> {
-    type Output = Field<Data>;
+impl<E: Element> Add for Field<E> {
+    type Output = Field<E>;
 
-    fn add(self, rhs: Self) -> Field<Data> {
+    fn add(self, rhs: Self) -> Field<E> {
         &self + &rhs
     }
 }

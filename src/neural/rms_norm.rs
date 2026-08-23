@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Symbol, Tape, Tensorial, Value};
+use crate::{Differentiable, Element, Symbol, Tape, Tensor, Value};
 
 use super::{Module, Visitor};
 
@@ -32,13 +32,13 @@ assert_impl_all!(RmsNorm<f64>: Send, Sync);
 /// is recorded on the family's [`Tape`], like
 /// [`Linear`](super::Linear).
 #[derive(Debug, Clone)]
-pub struct RmsNorm<Data> {
+pub struct RmsNorm<E> {
     scale: Symbol,
     epsilon: Symbol,
-    _marker: PhantomData<Data>,
+    _marker: PhantomData<E>,
 }
 
-impl<Data: Differentiable> RmsNorm<Data> {
+impl<E: Element> RmsNorm<E> {
     /// Allocates the layer's parameter on `tape` from its initial
     /// payload and returns the layer.
     ///
@@ -51,7 +51,7 @@ impl<Data: Differentiable> RmsNorm<Data> {
     /// # Panics
     /// Panics if `scale` is not rank 1 or `epsilon` holds more than one
     /// value.
-    pub fn new(tape: &Tape<Data>, scale: Data, epsilon: Data) -> Self {
+    pub fn new(tape: &Tape<E>, scale: Tensor<E>, epsilon: Tensor<E>) -> Self {
         let scale_shape = scale.shape();
         let epsilon_shape = epsilon.shape();
         assert_eq!(
@@ -77,7 +77,7 @@ impl<Data: Differentiable> RmsNorm<Data> {
     }
 }
 
-impl<Data: Tensorial> RmsNorm<Data> {
+impl<E: Element> RmsNorm<E> {
     /// Records the layer's expression over the `[batch, features]`
     /// value `input` on `tape` and returns the `[batch, features]`
     /// output value.
@@ -86,11 +86,7 @@ impl<Data: Tensorial> RmsNorm<Data> {
     /// Panics if the layer's parameter or `input` are not allocated on
     /// `tape`, or if `input` is not a rank-2 `[batch, features]`
     /// value agreeing with the scale on the feature count.
-    pub fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         let scale = tape.resolve(self.scale);
         let epsilon = tape.resolve(self.epsilon);
         let input_shape = input.shape();
@@ -118,12 +114,8 @@ impl<Data: Tensorial> RmsNorm<Data> {
 #[path = "tests/rms_norm_tests.rs"]
 mod tests;
 
-impl<Data: Tensorial> Module<Data> for RmsNorm<Data> {
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<Data>,
-        input: Value<'tape, Data>,
-    ) -> Value<'tape, Data> {
+impl<E: Element> Module<E> for RmsNorm<E> {
+    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
         RmsNorm::express(self, tape, input)
     }
 

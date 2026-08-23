@@ -3,9 +3,9 @@
 use malevich::Theme;
 
 use super::html;
-use crate::{Differentiable, Network};
+use crate::{Element, Network};
 
-impl<Data: Differentiable> Network<Data> {
+impl<E: Element> Network<E> {
     /// Renders the network as a self-contained HTML card: how much
     /// graph is recorded, and the reminder that payloads live in the
     /// caller's state.

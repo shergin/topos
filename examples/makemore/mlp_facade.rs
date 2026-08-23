@@ -43,7 +43,7 @@ fn main() {
     shuffle(&mut samples, &mut shuffle_state);
     println!("loaded {} names, {} samples", names.len(), samples.len());
 
-    let tape: Tape<Tensor<f32>> = Tape::new();
+    let tape: Tape<f32> = Tape::new();
 
     // The embedding table stays a plain parameter; the facade covers
     // the dense layers only. The allocation order and seeds match

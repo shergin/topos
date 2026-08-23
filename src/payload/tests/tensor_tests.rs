@@ -183,7 +183,7 @@ fn transcendentals_apply_elementwise() {
 
 #[test]
 fn tensor_payloads_flow_through_the_graph() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2], [0.0_f64, 1.0]));
     let y = x.tanh().symbol();
 
@@ -308,7 +308,7 @@ fn broadcast_and_sum_are_adjoint() {
 #[test]
 #[should_panic(expected = "a recording panicked earlier")]
 fn poisoned_tape_names_its_cause() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.leaf(Tensor::new([2], [1.0_f64, 2.0]));
     let b = tape.leaf(Tensor::new([3], [1.0, 2.0, 3.0]));
 
@@ -411,7 +411,7 @@ fn axis_sum_and_broadcast_are_adjoint() {
 #[test]
 #[should_panic(expected = "out of rank")]
 fn sum_along_rejects_excessive_axes() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let matrix = tape.leaf(Tensor::filled([2, 3], 1.0_f64));
     matrix.sum_along(2);
 }
@@ -419,7 +419,7 @@ fn sum_along_rejects_excessive_axes() {
 #[test]
 #[should_panic(expected = "requires the remaining shape")]
 fn broadcast_along_rejects_mismatched_operands() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let wrong = tape.leaf(Tensor::new([2], [1.0_f64, 2.0]));
     let reference = tape.leaf(Tensor::filled([2, 3], 0.0));
     wrong.broadcast_along(0, reference);
@@ -440,7 +440,7 @@ fn feeds_reject_mismatched_shapes() {
 #[test]
 #[should_panic(expected = "scalar target")]
 fn backward_rejects_non_scalar_targets() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2], [1.0_f64, 2.0]));
     let doubled = (x + x).symbol();
 
@@ -525,7 +525,7 @@ fn tensor_literals_mix_into_expressions() {
 
 #[test]
 fn shapes_are_known_before_anything_runs() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([3, 2], vec![1.0_f64; 6]));
     let w = tape.parameter(Tensor::filled([2, 1], 0.0_f64));
 
@@ -592,7 +592,7 @@ fn batched_matmul_falls_back_for_constant_storage() {
 
 #[test]
 fn recording_infers_batched_matmul_shapes() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.leaf(Tensor::new([2, 3, 4], vec![1.0_f64; 24]));
     let b = tape.leaf(Tensor::new([2, 4, 5], vec![1.0_f64; 40]));
     assert_eq!(a.matmul(b).shape(), Shape::new([2, 3, 5]));
@@ -601,7 +601,7 @@ fn recording_infers_batched_matmul_shapes() {
 #[test]
 #[should_panic(expected = "matmul operands must agree in rank, got [2, 2, 2] and [2, 2]")]
 fn recording_rejects_matmul_rank_mismatch() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.leaf(Tensor::new([2, 2, 2], vec![1.0_f64; 8]));
     let b = tape.leaf(Tensor::new([2, 2], vec![1.0_f64; 4]));
     a.matmul(b);
@@ -610,7 +610,7 @@ fn recording_rejects_matmul_rank_mismatch() {
 #[test]
 #[should_panic(expected = "matmul batch axes must agree, got [2, 2, 3] and [3, 3, 4]")]
 fn recording_rejects_matmul_batch_mismatch() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.leaf(Tensor::new([2, 2, 3], vec![1.0_f64; 12]));
     let b = tape.leaf(Tensor::new([3, 3, 4], vec![1.0_f64; 36]));
     a.matmul(b);
@@ -619,7 +619,7 @@ fn recording_rejects_matmul_batch_mismatch() {
 #[test]
 #[should_panic(expected = "matmul cannot multiply [2, 2] by [3, 1]")]
 fn recording_rejects_disagreeing_matmul_shapes() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.leaf(Tensor::new([2, 2], vec![1.0_f64; 4]));
     let b = tape.leaf(Tensor::new([3, 1], vec![1.0_f64; 3]));
     a.matmul(b);
@@ -628,7 +628,7 @@ fn recording_rejects_disagreeing_matmul_shapes() {
 #[test]
 #[should_panic(expected = "equal shapes")]
 fn recording_rejects_mismatched_addition() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let a = tape.leaf(Tensor::new([2], vec![1.0_f64; 2]));
     let b = tape.leaf(Tensor::new([3], vec![1.0_f64; 3]));
     let _ = a + b;
@@ -637,7 +637,7 @@ fn recording_rejects_mismatched_addition() {
 #[test]
 #[should_panic(expected = "single-element operand")]
 fn recording_rejects_broadcast_of_multi_element_sources() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let source = tape.leaf(Tensor::new([2], vec![1.0_f64; 2]));
     let reference = tape.leaf(Tensor::new([3], vec![0.0_f64; 3]));
     source.broadcast_like(reference);
@@ -796,7 +796,7 @@ fn permute_rejects_non_permutations() {
 
 #[test]
 fn reshape_routes_gradients_back() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 3], [1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0]));
     let weight = tape.leaf(Tensor::new([6], [10.0, 20.0, 30.0, 40.0, 50.0, 60.0]));
 
@@ -815,7 +815,7 @@ fn reshape_routes_gradients_back() {
 
 #[test]
 fn permute_routes_gradients_back() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 3], [1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0]));
     let weight = tape.leaf(Tensor::new([3, 2], [10.0, 20.0, 30.0, 40.0, 50.0, 60.0]));
 
@@ -834,7 +834,7 @@ fn permute_routes_gradients_back() {
 
 #[test]
 fn squeeze_and_unsqueeze_adjust_extent_one_axes() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([3], [1.0_f64, 2.0, 3.0]));
     let unsqueezed = x.unsqueeze(0);
     let squeezed = unsqueezed.squeeze(0);
@@ -851,7 +851,7 @@ fn squeeze_and_unsqueeze_adjust_extent_one_axes() {
 #[test]
 #[should_panic(expected = "changes the number of elements")]
 fn recording_rejects_volume_changing_reshape() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 3], vec![1.0_f64; 6]));
     x.reshape([4]);
 }
@@ -899,7 +899,7 @@ fn narrow_rejects_empty_windows_at_the_axis_end() {
 #[test]
 #[should_panic(expected = "at least one element")]
 fn narrow_rejects_empty_windows_at_recording() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let matrix = tape.leaf(Tensor::new([2, 3], vec![1.0_f64; 6]));
     matrix.narrow(1, 0, 0);
 }
@@ -926,7 +926,7 @@ fn pad_places_a_window_into_zeros() {
 
 #[test]
 fn narrow_routes_gradients_to_the_window() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 3], [1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0]));
 
     // Summing columns 1..3 gives a gradient of one there and zero in the
@@ -1097,7 +1097,7 @@ fn gather_op_routes_gradients_by_scatter_add() {
 
 #[test]
 fn gather_infers_the_result_shape() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let table = tape.leaf(Tensor::new([4, 3], vec![0.0_f64; 12]));
     let selection = tape.input(Tensor::selection(vec![0usize, 1], 4, 1.0));
 
@@ -1109,7 +1109,7 @@ fn gather_infers_the_result_shape() {
 #[test]
 #[should_panic(expected = "does not match table rows")]
 fn gather_rejects_vocabulary_mismatch() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let table = tape.leaf(Tensor::new([3, 2], vec![0.0_f64; 6]));
     let selection = tape.input(Tensor::selection(vec![0usize], 4, 1.0));
     table.gather(selection);
@@ -1153,14 +1153,14 @@ fn log_softmax_routes_gradients_through_the_probabilities() {
 #[test]
 #[should_panic(expected = "out of rank")]
 fn log_softmax_rejects_excessive_axes() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let logits = tape.leaf(Tensor::filled([2, 3], 0.0_f64));
     logits.log_softmax(2);
 }
 
 #[test]
 fn relu_masks_gradients_by_sign() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([4], [-2.0_f64, -0.5, 0.0, 3.0]));
     let activated = x.relu();
     let loss = activated.sum();
@@ -1199,7 +1199,7 @@ fn roots_and_powers_route_gradients() {
 #[test]
 #[should_panic(expected = "equal shapes")]
 fn maximum_rejects_mismatched_operands() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let left = tape.leaf(Tensor::filled([2], 0.0_f64));
     let right = tape.leaf(Tensor::filled([3], 0.0));
     left.maximum(right);

@@ -3,9 +3,9 @@
 use malevich::Theme;
 
 use super::html;
-use crate::{Differentiable, Parameters};
+use crate::{Element, Parameters};
 
-impl<Data: Differentiable> Parameters<Data> {
+impl<E: Element> Parameters<E> {
     /// Renders the state as a self-contained HTML card: how many
     /// parameter slots it carries, and how to read one.
     ///

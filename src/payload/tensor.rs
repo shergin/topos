@@ -12,7 +12,7 @@ use super::layout::{Layout, Strides};
 use super::normalized::BatchNormTask;
 use super::storage::Storage;
 use super::tensorial::{composed_batch_norm, composed_max_pool, composed_windowed_patches};
-use super::{Differentiable, Elementary, Shape, Tensorial};
+use super::{Differentiable, Element, Elementary, Shape, Tensorial};
 
 // Request-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
@@ -646,9 +646,11 @@ impl<'tensor, Element: Clone> Iterator for ElementIter<'tensor, Element> {
 /// The rank-0 conversion: one element becomes the tensor of shape
 /// `[]`. It is what lets `tape.parameter(0.0_f64)` and payload
 /// literals in operator position stay scalar-looking while the graph
-/// is always tensors.
-impl<Element: Differentiable> From<Element> for Tensor<Element> {
-    fn from(element: Element) -> Self {
+/// is always tensors. The bound is the `Element` seam marker rather
+/// than `Differentiable` so a tensor can never be mistaken for an
+/// element of a deeper tensor by inference.
+impl<E: Element> From<E> for Tensor<E> {
+    fn from(element: E) -> Self {
         Self::constant(Shape::scalar(), element)
     }
 }

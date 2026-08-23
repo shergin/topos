@@ -55,7 +55,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
 use topos::{
-    Bf16, Differentiable, Elementary, Emittable, Module, Plan, Request, Run, Symbol, Tape, Tensor,
+    Bf16, Differentiable, Element, Emittable, Module, Plan, Request, Run, Symbol, Tape, Tensor,
     checkpoint,
 };
 
@@ -88,7 +88,7 @@ struct Sampler {
 /// Records the sampling expression over `model`: the embedded window
 /// and the extraction row are per-run inputs, and the logits are the
 /// tied head — the embedding table transposed.
-fn record<E: Elementary + From<f32> + 'static>(tape: &Tape<Tensor<E>>, model: &Gpt2<E>) -> Sampler {
+fn record<E: Element + From<f32> + 'static>(tape: &Tape<E>, model: &Gpt2<E>) -> Sampler {
     let embedded = tape.input(Tensor::filled([CONTEXT_LEN, EMBED_DIM], E::from(0.0)));
     let extraction = tape.input(Tensor::selection(vec![0], CONTEXT_LEN, E::from(1.0)));
     let last = model.express(tape, embedded).gather(extraction);
@@ -123,10 +123,7 @@ struct Decoder {
 /// position row), the mask row, and the per-layer caches are per-run
 /// inputs. The logits are the tied head spelled `(wte . row^T)^T`, so
 /// no run materializes the transposed table.
-fn record_decode<E: Elementary + From<f32> + 'static>(
-    tape: &Tape<Tensor<E>>,
-    model: &Gpt2<E>,
-) -> Decoder {
+fn record_decode<E: Element + From<f32> + 'static>(tape: &Tape<E>, model: &Gpt2<E>) -> Decoder {
     let zeros = |shape: [usize; 2]| Tensor::filled(shape, E::from(0.0));
     let stream = tape.input(zeros([1, EMBED_DIM]));
     let position = tape.input(Tensor::selection(vec![0], CONTEXT_LEN, E::from(1.0)));
@@ -178,7 +175,7 @@ struct Carry<E> {
     entries: Vec<(Symbol, Tensor<E>)>,
 }
 
-impl<E: Elementary + From<f32>> Carry<E> {
+impl<E: Element + From<f32>> Carry<E> {
     /// Returns the empty caches: generation's initial state.
     fn new(caches: &[LayerCache]) -> Self {
         let zeros = || Tensor::filled([CONTEXT_LEN, EMBED_DIM], E::from(0.0));
@@ -198,7 +195,7 @@ impl<E: Elementary + From<f32>> Carry<E> {
 
     /// Returns the carry advanced from `run`: each cache input's next
     /// payload is its pair's output in the run.
-    fn advanced(run: &Run<Tensor<E>>, caches: &[LayerCache]) -> Self {
+    fn advanced(run: &Run<E>, caches: &[LayerCache]) -> Self {
         let entries = caches
             .iter()
             .flat_map(|cache| {
@@ -223,9 +220,9 @@ struct XlaServer {
 impl XlaServer {
     /// Emits the plan, stages `arguments` — the parameter payloads in
     /// the emitted argument order — and starts the server.
-    fn new<E>(plan: &Plan<Tensor<E>>, arguments: &[Tensor<E>]) -> Self
+    fn new<E>(plan: &Plan<E>, arguments: &[Tensor<E>]) -> Self
     where
-        E: Elementary + Emittable + Copy,
+        E: Element + Emittable + Copy,
         f32: From<E>,
     {
         let directory = weights::cache_directory();
@@ -337,7 +334,7 @@ fn draw(logits: &[f32], temperature: f64, top: usize, state: &mut u64) -> usize 
 /// `prompt` on `engine`, reporting timings as `label`.
 fn run<E>(prompt: &str, count: usize, engine: Engine, label: &str)
 where
-    E: Elementary + Emittable + From<f32> + Copy + 'static,
+    E: Element + Emittable + From<f32> + Copy + 'static,
     f32: From<E>,
 {
     let loading = Instant::now();
@@ -379,8 +376,7 @@ where
             .iter()
             .flat_map(|cache| [cache.keys_out, cache.values_out])
             .collect();
-        let plan: Plan<Tensor<E>> =
-            network.compile(Request::roots([decoder.logits]).observe(outputs));
+        let plan: Plan<E> = network.compile(Request::roots([decoder.logits]).observe(outputs));
         println!(
             "recorded {} nodes and compiled the decode plan in {:.1}s",
             network.len(),
@@ -467,7 +463,7 @@ where
     }
 
     let compiling = Instant::now();
-    let plan: Plan<Tensor<E>> = network.compile(Request::roots([sampler.logits]));
+    let plan: Plan<E> = network.compile(Request::roots([sampler.logits]));
     println!(
         "recorded {} nodes and compiled the plan in {:.1}s",
         network.len(),

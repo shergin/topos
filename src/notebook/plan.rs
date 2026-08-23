@@ -8,9 +8,9 @@
 use malevich::{Frame, Line, Plot, Theme};
 
 use super::html;
-use crate::{Differentiable, Plan};
+use crate::{Element, Plan};
 
-impl<Data: Differentiable> Plan<Data> {
+impl<E: Element> Plan<E> {
     /// Renders the plan as a self-contained HTML card: every scheduled
     /// node with its operation, shape, and liveness, then the live
     /// volume the analysis licenses, plotted along the schedule.

@@ -38,7 +38,7 @@ fn an_unfed_run_is_the_identity() {
     // The mask input's default payload is all ones, so the masked
     // expression answers bitwise as the plain one — inference needs
     // no second expression and no mode flag.
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.parameter(Tensor::new(
         [2, 3],
         vec![0.5_f64, -1.0, 2.0, 3.0, -0.25, 1.5],
@@ -102,7 +102,7 @@ fn dropout_composes_as_a_module() {
     let tape = Tape::new();
     let x = tape.parameter(Tensor::new([2, 2], [1.0_f64, -2.0, 3.0, -4.0]));
     let dropout = Dropout::new(&tape, [2, 2]);
-    let module: &dyn Module<Tensor<f64>> = &dropout;
+    let module: &dyn Module<f64> = &dropout;
     let through_trait = module.express(&tape, x).symbol();
     let network = tape.into_network();
     let mask = Tensor::new([2, 2], [2.0_f64, 0.0, 0.0, 2.0]);

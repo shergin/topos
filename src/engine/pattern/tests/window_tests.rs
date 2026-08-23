@@ -7,7 +7,7 @@ use super::super::view::View;
 use super::match_at;
 
 /// Records a padded strided convolution and returns its network.
-fn conv_network() -> Network<Tensor<f64>> {
+fn conv_network() -> Network<f64> {
     let tape = Tape::new();
     let input = tape.leaf(Tensor::new(
         [1, 2, 4, 4],
@@ -23,7 +23,7 @@ fn conv_network() -> Network<Tensor<f64>> {
 }
 
 /// Returns the index of the network's single `matmul` node.
-fn matmul_index(network: &Network<Tensor<f64>>) -> usize {
+fn matmul_index(network: &Network<f64>) -> usize {
     let functions = &network.structure().functions;
     (0..functions.len())
         .find(|&index| matches!(functions.get(index), Some(Function::MatMul(_))))

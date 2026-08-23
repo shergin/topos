@@ -93,36 +93,6 @@ where
     }
 }
 
-impl Renderable for f32 {
-    fn cells(&self) -> Vec<f64> {
-        vec![f64::from(*self)]
-    }
-
-    fn element_name() -> &'static str {
-        "f32"
-    }
-}
-
-impl Renderable for f64 {
-    fn cells(&self) -> Vec<f64> {
-        vec![*self]
-    }
-
-    fn element_name() -> &'static str {
-        "f64"
-    }
-}
-
-impl Renderable for Bf16 {
-    fn cells(&self) -> Vec<f64> {
-        vec![Scalar::to_f64(*self)]
-    }
-
-    fn element_name() -> &'static str {
-        "bf16"
-    }
-}
-
 /// Formats one number at a width a table can align, without trailing
 /// zeros and without scientific notation for ordinary magnitudes.
 pub(crate) fn number(value: f64) -> String {

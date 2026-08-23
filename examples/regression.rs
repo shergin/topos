@@ -43,7 +43,7 @@ fn main() {
         .map(|(&x, noise)| x.sin() + noise)
         .collect();
 
-    let tape: Tape<Tensor<f32>> = Tape::new();
+    let tape: Tape<f32> = Tape::new();
     let mlp = Mlp::new(&tape, &[1, HIDDEN_LEN, 1], init::xavier(7));
 
     let input = tape.input(features);

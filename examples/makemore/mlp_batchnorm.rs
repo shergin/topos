@@ -48,18 +48,18 @@ const MOMENTUM: f32 = 0.01;
 /// The model's parameters as recorded proxies: the part-2 layout with
 /// the hidden bias replaced by a batch-normalization stage.
 struct Model<'tape> {
-    embeddings: Value<'tape, Tensor<f32>>,
-    hidden_weights: Value<'tape, Tensor<f32>>,
-    norm: BatchNorm<Tensor<f32>>,
-    output_weights: Value<'tape, Tensor<f32>>,
-    output_bias: Value<'tape, Tensor<f32>>,
+    embeddings: Value<'tape, f32>,
+    hidden_weights: Value<'tape, f32>,
+    norm: BatchNorm<f32>,
+    output_weights: Value<'tape, f32>,
+    output_bias: Value<'tape, f32>,
 }
 
 impl<'tape> Model<'tape> {
     /// Allocates the parameters on `tape`: the embedding table, the
     /// bias-free hidden layer, the norm's scale and shift (ones and
     /// zeros, the standard start), and the affine output.
-    fn new(tape: &'tape Tape<Tensor<f32>>) -> Self {
+    fn new(tape: &'tape Tape<f32>) -> Self {
         let mut weights = init::xavier(7);
         Self {
             embeddings: tape.parameter(init::normal(8, 1.0)(&Shape::new([
@@ -81,11 +81,7 @@ impl<'tape> Model<'tape> {
 
     /// Records the shared head of both expressions: embed, flatten,
     /// and the bias-free hidden preactivation.
-    fn preactivation(
-        &self,
-        contexts: Value<'tape, Tensor<f32>>,
-        rows: usize,
-    ) -> Value<'tape, Tensor<f32>> {
+    fn preactivation(&self, contexts: Value<'tape, f32>, rows: usize) -> Value<'tape, f32> {
         self.embeddings
             .gather(contexts)
             .reshape([rows, CONTEXT_LEN * EMBED_DIM])
@@ -94,7 +90,7 @@ impl<'tape> Model<'tape> {
 
     /// Records the shared tail: squash the normalized preactivation
     /// and score.
-    fn logits(&self, normalized: Value<'tape, Tensor<f32>>) -> Value<'tape, Tensor<f32>> {
+    fn logits(&self, normalized: Value<'tape, f32>) -> Value<'tape, f32> {
         let hidden = normalized.tanh();
         let product = hidden.matmul(self.output_weights);
         product + self.output_bias.broadcast_along(0, product)

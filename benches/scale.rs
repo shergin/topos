@@ -14,7 +14,7 @@ use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rayon::ThreadPoolBuilder;
 use rayon::prelude::*;
 
-use topos::Tape;
+use topos::{Tape, Tensor};
 
 fn scale(criterion: &mut Criterion) {
     let mut group = criterion.benchmark_group("scale");
@@ -49,7 +49,7 @@ fn scale(criterion: &mut Criterion) {
                     pool.install(|| {
                         losses
                             .par_iter()
-                            .map(|&loss| *evaluation.backward(loss).of(weight))
+                            .map(|&loss| evaluation.backward(loss).of(weight).scalar())
                             .sum::<f64>()
                     })
                 });
@@ -83,7 +83,7 @@ fn scale(criterion: &mut Criterion) {
                                 let evaluation = trainer.forward(&state, []);
                                 let gradients = evaluation.backward(loss_symbol).parameters(&state);
                                 state = state.step(&gradients, |parameter, gradient| {
-                                    parameter - 0.01 * gradient
+                                    parameter.clone() - gradient.clone() * Tensor::from(0.01)
                                 });
                             }
                         })

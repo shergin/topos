@@ -2,7 +2,7 @@ use crate::{Shape, Tape, Tensor, concat, stack};
 
 #[test]
 fn abs_composes_from_maximum() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([3], [-2.0_f64, 0.0, 3.0]));
     let magnitude = x.abs();
     let loss = magnitude.sum();
@@ -18,7 +18,7 @@ fn abs_composes_from_maximum() {
 
 #[test]
 fn relu_composes_from_maximum_with_a_counted_zero() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.parameter(Tensor::new([4], [-2.0_f64, -0.0, 0.0, 3.0]));
     let rectified = x.relu();
     let loss = rectified.sum();
@@ -99,7 +99,7 @@ fn logsumexp_stays_finite_for_finite_extreme_logits() {
 
 #[test]
 fn mean_along_divides_by_the_axis_extent() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 3], [1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0]));
     let mean = x.mean_along(0);
     assert_eq!(mean.shape(), Shape::new([3]));
@@ -118,14 +118,14 @@ fn mean_along_divides_by_the_axis_extent() {
 #[test]
 #[should_panic(expected = "out of rank")]
 fn mean_along_rejects_an_axis_out_of_rank() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2], [1.0_f64, 2.0]));
     x.mean_along(1);
 }
 
 #[test]
 fn broadcast_to_prepends_leading_axes() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let row = tape.leaf(Tensor::new([3], [1.0_f64, 2.0, 3.0]));
     let grid = row.broadcast_to([2, 3]);
     assert_eq!(grid.shape(), Shape::new([2, 3]));
@@ -144,7 +144,7 @@ fn broadcast_to_prepends_leading_axes() {
 
 #[test]
 fn broadcast_to_expands_interior_unit_axes() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let column = tape.leaf(Tensor::new([2, 1, 2], [1.0_f64, 2.0, 3.0, 4.0]));
     let grid = column.broadcast_to([2, 3, 2]);
     assert_eq!(grid.shape(), Shape::new([2, 3, 2]));
@@ -165,7 +165,7 @@ fn broadcast_to_expands_interior_unit_axes() {
 
 #[test]
 fn broadcast_to_expands_several_axes() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let row = tape.leaf(Tensor::new([1, 3], [1.0_f64, 2.0, 3.0]));
     let block = row.broadcast_to([2, 2, 3]);
     assert_eq!(block.shape(), Shape::new([2, 2, 3]));
@@ -183,7 +183,7 @@ fn broadcast_to_expands_several_axes() {
 
 #[test]
 fn broadcast_to_is_identity_on_an_equal_shape() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 2], [1.0_f64, 2.0, 3.0, 4.0]));
     let same = x.broadcast_to([2, 2]);
     assert_eq!(same.shape(), Shape::new([2, 2]));
@@ -197,7 +197,7 @@ fn broadcast_to_is_identity_on_an_equal_shape() {
 #[test]
 #[should_panic(expected = "cannot align")]
 fn broadcast_to_rejects_an_incompatible_axis() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([3], [1.0_f64, 2.0, 3.0]));
     x.broadcast_to([2, 4]);
 }
@@ -220,7 +220,7 @@ fn logsumexp_gradient_is_the_softmax() {
 
 #[test]
 fn concat_joins_values_along_the_leading_axis() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let top = tape.leaf(Tensor::new([2, 2], [1.0_f64, 2.0, 3.0, 4.0]));
     let bottom = tape.leaf(Tensor::new([1, 2], [5.0_f64, 6.0]));
     let joined = concat(&[top, bottom], 0);
@@ -247,7 +247,7 @@ fn concat_joins_values_along_the_leading_axis() {
 
 #[test]
 fn concat_joins_values_along_an_interior_axis() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let left = tape.leaf(Tensor::new([2, 1], [1.0_f64, 4.0]));
     let right = tape.leaf(Tensor::new([2, 2], [2.0_f64, 3.0, 5.0, 6.0]));
     let joined = concat(&[left, right], 1);
@@ -261,7 +261,7 @@ fn concat_joins_values_along_an_interior_axis() {
 
 #[test]
 fn concat_of_a_single_value_is_the_value_itself() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2], [1.0_f64, 2.0]));
     let joined = concat(&[x], 0);
     assert_eq!(joined.shape(), Shape::new([2]));
@@ -275,7 +275,7 @@ fn concat_of_a_single_value_is_the_value_itself() {
 #[test]
 #[should_panic(expected = "out of rank")]
 fn concat_rejects_an_axis_out_of_rank() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2], [1.0_f64, 2.0]));
     concat(&[x, x], 1);
 }
@@ -283,7 +283,7 @@ fn concat_rejects_an_axis_out_of_rank() {
 #[test]
 #[should_panic(expected = "equal shapes off the axis")]
 fn concat_rejects_mismatched_shapes_off_the_axis() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let x = tape.leaf(Tensor::new([2, 2], vec![1.0_f64; 4]));
     let y = tape.leaf(Tensor::new([2, 3], vec![1.0_f64; 6]));
     concat(&[x, y], 0);
@@ -291,7 +291,7 @@ fn concat_rejects_mismatched_shapes_off_the_axis() {
 
 #[test]
 fn stack_lifts_values_onto_a_new_axis() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let first = tape.leaf(Tensor::new([3], [1.0_f64, 2.0, 3.0]));
     let second = tape.leaf(Tensor::new([3], [4.0_f64, 5.0, 6.0]));
 

@@ -4,7 +4,7 @@ use super::max_pool;
 
 #[test]
 fn max_pool_takes_window_maxima() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new(
         [1, 1, 4, 4],
         (1..=16).map(|v| v as f64).collect::<Vec<_>>(),
@@ -21,7 +21,7 @@ fn max_pool_takes_window_maxima() {
 
 #[test]
 fn max_pool_routes_the_gradient_to_the_maximum() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::new(
         [1, 1, 4, 4],
         (1..=16).map(|v| v as f64).collect::<Vec<_>>(),
@@ -43,7 +43,7 @@ fn max_pool_routes_the_gradient_to_the_maximum() {
 
 #[test]
 fn max_pool_ties_route_to_the_earliest_lane() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::filled([1, 1, 2, 2], 5.0_f64));
 
     let pooled = max_pool(input, 2, 2);
@@ -63,7 +63,7 @@ fn max_pool_ties_route_to_the_earliest_lane() {
 #[test]
 #[should_panic(expected = "must be rank 4")]
 fn pooling_rejects_non_image_input() {
-    let tape = Tape::new();
+    let tape: Tape<f64> = Tape::new();
     let input = tape.leaf(Tensor::filled([1, 4, 4], 0.0_f64));
     max_pool(input, 2, 2);
 }

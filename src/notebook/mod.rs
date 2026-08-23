@@ -43,7 +43,7 @@
 //! over the caller-owned state:
 //!
 //! ```no_run
-//! # use topos::{Network, Parameters, Symbol, Tape};
+//! # use topos::{Network, Parameters, Symbol, Tape, Tensor};
 //! # let tape: Tape<f64> = Tape::new();
 //! # let w: Symbol = tape.parameter(0.0).symbol();
 //! # let loss: Symbol = { let w = tape.resolve(w); (w * w).symbol() };
@@ -54,9 +54,11 @@
 //!         .forward(&parameters, [])
 //!         .backward(loss)
 //!         .parameters(&parameters);
-//!     parameters = parameters.step(&gradients, |p, g| p - 0.02 * g);
+//!     parameters = parameters.step(&gradients, |p, g| {
+//!         p.clone() - g.clone() * Tensor::from(0.02)
+//!     });
 //! }
-//! parameters.of(w);            // the trained payload, by name
+//! parameters.of(w).scalar();   // the trained payload, by name
 //! ```
 //!
 //! To record more later, reopen with
