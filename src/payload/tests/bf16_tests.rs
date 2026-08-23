@@ -160,7 +160,7 @@ fn scatter_accumulates_duplicate_rows_in_f32() {
     // accumulates in f32, so the ones keep landing past 256.
     let gradient = Tensor::new([3, 1], [256.0_f32, 1.0, 1.0].map(Bf16::from_f32).to_vec());
     let selection = Tensor::selection(vec![0, 0, 0], 1, Bf16::ONE);
-    let folded = gradient.scatter(&selection, 1);
+    let folded = gradient.scatter(&selection);
     assert_eq!(folded.to_vec(), vec![Bf16::from_f32(258.0)]);
 }
 

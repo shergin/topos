@@ -1010,7 +1010,7 @@ fn scatter_accumulates_repeated_rows() {
 
     // Rows are scattered by index; token 0 is selected twice, so its row
     // accumulates two ones, and token 1 (never selected) stays zero.
-    let scattered = gradient.scatter(&selection, 3);
+    let scattered = gradient.scatter(&selection);
     assert_eq!(scattered.shape(), Shape::new([3, 2]));
     assert_eq!(scattered.to_vec(), vec![2.0, 2.0, 0.0, 0.0, 1.0, 1.0]);
 }
@@ -1020,7 +1020,7 @@ fn scatter_accumulates_repeated_rows() {
 fn scatter_rejects_extra_gradient_rows() {
     let gradient = Tensor::new([2, 1], [10.0_f64, 20.0]);
     let selection = Tensor::selection([0_usize], 2, 1.0);
-    gradient.scatter(&selection, 2);
+    gradient.scatter(&selection);
 }
 
 #[test]
@@ -1028,15 +1028,7 @@ fn scatter_rejects_extra_gradient_rows() {
 fn scatter_rejects_missing_gradient_rows() {
     let gradient = Tensor::new([1, 1], [10.0_f64]);
     let selection = Tensor::selection([0_usize, 1], 2, 1.0);
-    gradient.scatter(&selection, 2);
-}
-
-#[test]
-#[should_panic(expected = "disagree with the selection vocabulary")]
-fn scatter_rejects_a_foreign_vocabulary() {
-    let gradient = Tensor::new([1, 1], [10.0_f64]);
-    let selection = Tensor::selection([0_usize], 3, 1.0);
-    gradient.scatter(&selection, 2);
+    gradient.scatter(&selection);
 }
 
 #[test]
@@ -1044,7 +1036,7 @@ fn scatter_rejects_a_foreign_vocabulary() {
 fn scatter_rejects_a_rank_zero_gradient() {
     let gradient = Tensor::filled([1], 10.0_f64).sum();
     let selection = Tensor::selection([0_usize], 1, 1.0);
-    gradient.scatter(&selection, 1);
+    gradient.scatter(&selection);
 }
 
 #[test]

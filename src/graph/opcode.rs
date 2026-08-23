@@ -119,11 +119,9 @@ pub enum Opcode {
     },
     /// Table rows selected by a one-hot selection operand.
     Gather,
-    /// Rows scatter-added into a table by a one-hot selection operand.
-    Scatter {
-        /// The result's number of rows: the selection's vocabulary.
-        rows: usize,
-    },
+    /// Rows scatter-added into a table by a one-hot selection operand;
+    /// the result's row count is the selection's vocabulary.
+    Scatter,
     /// The stable fused log-softmax along one axis.
     LogSoftmax {
         /// The normalized axis.
@@ -172,7 +170,7 @@ impl Opcode {
             Opcode::Unfold { .. } => "Unfold",
             Opcode::Fold { .. } => "Fold",
             Opcode::Gather => "Gather",
-            Opcode::Scatter { .. } => "Scatter",
+            Opcode::Scatter => "Scatter",
             Opcode::LogSoftmax { .. } => "LogSoftmax",
             Opcode::LogSumExp { .. } => "LogSumExp",
         }
@@ -206,7 +204,7 @@ impl Opcode {
             | Opcode::Broadcast
             | Opcode::BroadcastAlong { .. }
             | Opcode::Gather
-            | Opcode::Scatter { .. } => 2,
+            | Opcode::Scatter => 2,
         }
     }
 
@@ -251,7 +249,6 @@ impl Opcode {
                 dilation,
                 extent,
             } => format!("axis={axis} size={size} step={step} dilation={dilation} extent={extent}"),
-            Opcode::Scatter { rows } => format!("rows={rows}"),
             _ => String::new(),
         }
     }

@@ -810,14 +810,8 @@ fn decode_carry_matches_the_full_context_plan_bitwise() {
     let mut updated: Vec<(Symbol, Symbol)> = Vec::new();
     for (&(fused_weights, projection), &(keys, values)) in layers.iter().zip(&caches) {
         let fused = row.matmul(tape.resolve(fused_weights));
-        let keys = keys
-            + fused
-                .narrow(1, EMBED, EMBED)
-                .scatter(position_input, CAPACITY);
-        let values = values
-            + fused
-                .narrow(1, 2 * EMBED, EMBED)
-                .scatter(position_input, CAPACITY);
+        let keys = keys + fused.narrow(1, EMBED, EMBED).scatter(position_input);
+        let values = values + fused.narrow(1, 2 * EMBED, EMBED).scatter(position_input);
         let heads: Vec<_> = (0..HEADS)
             .map(|head| {
                 let query = fused.narrow(1, head * HEAD_DIM, HEAD_DIM);

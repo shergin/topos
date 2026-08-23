@@ -23,7 +23,8 @@ impl Gather {
     }
 
     /// Returns the read set of the derivative rule below.
-    /// It reads the selection payload (the scatter needs its indices); the table contributes shape only.
+    /// It reads the selection payload (the scatter needs its indices);
+    /// the table contributes nothing.
     pub(crate) fn reads(&self) -> Reads {
         Reads {
             operands: [false, true],
@@ -64,8 +65,7 @@ impl Gather {
 
 impl<Rule: Tensorial> Operation<Rule> for Gather {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
-        let (&table, &selection) = binary(operands);
-        let rows = table.shape().axes()[0];
-        smallvec![Some(gradient.scatter(selection, rows)), None]
+        let (_, &selection) = binary(operands);
+        smallvec![Some(gradient.scatter(selection)), None]
     }
 }

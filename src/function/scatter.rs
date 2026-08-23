@@ -4,10 +4,11 @@ use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
-/// The rows of a gradient scatter-added into `rows` rows by a one-hot
+/// The rows of a gradient scatter-added into a table by a one-hot
 /// selection, with operands `[gradient, selection]`:
 /// [`Gather`](super::Gather)'s adjoint, [`Tensorial::scatter`] as a
-/// node.
+/// node. The result's row count is the selection's vocabulary — its
+/// second axis — so the operation carries no parameters.
 ///
 /// It exists as an opcode because `gather`'s derivative rule speaks
 /// `scatter`, so recorded gradients of embedding lookups need it on
@@ -18,9 +19,7 @@ use super::{Cotangents, Operation, Reads, binary};
 /// same selection — the pair is adjoint in both directions — and the
 /// selection is data, not a differentiable dependency.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct Scatter {
-    pub(crate) rows: usize,
-}
+pub(crate) struct Scatter;
 
 impl Scatter {
     /// Returns the arity: two operands.
@@ -38,9 +37,9 @@ impl Scatter {
         }
     }
 
-    /// Infers the result shape `[rows, ...gradient.shape[1..]]`,
+    /// Infers the result shape `[vocab, ...gradient.shape[1..]]`,
     /// requiring the selection to be rank 2 with one row per gradient
-    /// row and a vocabulary of exactly `rows`.
+    /// row.
     pub(crate) fn infer_shape(&self, operands: &[Shape]) -> Shape {
         let (gradient, selection) = binary(operands);
         assert!(
@@ -59,21 +58,14 @@ impl Scatter {
             gradient.axes()[0],
             selection.axes()[0]
         );
-        assert_eq!(
-            selection.axes()[1],
-            self.rows,
-            "scatter rows {} disagree with the selection vocabulary {}",
-            self.rows,
-            selection.axes()[1]
-        );
-        Shape::new(std::iter::once(self.rows).chain(gradient.axes()[1..].iter().copied()))
+        Shape::new(std::iter::once(selection.axes()[1]).chain(gradient.axes()[1..].iter().copied()))
     }
 }
 
 impl Scatter {
     pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&gradient, &selection) = binary(operands);
-        gradient.scatter(selection, self.rows)
+        gradient.scatter(selection)
     }
 }
 

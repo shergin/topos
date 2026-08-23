@@ -345,7 +345,7 @@ fn scatter_closes() {
     let rows = tape.parameter(varied([3, 2], 1));
     let selection = tape.input(Tensor::selection(vec![0_usize, 2, 0], 3, 1.0));
     let weights = tape.leaf(varied([3, 2], 2));
-    let loss = (rows.scatter(selection, 3) * weights).sum();
+    let loss = (rows.scatter(selection) * weights).sum();
     assert_closure(loss.symbol(), &[rows.symbol()], tape);
 }
 

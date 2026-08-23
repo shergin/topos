@@ -208,7 +208,7 @@ impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
         Self::of(self.value.gather(selection.value))
     }
 
-    fn scatter(&self, selection: &Self, rows: usize) -> Self {
-        Self::of(self.value.scatter(selection.value, rows))
+    fn scatter(&self, selection: &Self) -> Self {
+        Self::of(self.value.scatter(selection.value))
     }
 }

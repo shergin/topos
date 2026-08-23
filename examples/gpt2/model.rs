@@ -147,14 +147,8 @@ impl<E: Element> Attention<E> {
     ) -> Decoded<'tape, E> {
         let scale = tape.resolve(self.scale);
         let fused = self.fused.express(input);
-        let keys = keys
-            + fused
-                .narrow(1, EMBED_DIM, EMBED_DIM)
-                .scatter(position, CONTEXT_LEN);
-        let values = values
-            + fused
-                .narrow(1, 2 * EMBED_DIM, EMBED_DIM)
-                .scatter(position, CONTEXT_LEN);
+        let keys = keys + fused.narrow(1, EMBED_DIM, EMBED_DIM).scatter(position);
+        let values = values + fused.narrow(1, 2 * EMBED_DIM, EMBED_DIM).scatter(position);
         let heads: Vec<Value<'tape, E>> = (0..HEAD_COUNT)
             .map(|head| {
                 let query = fused.narrow(1, head * HEAD_DIM, HEAD_DIM);

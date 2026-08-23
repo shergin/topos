@@ -213,10 +213,10 @@ impl<Data> Function<Data> {
         })
     }
 
-    /// Creates the scatter-add of `[gradient, selection]` into `rows`
-    /// rows.
-    pub(crate) fn scatter(rows: usize) -> Self {
-        Function::Scatter(Scatter { rows })
+    /// Creates the scatter-add of `[gradient, selection]` into the
+    /// selection's vocabulary rows.
+    pub(crate) fn scatter() -> Self {
+        Function::Scatter(Scatter)
     }
 
     /// Creates the elementwise power of the `[base, exponent]` operands.
@@ -283,7 +283,7 @@ impl<Data> Function<Data> {
                 extent: fold.extent,
             },
             Function::Gather(_) => Opcode::Gather,
-            Function::Scatter(scatter) => Opcode::Scatter { rows: scatter.rows },
+            Function::Scatter(_) => Opcode::Scatter,
             Function::LogSoftmax(log_softmax) => Opcode::LogSoftmax {
                 axis: log_softmax.axis,
             },

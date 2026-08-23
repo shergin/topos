@@ -119,10 +119,10 @@ pub trait Tensorial:
     /// Returns the rows of `self` selected by the one-hot `selection`.
     fn gather(&self, selection: &Self) -> Self;
 
-    /// Scatter-adds the rows of `self` into `rows` rows by
-    /// `selection`'s indices: the adjoint of
+    /// Scatter-adds the rows of `self` into one row per entry of
+    /// `selection`'s vocabulary, by its indices: the adjoint of
     /// [`gather`](Tensorial::gather).
-    fn scatter(&self, selection: &Self, rows: usize) -> Self;
+    fn scatter(&self, selection: &Self) -> Self;
 }
 
 /// Composes the unfused im2col formula — pad, two unfolds, permute,

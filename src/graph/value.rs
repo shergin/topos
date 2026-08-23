@@ -414,19 +414,19 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.apply(Function::gather(), &[self.id, selection.id])
     }
 
-    /// Records the rows of this value scatter-added into `rows` rows by
-    /// `selection`'s one-hot indices on the same tape and returns a
-    /// proxy to it: [`gather`](Value::gather)'s adjoint, accumulating
-    /// rows selected more than once. The selection is data and receives
-    /// no gradient.
+    /// Records the rows of this value scatter-added into one row per
+    /// entry of `selection`'s vocabulary by its one-hot indices on the
+    /// same tape and returns a proxy to it: [`gather`](Value::gather)'s
+    /// adjoint, accumulating rows selected more than once. The
+    /// selection is data and receives no gradient.
     ///
     /// # Panics
     /// Panics if the values belong to different tapes, this value is
-    /// rank 0, `selection` is not rank 2 with one row per leading entry
-    /// of this value, or its vocabulary differs from `rows`.
-    pub fn scatter(self, selection: Self, rows: usize) -> Self {
+    /// rank 0, or `selection` is not rank 2 with one row per leading
+    /// entry of this value.
+    pub fn scatter(self, selection: Self) -> Self {
         self.assert_same_tape(&selection);
-        self.apply(Function::scatter(rows), &[self.id, selection.id])
+        self.apply(Function::scatter(), &[self.id, selection.id])
     }
 
     /// Records the log-softmax of this value along `axis` on the same

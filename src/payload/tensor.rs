@@ -1671,10 +1671,10 @@ impl<Element: Elementary> Tensor<Element> {
     }
 
     /// Scatter-adds the rows of `self` (a `[count, ...]` gradient) into a
-    /// zero `[rows, ...]` payload by `selection`'s indices: the adjoint of
-    /// [`gather`](Tensorial::gather) and its gradient rule. Rows selected
-    /// more than once accumulate.
-    pub fn scatter(&self, selection: &Self, rows: usize) -> Self {
+    /// zero payload with one row per entry of `selection`'s vocabulary,
+    /// by its indices: the adjoint of [`gather`](Tensorial::gather) and
+    /// its gradient rule. Rows selected more than once accumulate.
+    pub fn scatter(&self, selection: &Self) -> Self {
         let gradient = self.logical_shape();
         assert!(
             gradient.rank() >= 1,
@@ -1686,11 +1686,7 @@ impl<Element: Elementary> Tensor<Element> {
             indices.len(),
             "scatter gradient rows disagree with the selection count"
         );
-        assert_eq!(
-            selection.logical_shape().axes()[1],
-            rows,
-            "scatter rows disagree with the selection vocabulary"
-        );
+        let rows = selection.logical_shape().axes()[1];
         let row_size: usize = gradient.axes()[1..].iter().product();
         let volume = rows
             .checked_mul(row_size)
@@ -1831,8 +1827,8 @@ impl<E: Element> Tensorial for Tensor<E> {
         Tensor::gather(self, selection)
     }
 
-    fn scatter(&self, selection: &Self, rows: usize) -> Self {
-        Tensor::scatter(self, selection, rows)
+    fn scatter(&self, selection: &Self) -> Self {
+        Tensor::scatter(self, selection)
     }
 }
 
