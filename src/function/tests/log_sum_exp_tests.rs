@@ -1,4 +1,4 @@
-use crate::{Differentiable, Elementary, Shape, Tensor};
+use crate::{Elementary, Shape, Tensor};
 
 use super::{LogSumExp, Operation};
 

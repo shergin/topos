@@ -20,7 +20,7 @@ mod corpus;
 
 use std::time::Instant;
 
-use topos::{Request, Shape, Tape, Tensor, Tensorial, Value, cross_entropy, init};
+use topos::{Request, Shape, Tape, Tensor, Value, cross_entropy, init};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};

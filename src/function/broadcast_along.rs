@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -43,13 +43,15 @@ impl BroadcastAlong {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for BroadcastAlong {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl BroadcastAlong {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&operand, &like) = binary(operands);
         operand.broadcast_along(self.axis, like)
     }
+}
 
-    fn backward(&self, _operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for BroadcastAlong {
+    fn backward(&self, _operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         smallvec![Some(gradient.sum_along(self.axis)), None]
     }
 }

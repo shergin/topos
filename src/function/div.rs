@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Differentiable, Shape};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -37,13 +37,15 @@ impl Div {
     }
 }
 
-impl<Data: Differentiable> Operation<Data> for Div {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Div {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&left, &right) = binary(operands);
         left.clone() / right.clone()
     }
+}
 
-    fn backward(&self, operands: &[&Data], output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Div {
+    fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (_, &right) = binary(operands);
         smallvec![
             Some(gradient.clone() / right.clone()),

@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 
 use crate::function::Function;
 use crate::graph::Structure;
-use crate::{Differentiable, Shape};
+use crate::{Element, Shape, Tensor};
 
 /// The columns and derived sets every matcher reads.
 ///
@@ -28,9 +28,9 @@ pub(crate) struct View<'plan, Data> {
     consumer_of: Vec<SmallVec<[usize; 2]>>,
 }
 
-impl<'plan, Data: Differentiable> View<'plan, Data> {
+impl<'plan, E: Element> View<'plan, Tensor<E>> {
     pub(crate) fn new(
-        structure: &'plan Structure<Data>,
+        structure: &'plan Structure<Tensor<E>>,
         wanted: &'plan [bool],
         readable: &'plan [bool],
     ) -> Self {
@@ -110,7 +110,7 @@ impl<'plan, Data: Differentiable> View<'plan, Data> {
         true
     }
 
-    pub(crate) fn function(&self, index: usize) -> Option<&'plan Function<Data>> {
+    pub(crate) fn function(&self, index: usize) -> Option<&'plan Function<Tensor<E>>> {
         self.structure.functions.get(index)
     }
 

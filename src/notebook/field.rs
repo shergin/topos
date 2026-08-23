@@ -8,7 +8,7 @@
 
 use malevich::{Frame, Line, Plot, Theme};
 
-use super::render::{Renderable, Scalar};
+use super::render::Scalar;
 use super::{html, render};
 use crate::{Element, Field};
 
@@ -18,8 +18,7 @@ fn norms<E: Element + Scalar>(field: &Field<E>) -> Vec<f64> {
         .payloads()
         .iter()
         .map(|payload| {
-            payload
-                .cells()
+            render::cells(payload)
                 .iter()
                 .map(|cell| cell * cell)
                 .sum::<f64>()

@@ -26,9 +26,7 @@ mod corpus;
 
 use std::time::Instant;
 
-use topos::{
-    Dropout, Request, RmsNorm, Shape, Tape, Tensor, Tensorial, Value, concat, cross_entropy, init,
-};
+use topos::{Dropout, Request, RmsNorm, Shape, Tape, Tensor, Value, concat, cross_entropy, init};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};

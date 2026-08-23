@@ -1,4 +1,4 @@
-use crate::{Differentiable, Request, Symbol, Tape, Tensor};
+use crate::{Request, Symbol, Tape, Tensor};
 
 /// Asserts the closure contract for one recorded graph: the gradients
 /// `differentiate` records must reproduce `Run::backward`

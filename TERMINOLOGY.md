@@ -110,31 +110,31 @@ the iterator-based base constructor. In topos:
 [`Shape`](src/payload/shape.rs), reachable via `Value::shape` and
 `Differentiable::shape`.
 
-**Operation.** A differentiable primitive: how to compute a payload from
-operand payloads (`forward`) and the cotangent to hand back to each
-operand (`backward`). Operation APIs use plain verbs; when a name denotes
-the result, it uses a result noun (`sum`, `maximum`, `step`). Suffix
-families (`_along`, `_like`) preserve that form, and operation names do
-not use participles. The rules are pure and positional: a variant owns
-only its parameters (an axis, a target shape) and declares its arity,
-operands arrive as a slice — payload references for the value rules,
-shapes for shape inference — gathered by the engine from the tape's
-operands column, and `backward` returns one cotangent per operand
-(`None` for an operand that is data, like a gather's selection) for the
-engine to accumulate. No rule ever sees the tape, a `ValueId`, or a run
-buffer, so every rule is plain math, testable without a network. In
-topos: the [`Operation`](src/function/operation.rs) trait,
-implemented by each computed `Function` variant (`Add`, `Sub`, `Mul`,
-`Div`, `Neg`, `Map`, `Powf`, `Maximum`,
-`MatMul`, `Transpose`, `Sum`, `SumAlong`, `Broadcast`, `BroadcastAlong`,
-`Reshape`, `Permute`, `Narrow`, `Gather`, `LogSoftmax` under
-[`src/function/`](src/function/)) and dispatched with a
-plain `match`.
-`Leaf`, `Parameter`, and `Input` are supplied rather than computed, so
-the enum's dispatch handles them directly instead of through the trait.
-Arithmetic variants need only `Differentiable`; the transcendental and
-tensor-native ones raise the bound of running (not building) a graph to
-`Elementary` and `Tensorial` respectively.
+**Operation.** A differentiable primitive: how to compute a payload
+from operand payloads (`forward`, an inherent method over
+`Tensor<E>`) and the cotangent to hand back to each operand
+(`backward`, the [`Operation`](src/function/operation.rs) trait over
+the recordable vocabulary, so one rule body serves the engine's
+compute and `differentiate`'s recording alike). Operation APIs use
+plain verbs; when a name denotes the result, it uses a result noun
+(`sum`, `maximum`, `step`). Suffix families (`_along`, `_like`)
+preserve that form, and operation names do not use participles. The
+rules are pure and positional: a variant owns only its parameters
+(an axis, a target shape) and declares its arity, operands arrive
+as a slice — references for the value rules, shapes for shape
+inference — gathered by the engine from the tape's operands column,
+and `backward` returns one cotangent per operand (`None` for an
+operand that is data, like a gather's selection) for the engine to
+accumulate. No rule ever sees the tape, a `ValueId`, or a run
+buffer, so every rule is plain math, testable without a network.
+Each computed `Function` variant (`Add`, `Sub`, `Mul`, `Div`,
+`Neg`, `Map`, `Powf`, `Maximum`, `MatMul`, `Transpose`, `Sum`,
+`SumAlong`, `Broadcast`, `BroadcastAlong`, `Reshape`, `Permute`,
+`Narrow`, `Gather`, `LogSoftmax` under
+[`src/function/`](src/function/)) carries both halves, dispatched
+with a plain `match`. `Leaf`, `Parameter`, and `Input` are supplied
+rather than computed, so the enum's dispatch handles them directly
+instead of through the trait.
 
 **Map.** The unary elementwise transcendentals as one node kind:
 `Function::Map` carries a `MapOperation` (`Exp`, `Ln`, `Sqrt`,
@@ -299,19 +299,19 @@ a constant weight. In topos: `Tape::vjp`
 `differentiate` and the dotted-loss formulation in
 `differentiate_tests.rs`.
 
-**Trace.** The payload that records instead of computing: the second
+**Trace.** The handle that records instead of computing: the second
 interpretation of the derivative rules, and the crate's signature
-trick. Every rule is written against the payload traits, and `Trace`
-implements them by appending the corresponding node and answering a
-handle, so running a rule under `Data = Trace` emits the rule as
-recorded graph — interpretation and transformation are two payloads
-of one rule, and derivative knowledge cannot fork. Public, it hands
-the same trick to callers: code written once against the payload
-traits gains a recording interpretation beside its eager runs. It
-does not open new scans over the crate's own rules (the op set and
-graph walk stay private); two members no rule calls (`counted`,
-`max_along`) panic by design, with the closure suite as tripwire.
-In topos: [`Trace`](src/graph/trace.rs).
+trick. Every rule is written against the recordable vocabulary
+(`Tensorial`), and `Trace` implements it by appending the
+corresponding node and answering a handle, so running a rule over
+traces emits the rule as recorded graph — interpretation and
+transformation are two readings of one rule, and derivative
+knowledge cannot fork. Public, it hands the same trick to callers:
+code written once against the vocabulary gains a recording
+interpretation beside its eager tensor runs. It does not open new
+scans over the crate's own rules (the op set and graph walk stay
+private), and no member panics: the vocabulary was cut along what
+rules actually call. In topos: [`Trace`](src/graph/trace.rs).
 
 **Symbol.** A detached, `Copy` name of a value: an origin plus a node
 position, and the sole currency of every phase after recording. Access
@@ -540,30 +540,37 @@ identity a detached carrier (`Symbol`, `Field`, `Parameters`, `Plan`,
 compares. In topos: the crate-internal
 [`Origin`](src/graph/origin.rs), embedded in every `Symbol`.
 
-**Payload (`Data`).** The numeric value a node carries: a scalar
-(`f32`/`f64`) or an elementwise [`Tensor`](src/payload/tensor.rs). Its
-contract is the [`Differentiable`](src/payload/differentiable.rs) trait —
-arithmetic operators, `zero_like`/`one_like`, the shape-derived constant
-constructor `counted` (a payload of a given shape holding an integer
-count, which lets composed formulas mint axis extents — a mean's
-divisor — without borrowing a payload to copy the shape from), the
-`Accumulator` associated type naming what accumulating operations
-(matmul, the sum reductions, `fold`, `scatter`) compute in before one
-final rounding — `Self` for the IEEE singles, `f32` for `Bf16` — and
-`Send + Sync`;
-[`Elementary`](src/payload/elementary.rs) adds the transcendentals, the
-correctly rounded `sqrt` (which `powf(0.5)` is not), and the order pair
-`maximum`/`step` that activations and stable normalization need — order
-enters the contract as payload-returning operations, never as
-`PartialOrd`, whose `bool` answer cannot express an elementwise
-comparison. `step` is the Heaviside 0/1 indicator of `self >= threshold`
+**Element (payload seam).** The number type that fills a
+[`Tensor`](src/payload/tensor.rs): the open seam of the crate. The
+graph is always tensors — a scalar is a rank-0 tensor — so every
+public phase type is generic over the element (`Tape<f32>` records
+tensors of `f32`), and plugging the seam means implementing the
+element contracts on a number type and declaring it with an empty
+`impl Element`. [`Differentiable`](src/payload/differentiable.rs) is
+the base contract — arithmetic operators, the identities
+`zero`/`one`, the exact count conversion `from_count`/`is_count`
+behind size-derived constants, the `Accumulator` associated type
+naming what accumulating operations (matmul, the sum reductions,
+`fold`, `scatter`) compute in before one final rounding (`Self` for
+the IEEE singles, `f32` for `Bf16`), and `Send + Sync`; it never
+mentions `Shape`, because shape belongs to the tensor.
+[`Elementary`](src/payload/elementary.rs) adds the transcendentals,
+the correctly rounded `sqrt` (which `powf(0.5)` is not), the order
+pair `maximum`/`step` that activations and stable normalization
+need — order enters the contract as value-returning operations,
+never as `PartialOrd` — and the backend hooks of the acceleration
+seam. `step` is the Heaviside 0/1 indicator of `self >= threshold`
 that carries the `maximum` family's derivative; ties answer one, so
 `maximum` hands a tied gradient to its left operand and the relu
-subgradient at zero is one.
+subgradient at zero is one. In topos:
+[`Element`](src/payload/element.rs), implemented by `f32`, `f64`,
+and `Bf16`.
 
-**Tensor.** A fixed-shape payload backed by a shared element buffer read
-through a strided layout: proof that the payload contract holds beyond
-scalars, since a `Network<Tensor<f64>>` runs the engine unchanged.
+**Tensor.** The one payload of the graph: a fixed-shape value backed
+by a shared element buffer read through a strided layout, generic
+over its [`Element`](src/payload/element.rs). A scalar is the rank-0
+tensor — `From<E>` builds it, `scalar()` is the loud rank-checked
+projection back, and `Display` prints it as the bare number.
 Cloning shares the buffer and copies only metadata, so it is O(1).
 Elementwise operations require identical shapes; the tensor-native tier
 adds `matmul`, `transpose`, the reductions `sum` and `sum_along`, and
@@ -625,14 +632,18 @@ exposes its elements as a borrowed slice and takes a flat iteration fast
 path, while a strided view walks its layout with an odometer. Contiguity
 is a property of the strides, computed on demand, not a stored flag.
 
-**Tensorial.** The payload tier of tensor-native operations — matrix
-multiplication, transposition, reductions, and explicit broadcasts —
-with scalars implementing it degenerately (a scalar is a rank-0 tensor;
-the degenerate impls satisfy the bound of running a graph, while
-recording tensor-native expressions demands proper ranks). `matmul` stops
-at rank 2, as does `transpose`, with `permute` its rank-general
-generalization; the axis-wise pair is rank-general; `reshape` reinterprets
-the elements in logical order; there is no batched matmul yet. Summation
+**Tensorial (recordable vocabulary).** The operation set derivative
+rules are written against, as one standalone public trait with
+exactly two interpretations: `Tensor<E>` computes each operation
+over its buffers, and `Trace` records it as a node — one body of
+derivative knowledge, two interpretations, no panicking member.
+Everything a rule cannot call is deliberately outside the trait and
+inherent to `Tensor` alone: `max_along`, the `counted` constructor,
+and the fused executors. Batched `matmul` contracts the trailing
+two axes over identical leading batch axes; `transpose` stops at
+rank 2, with `permute` its rank-general generalization; the
+axis-wise pair is rank-general; `reshape` reinterprets the elements
+in logical order. Summation
 and broadcasting are adjoint in two matched pairs: `sum` with
 `broadcast_like` (the whole shape) and `sum_along` with `broadcast_along`
 (one named axis), each the other's gradient rule. The view operations route their gradient the
@@ -647,12 +658,12 @@ and `gather` selects table rows by a one-hot `Selection` whose gradient
 `scatter` as the fourth pair, and the embedding lookup). The selection is
 data, so `gather`'s backward has no gradient term for it at all: the
 non-differentiability of the indices is a structural property of the
-operation, not a runtime flag. `max_along` is `sum_along`'s
-order-theoretic sibling — the same axis reduction, folding with the
-elementwise `maximum` — and serves stable normalization rather than
-recording: `log_softmax` and `logsumexp`, the two fused operations,
-shift by the axis maximum before exponentiating (which no composition
-of recorded operations could do); the former routes its gradient as
+operation, not a runtime flag. `max_along` — inherent to `Tensor`, outside the vocabulary — is
+`sum_along`'s order-theoretic sibling: the same axis reduction,
+folding with the elementwise `maximum`, serving stable normalization
+rather than recording. `log_softmax` and `logsumexp`, the two fused
+operations, shift by the axis maximum before exponentiating (which
+no composition of recorded operations could do); the former routes its gradient as
 `g - exp(output) * sum_along(g)` and the latter as the softmax
 `exp(operand - output)`, each recovering the probabilities from the
 node's own output. Broadcasting is explicit by design: a
@@ -712,14 +723,17 @@ read-only thereafter.
 without the engine knowing: a provided `Elementary` method answers
 `None` (compute on the built-in paths) unless the element type
 forwards to the backend chain, as `f32` and `f64` do. The seam has
-three hooks — `Elementary::gemm` for one dense product, consulted
-first by `Tensor`'s `matmul`; `Elementary::map` for one
-whole-buffer transcendental (a `MapOperation`: `exp`, `ln`, `sqrt`,
-`tanh`), consulted by the tensor's elementwise operations for
-contiguous dense buffers; and `Elementary::batch_norm` for one
-whole training-mode normalization (a `BatchNormTask`), consulted by
-the fused kernel behind the plan tier's batch-norm pattern — the
-first composed formula with a task face. The hooks crossed with the
+three hooks, each taking a public task struct — `Elementary::gemm`
+(a `GemmTask`) for one dense product, consulted first by `Tensor`'s
+`matmul`; `Elementary::map` (a `MapTask` over a `MapOperation`:
+`exp`, `ln`, `sqrt`, `tanh`) for one whole-buffer transcendental,
+consulted by the tensor's elementwise operations for contiguous
+dense buffers; and `Elementary::batch_norm` (a `BatchNormTask`) for
+one whole training-mode normalization, consulted by the fused
+kernel behind the plan tier's batch-norm pattern. The bitwise
+references the hooks are graded against are published under
+[`reference`](src/reference/mod.rs), so an out-of-tree element is
+differentially tested the way the in-crate ones are. The hooks crossed with the
 forwarding precisions index the acceleration vocabulary,
 [`Formula`](src/backend/formula.rs). All live in the payload tier, so
 `Operation` rules stay backend-blind (the columns-as-IR rule) and
@@ -819,8 +833,10 @@ away, which makes an exact and a fast result comparable in one
 process. Reordering float math is
 always this labeled choice, never a silent effect of a feature flag;
 a run's `backward` re-enters its forward posture, so gradients
-follow the same paths. In topos:
-[`Numerics`](src/backend/numerics.rs).
+follow the same paths. `Numerics::exactly(|| ...)` installs the
+`Exact` posture around a direct payload call, so a differential test
+can compare against the reference bits without compiling a plan. In
+topos: [`Numerics`](src/backend/numerics.rs).
 
 ## Neural building blocks
 

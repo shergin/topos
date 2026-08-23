@@ -1,4 +1,4 @@
-use crate::{Differentiable, Tape, Tensor, Value};
+use crate::{Tape, Tensor, Value};
 
 /// The half-width of the central difference.
 const STEP: f64 = 1e-5;

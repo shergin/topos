@@ -24,13 +24,14 @@ pub enum MapOperation {
     Tanh,
 }
 
-/// Elementary numeric functions supported by graph payloads.
+/// Elementary numeric functions of an element, plus its backend
+/// hooks.
 ///
 /// This trait extends [`Differentiable`] without making transcendental
-/// functions or order comparisons part of the base arithmetic contract. The
-/// scalar implementations use the corresponding `f32` and `f64` operations;
-/// `Tensor<Element>` applies them elementwise when `Element` also implements
-/// `Elementary`.
+/// functions or order comparisons part of the base arithmetic
+/// contract. `f32` and `f64` use the corresponding standard
+/// operations; [`Tensor`](super::Tensor) applies an element's maps
+/// elementwise through its inherent methods.
 pub trait Elementary: Differentiable {
     /// Returns `e` raised to the power of `self`.
     fn exp(&self) -> Self;

@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use crate::{Bf16, Differentiable, Request, Shape, Tape, Tensor, concat, cross_entropy};
+use crate::{Bf16, Request, Shape, Tape, Tensor, concat, cross_entropy};
 
 /// One emitted module with the payloads and oracle results the
 /// conformance tests replay: the arguments in the module's own order

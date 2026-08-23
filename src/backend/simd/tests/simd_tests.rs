@@ -1,6 +1,6 @@
 use std::ops::{Add, Mul};
 
-use crate::{Differentiable, GemmTask, Shape, Tape, Tensor, init};
+use crate::{GemmTask, Shape, Tape, Tensor, init};
 
 use super::{executed_f32, executed_f64, gemm_f32, strides_for};
 

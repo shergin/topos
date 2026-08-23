@@ -1,4 +1,4 @@
-use crate::{Differentiable, Elementary, Shape, Tape, Tensorial};
+use crate::{Shape, Tape};
 
 use super::Tensor;
 

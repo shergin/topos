@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -67,13 +67,15 @@ impl MatMul {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for MatMul {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl MatMul {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&left, &right) = binary(operands);
         left.matmul(right)
     }
+}
 
-    fn backward(&self, operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for MatMul {
+    fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&left, &right) = binary(operands);
         smallvec![
             Some(gradient.matmul(&swapped(right))),
@@ -86,7 +88,7 @@ impl<Data: Tensorial> Operation<Data> for MatMul {
 /// transpose for rank two and below (where scalar payloads answer
 /// identity), `permute` for the batched ranks — so the adjoint closes
 /// inside the existing op set.
-fn swapped<Data: Tensorial>(value: &Data) -> Data {
+fn swapped<Rule: Tensorial>(value: &Rule) -> Rule {
     let rank = value.shape().rank();
     if rank <= 2 {
         return value.transpose();

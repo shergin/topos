@@ -26,8 +26,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
 use topos::{
-    Differentiable, Request, RmsNorm, Shape, Symbol, Tape, Tensor, Value, concat, cross_entropy,
-    init, stack,
+    Request, RmsNorm, Shape, Symbol, Tape, Tensor, Value, concat, cross_entropy, init, stack,
 };
 
 use corpus::{VOCABULARY_LEN, load_names, shuffle, training_samples};

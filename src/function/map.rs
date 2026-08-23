@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Elementary, MapOperation, Shape};
+use crate::{Element, MapOperation, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -61,8 +61,8 @@ impl Map {
     }
 }
 
-impl<Data: Elementary> Operation<Data> for Map {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Map {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let &operand = unary(operands);
         match self.op {
             MapOperation::Exp => operand.exp(),
@@ -71,8 +71,10 @@ impl<Data: Elementary> Operation<Data> for Map {
             MapOperation::Tanh => operand.tanh(),
         }
     }
+}
 
-    fn backward(&self, operands: &[&Data], output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Map {
+    fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let cotangent = match self.op {
             // The derivative of `e^x` is `e^x` itself: the canonical
             // case of reusing the node's own output.

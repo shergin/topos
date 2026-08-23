@@ -5,7 +5,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 use crate::backend;
 
 use super::gemm::{self, GemmTask};
-use super::{Differentiable, Element, Elementary, Shape, Tensorial};
+use super::{Differentiable, Element, Elementary};
 
 /// A brain-float 16 payload: the top half of an `f32`, one sign bit,
 /// eight exponent bits, and seven stored mantissa bits.
@@ -14,7 +14,7 @@ use super::{Differentiable, Element, Elementary, Shape, Tensorial};
 /// result back to the nearest bf16 (ties to even) — the standard bf16
 /// semantic, deterministic on every platform. Integers are exact up
 /// to 256; above that the significand steps by two, then four, and so
-/// on, which bounds the [`Differentiable::counted`] contract.
+/// on, which bounds the [`Differentiable::from_count`] contract.
 ///
 /// Matrix multiplication follows this per-op semantic on the composed
 /// path; the accumulation contract is pinned separately at the
@@ -185,28 +185,21 @@ impl Differentiable for Bf16 {
         Self::from_f32(accumulated)
     }
 
-    fn zero_like(&self) -> Self {
+    fn zero() -> Self {
         Self::ZERO
     }
 
-    fn one_like(&self) -> Self {
+    fn one() -> Self {
         Self::ONE
     }
 
-    /// Scalar payloads ignore the requested shape, mirroring the
-    /// identity semantics of their `Tensorial` operations. Counts
-    /// are exact up to 256, the last integer bf16 represents
+    /// Counts are exact up to 256, the last integer bf16 represents
     /// exactly; larger counts round to nearest even.
-    fn counted(_shape: Shape, count: usize) -> Self {
+    fn from_count(count: usize) -> Self {
         Self::from_f32(count as f32)
     }
 
-    fn shape(&self) -> Shape {
-        Shape::scalar()
-    }
-
-    /// Scalar payloads ignore the shape, mirroring `counted`.
-    fn is_counted(&self, _shape: &Shape, count: usize) -> bool {
+    fn is_count(&self, count: usize) -> bool {
         *self == Self::from_f32(count as f32)
     }
 }
@@ -277,95 +270,6 @@ impl Elementary for Bf16 {
 }
 
 impl Element for Bf16 {}
-
-impl Tensorial for Bf16 {
-    /// Scalar payloads use identity semantics: the patches are the
-    /// value itself, so the product degenerates to the scalar matmul.
-    fn windowed_patches(
-        &self,
-        _kernel_height: usize,
-        _kernel_width: usize,
-        _stride: usize,
-        _padding: usize,
-    ) -> Self {
-        *self
-    }
-
-    fn matmul(&self, rhs: &Self) -> Self {
-        *self * *rhs
-    }
-
-    fn transpose(&self) -> Self {
-        *self
-    }
-
-    fn sum(&self) -> Self {
-        *self
-    }
-
-    fn sum_along(&self, _axis: usize) -> Self {
-        *self
-    }
-
-    fn max_along(&self, _axis: usize) -> Self {
-        *self
-    }
-
-    fn broadcast_like(&self, _reference: &Self) -> Self {
-        *self
-    }
-
-    fn broadcast_along(&self, _axis: usize, _reference: &Self) -> Self {
-        *self
-    }
-
-    fn reshape(&self, shape: Shape) -> Self {
-        // The one movement request a scalar graph can record (volumes
-        // match), so the capability mismatch is rejected here rather
-        // than silently breaking recorded/payload shape coherence.
-        assert_eq!(
-            shape.rank(),
-            0,
-            "a scalar payload cannot take shape {shape}"
-        );
-        *self
-    }
-
-    fn permute(&self, _order: &[usize]) -> Self {
-        *self
-    }
-
-    fn narrow(&self, _axis: usize, _start: usize, _len: usize) -> Self {
-        *self
-    }
-
-    fn pad(&self, _axis: usize, _start: usize, _full_extent: usize) -> Self {
-        *self
-    }
-
-    fn unfold(&self, _axis: usize, _size: usize, _step: usize, _dilation: usize) -> Self {
-        *self
-    }
-
-    fn fold(
-        &self,
-        _axis: usize,
-        _size: usize,
-        _step: usize,
-        _dilation: usize,
-        _extent: usize,
-    ) -> Self {
-        *self
-    }
-
-    fn gather(&self, _selection: &Self) -> Self {
-        *self
-    }
-
-    fn scatter(&self, _selection: &Self, _rows: usize) -> Self {
-        *self
-    }
-}
 
 #[cfg(test)]
 #[path = "tests/bf16_tests.rs"]

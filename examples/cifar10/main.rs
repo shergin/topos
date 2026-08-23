@@ -20,8 +20,8 @@ mod dataset;
 use std::time::Instant;
 
 use topos::{
-    Conv2d, Linear, Module, Parameters, Plan, Request, Shape, Symbol, Tape, Tensor, Tensorial,
-    Value, cross_entropy, init, max_pool,
+    Conv2d, Linear, Module, Parameters, Plan, Request, Shape, Symbol, Tape, Tensor, Value,
+    cross_entropy, init, max_pool,
 };
 
 use chart::loss_chart;

@@ -1,5 +1,5 @@
 use super::SlotId;
-use crate::{Differentiable, MapOperation, Shape, Tensorial};
+use crate::{Element, MapOperation, Shape, Tensor, Tensorial};
 
 use static_assertions::assert_impl_all;
 
@@ -330,16 +330,65 @@ impl<Data> Function<Data> {
             Function::Maximum(maximum) => maximum.arity(),
         }
     }
+}
+
+/// It hand-rolls the delegation an enum-dispatch macro would generate: a
+/// plain `match` per method. Exhaustiveness makes adding a variant a
+/// compile error until every method handles it. Leaves and parameters
+/// are supplied here rather than computed: they do not implement
+/// `Operation`, whose contract is the derivative rule alone.
+/// Forward computes over the one payload the graph has — `Tensor<E>`,
+/// through each operation's inherent method — because computing a
+/// payload is engine business, not part of any rule.
+impl<E: Element> Function<Tensor<E>> {
+    /// Computes this node's payload from its `operands`' payloads
+    /// (gathered positionally by the engine), or supplies it: a leaf's
+    /// embedded payload, a parameter's entry in the run's `parameters`
+    /// slots, or an input's entry in the run's `inputs` slots.
+    pub(crate) fn forward(
+        &self,
+        operands: &[&Tensor<E>],
+        parameters: &[Tensor<E>],
+        inputs: &[Tensor<E>],
+    ) -> Tensor<E> {
+        match self {
+            Function::Leaf(leaf) => leaf.0.clone(),
+            Function::Parameter(parameter) => parameters[parameter.0.index()].clone(),
+            Function::Input(input) => inputs[input.0.index()].clone(),
+            Function::Add(add) => add.forward(operands),
+            Function::Sub(sub) => sub.forward(operands),
+            Function::Mul(mul) => mul.forward(operands),
+            Function::Div(div) => div.forward(operands),
+            Function::Neg(neg) => neg.forward(operands),
+            Function::Map(map) => map.forward(operands),
+            Function::MatMul(matmul) => matmul.forward(operands),
+            Function::Transpose(transpose) => transpose.forward(operands),
+            Function::Sum(sum) => sum.forward(operands),
+            Function::SumAlong(sum_along) => sum_along.forward(operands),
+            Function::Broadcast(broadcast) => broadcast.forward(operands),
+            Function::BroadcastAlong(broadcast_along) => broadcast_along.forward(operands),
+            Function::Reshape(reshape) => reshape.forward(operands),
+            Function::Permute(permute) => permute.forward(operands),
+            Function::Narrow(narrow) => narrow.forward(operands),
+            Function::Pad(pad) => pad.forward(operands),
+            Function::Unfold(unfold) => unfold.forward(operands),
+            Function::Gather(gather) => gather.forward(operands),
+            Function::LogSoftmax(log_softmax) => log_softmax.forward(operands),
+            Function::LogSumExp(log_sum_exp) => log_sum_exp.forward(operands),
+            Function::Step(step) => step.forward(operands),
+            Function::Fold(fold) => fold.forward(operands),
+            Function::Scatter(scatter) => scatter.forward(operands),
+            Function::Powf(powf) => powf.forward(operands),
+            Function::Maximum(maximum) => maximum.forward(operands),
+        }
+    }
 
     /// Infers the shape of this function's result from its `operands`'
     /// positional shapes, panicking on incompatibility.
     ///
     /// It is the shape-level mirror of `forward`: the same fold over the
     /// tape, run once per node at record time instead of once per run.
-    pub(crate) fn infer_shape(&self, operands: &[Shape]) -> Shape
-    where
-        Data: Differentiable,
-    {
+    pub(crate) fn infer_shape(&self, operands: &[Shape]) -> Shape {
         match self {
             Function::Leaf(leaf) => leaf.infer_shape(),
             Function::Parameter(_) => {
@@ -377,52 +426,7 @@ impl<Data> Function<Data> {
     }
 }
 
-/// It hand-rolls the delegation an enum-dispatch macro would generate: a
-/// plain `match` per method. Exhaustiveness makes adding a variant a
-/// compile error until every method handles it. Leaves and parameters
-/// are supplied here rather than computed: they do not implement
-/// `Operation`, whose contract is computing a payload from operands.
-/// The bound is `Tensorial` rather than `Differentiable` because the
-/// transcendental and tensor-native variants need it; building and
-/// updating graphs stays arithmetic-only.
-impl<Data: Tensorial> Function<Data> {
-    /// Computes this node's payload from its `operands`' payloads
-    /// (gathered positionally by the engine), or supplies it: a leaf's
-    /// embedded payload, a parameter's entry in the run's `parameters`
-    /// slots, or an input's entry in the run's `inputs` slots.
-    pub(crate) fn forward(&self, operands: &[&Data], parameters: &[Data], inputs: &[Data]) -> Data {
-        match self {
-            Function::Leaf(leaf) => leaf.0.clone(),
-            Function::Parameter(parameter) => parameters[parameter.0.index()].clone(),
-            Function::Input(input) => inputs[input.0.index()].clone(),
-            Function::Add(add) => add.forward(operands),
-            Function::Sub(sub) => sub.forward(operands),
-            Function::Mul(mul) => mul.forward(operands),
-            Function::Div(div) => div.forward(operands),
-            Function::Neg(neg) => neg.forward(operands),
-            Function::Map(map) => map.forward(operands),
-            Function::MatMul(matmul) => matmul.forward(operands),
-            Function::Transpose(transpose) => transpose.forward(operands),
-            Function::Sum(sum) => sum.forward(operands),
-            Function::SumAlong(sum_along) => sum_along.forward(operands),
-            Function::Broadcast(broadcast) => broadcast.forward(operands),
-            Function::BroadcastAlong(broadcast_along) => broadcast_along.forward(operands),
-            Function::Reshape(reshape) => reshape.forward(operands),
-            Function::Permute(permute) => permute.forward(operands),
-            Function::Narrow(narrow) => narrow.forward(operands),
-            Function::Pad(pad) => pad.forward(operands),
-            Function::Unfold(unfold) => unfold.forward(operands),
-            Function::Gather(gather) => gather.forward(operands),
-            Function::LogSoftmax(log_softmax) => log_softmax.forward(operands),
-            Function::LogSumExp(log_sum_exp) => log_sum_exp.forward(operands),
-            Function::Step(step) => step.forward(operands),
-            Function::Fold(fold) => fold.forward(operands),
-            Function::Scatter(scatter) => scatter.forward(operands),
-            Function::Powf(powf) => powf.forward(operands),
-            Function::Maximum(maximum) => maximum.forward(operands),
-        }
-    }
-
+impl<Data> Function<Data> {
     /// Computes one cotangent per operand, given this node's computed
     /// `output` payload and its own `gradient`; empty for leaves,
     /// parameters, and inputs, where gradients stop and get read out.

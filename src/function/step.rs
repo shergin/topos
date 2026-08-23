@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Elementary, Shape};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -38,13 +38,15 @@ impl Step {
     }
 }
 
-impl<Data: Elementary> Operation<Data> for Step {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Step {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&operand, &threshold) = binary(operands);
         operand.step(threshold)
     }
+}
 
-    fn backward(&self, _operands: &[&Data], _output: &Data, _gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Step {
+    fn backward(&self, _operands: &[&Rule], _output: &Rule, _gradient: &Rule) -> Cotangents<Rule> {
         smallvec![None, None]
     }
 }

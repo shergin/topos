@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Element, Tensor, Tensorial};
+use crate::{Element, Tensor};
 
 use super::{Origin, Parameters, Symbol};
 
@@ -149,12 +149,10 @@ impl<E: Element> Field<E> {
     ///
     /// It is the scalar arithmetic of whole-graph analysis — weighting
     /// a run's cotangents before combining them with another run's.
-    /// For scalar payloads the spread is the identity, so scalar
-    /// fields scale exactly as they always did.
+    /// For rank-0 entries the spread is the identity.
     ///
     /// # Panics
-    /// For tensor payloads, panics if `factor` holds more than one
-    /// value.
+    /// Panics if `factor` holds more than one value.
     pub fn scale(&self, factor: &Tensor<E>) -> Self {
         self.map(|value| value.clone() * factor.broadcast_like(value))
     }

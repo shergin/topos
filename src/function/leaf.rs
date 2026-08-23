@@ -1,4 +1,4 @@
-use crate::{Differentiable, Shape};
+use crate::{Shape, Tensor};
 
 /// A leaf node: a network input or constant supplied at recording time.
 ///
@@ -9,7 +9,7 @@ use crate::{Differentiable, Shape};
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Leaf<Data>(pub(crate) Data);
 
-impl<Data: Differentiable> Leaf<Data> {
+impl<E> Leaf<Tensor<E>> {
     /// Infers the shape of the result: the payload's own shape.
     pub(crate) fn infer_shape(&self) -> Shape {
         self.0.shape()

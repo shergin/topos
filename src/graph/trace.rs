@@ -1,16 +1,16 @@
 use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use crate::{Differentiable, Element, Elementary, Shape, Tensor, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::Value;
 
 /// A payload that records instead of computing: the second
 /// interpretation of the derivative rules.
 ///
-/// Every derivative rule is written against the payload traits
-/// ([`Differentiable`], [`Elementary`], [`Tensorial`]), not against a
-/// concrete number type. `Trace` implements those traits by appending
+/// Every derivative rule is written against the recordable
+/// vocabulary ([`Tensorial`]), not against a concrete payload.
+/// `Trace` implements that trait by appending
 /// the corresponding node to the tape and answering with a handle, so
 /// running a rule with `Data = Trace` emits the rule's computation as
 /// recorded graph — which is all
@@ -21,7 +21,7 @@ use super::Value;
 /// alike, because both are the same code.
 ///
 /// Public, the type hands the same trick to callers: an algorithm
-/// written once against the payload traits gains a recording
+/// written once against the recordable vocabulary gains a recording
 /// interpretation — wrap recorded values with [`Trace::of`], run the
 /// generic code, unwrap with [`Trace::value`] — beside its eager runs
 /// over `f32` or [`Tensor`](crate::Tensor). What it does not open is
@@ -30,13 +30,12 @@ use super::Value;
 /// checkpointed reverse) are in-crate transforms until a read surface
 /// over the spec lands.
 ///
-/// Two trait members no derivative rule calls panic by design:
-/// `counted` (a nullary constructor has no tape to record on) and
-/// `max_along` (no recorded operation exists for it). Generic code
-/// that reaches either cannot run under `Trace`; the per-variant
-/// closure tests keep the crate's own rules inside the recordable
-/// vocabulary, so a future rule widening it fails its own test at
-/// introduction instead of hiding a latent trap.
+/// Every member of [`Tensorial`] records honestly: the trait was cut
+/// along the recordable vocabulary, so nothing a trace implements
+/// can panic by construction. Operations outside that vocabulary —
+/// `max_along`, the fused executors, the `counted` constructor —
+/// are inherent to [`Tensor`](crate::Tensor) and simply do not exist
+/// here.
 pub struct Trace<'tape, E> {
     value: Value<'tape, E>,
 }
@@ -113,18 +112,12 @@ impl<'tape, E: Element> Neg for Trace<'tape, E> {
     }
 }
 
-impl<'tape, E: Element> Differentiable for Trace<'tape, E> {
-    /// A trace accumulates in itself: promotion would hide recorded
-    /// arithmetic, and the underlying payload's accumulator already
-    /// acts inside each recorded operation.
-    type Accumulator = Self;
-
-    fn promote(&self) -> Self {
-        *self
-    }
-
-    fn demote(accumulated: Self) -> Self {
-        accumulated
+/// The recording interpretation of the recordable vocabulary: every
+/// operation appends its node and answers the handle, so a derivative
+/// rule run over traces emits itself as graph.
+impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
+    fn shape(&self) -> Shape {
+        self.value.shape()
     }
 
     fn zero_like(&self) -> Self {
@@ -135,19 +128,6 @@ impl<'tape, E: Element> Differentiable for Trace<'tape, E> {
         self.counted_like(1)
     }
 
-    fn counted(_shape: Shape, _count: usize) -> Self {
-        // No derivative rule mints counted literals (verified by the
-        // closure tests); a nullary constructor has no network to
-        // record on, so this member cannot exist for a trace.
-        panic!("`Trace` records derivative rules, which never call `counted`");
-    }
-
-    fn shape(&self) -> Shape {
-        self.value.shape()
-    }
-}
-
-impl<'tape, E: Element> Elementary for Trace<'tape, E> {
     fn exp(&self) -> Self {
         Self::of(self.value.exp())
     }
@@ -175,9 +155,7 @@ impl<'tape, E: Element> Elementary for Trace<'tape, E> {
     fn step(&self, threshold: &Self) -> Self {
         Self::of(self.value.step(threshold.value))
     }
-}
 
-impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
     fn matmul(&self, rhs: &Self) -> Self {
         Self::of(self.value.matmul(rhs.value))
     }
@@ -192,13 +170,6 @@ impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
 
     fn sum_along(&self, axis: usize) -> Self {
         Self::of(self.value.sum_along(axis))
-    }
-
-    fn max_along(&self, _axis: usize) -> Self {
-        // The differentiable rules never reduce by maximum (the fused
-        // log-domain rules recover probabilities from their outputs
-        // instead), and no recorded operation exists for it.
-        panic!("`Trace` records derivative rules, which never call `max_along`");
     }
 
     fn broadcast_like(&self, reference: &Self) -> Self {

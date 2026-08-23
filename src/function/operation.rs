@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::Differentiable;
+use crate::Tensorial;
 
 /// One cotangent per operand, in the operation's positional order.
 ///
@@ -36,26 +36,29 @@ impl Reads {
     };
 }
 
-/// A differentiable operation: how a node computes its payload from its
-/// operands' payloads, and the cotangent it hands back to each operand.
+/// A derivative rule: the cotangent an operation hands back to each
+/// operand, written against the recordable vocabulary
+/// ([`Tensorial`]) so one body serves two interpretations — the
+/// engine computes it over payload buffers, and `differentiate`
+/// records it through `Trace` handles.
 ///
 /// It is implemented by each computed `Function` variant and dispatched
 /// through the enum with a plain `match`, so implementations stay
 /// statically sized and the trait never needs to be object safe. Leaves
 /// and parameters do not implement it: they are supplied, not computed,
 /// and the enum's dispatch handles them directly. The rules are pure:
-/// operands arrive as a positional slice of payload references gathered
-/// by the engine, results are returned rather than written, and no rule
-/// ever sees the tape, a `ValueId`, or a run buffer. Gradient
+/// operands arrive as a positional slice of references gathered by the
+/// engine, results are returned rather than written, and no rule ever
+/// sees the tape, a `ValueId`, or a run buffer. Gradient
 /// accumulation — the multivariate chain rule — is the engine's job,
-/// stated once in `Run::backward`.
-pub(crate) trait Operation<Data: Differentiable> {
-    /// Computes this node's payload from its operands' payloads.
-    fn forward(&self, operands: &[&Data]) -> Data;
-
+/// stated once in `Run::backward`. Each operation's `forward` is a
+/// sibling inherent method over `Tensor<E>`: computing a payload is
+/// engine business, not part of the rule, which is why the recording
+/// interpretation never needs it.
+pub(crate) trait Operation<Rule: Tensorial> {
     /// Computes one cotangent per operand, given this node's computed
-    /// `output` payload and its own `gradient`.
-    fn backward(&self, operands: &[&Data], output: &Data, gradient: &Data) -> Cotangents<Data>;
+    /// `output` and its own `gradient`.
+    fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule>;
 }
 
 /// Splits the positional operand list of a unary operation.

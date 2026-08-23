@@ -1,7 +1,7 @@
 use smallvec::{SmallVec, smallvec};
 
 use crate::function::{Function, Map};
-use crate::{Differentiable, MapOperation, Tensorial};
+use crate::{Element, MapOperation, Tensor};
 
 use super::candidates::Candidate;
 use super::pattern::Pattern;
@@ -49,7 +49,10 @@ impl BatchNormalization {
     /// the output with the batch statistics, the diamond between the
     /// reads never materialized. The caller writes the statistics
     /// back into their named-result slots.
-    pub(crate) fn apply<Data: Tensorial>(&self, values: &[Data]) -> (Data, Data, Data) {
+    pub(crate) fn apply<E: Element>(
+        &self,
+        values: &[Tensor<E>],
+    ) -> (Tensor<E>, Tensor<E>, Tensor<E>) {
         values[self.input].batch_normalized(
             &values[self.scale],
             &values[self.shift],
@@ -75,7 +78,7 @@ struct Tail {
 /// with every broadcast referencing the recorded operands. The
 /// interiors are collected by walking the formula — `centered` fans
 /// out five ways — and `Catalog::collect` checks the closure.
-fn match_tail<Data: Differentiable>(index: usize, view: &View<Data>) -> Option<Tail> {
+fn match_tail<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Tail> {
     let Some(Function::Add(_)) = view.function(index) else {
         return None;
     };
@@ -186,10 +189,7 @@ fn match_tail<Data: Differentiable>(index: usize, view: &View<Data>) -> Option<T
 /// and the count leaf. The leaf must certify as `counted` of the
 /// reduced shape and the source's batch extent: an unverified divisor
 /// would raise a formula that is not a mean.
-fn mean_along_of<Data: Differentiable>(
-    node: usize,
-    view: &View<Data>,
-) -> Option<(usize, usize, usize)> {
+fn mean_along_of<E: Element>(node: usize, view: &View<Tensor<E>>) -> Option<(usize, usize, usize)> {
     let Some(Function::Div(_)) = view.function(node) else {
         return None;
     };
@@ -217,9 +217,9 @@ fn mean_along_of<Data: Differentiable>(
 /// `mean_along` reductions of the input and of the squared centering.
 /// The mean and variance are named results; everything else in the
 /// diamond is an unnamed interior.
-pub(crate) fn match_training<Data: Differentiable>(
+pub(crate) fn match_training<E: Element>(
     index: usize,
-    view: &View<Data>,
+    view: &View<Tensor<E>>,
 ) -> Option<Candidate> {
     let mut tail = match_tail(index, view)?;
     let (mean_source, mean_sum, mean_count) = mean_along_of(tail.group.mean, view)?;
@@ -250,9 +250,9 @@ pub(crate) fn match_training<Data: Differentiable>(
 /// ending), and a training recording cannot fall through to it
 /// anyway: there the centering feeds the variance computation, a
 /// consumer outside this tail, so the closure check rejects it.
-pub(crate) fn match_inference<Data: Differentiable>(
+pub(crate) fn match_inference<E: Element>(
     index: usize,
-    view: &View<Data>,
+    view: &View<Tensor<E>>,
 ) -> Option<Candidate> {
     let tail = match_tail(index, view)?;
     Some(Candidate {

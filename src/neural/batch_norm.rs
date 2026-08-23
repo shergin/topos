@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Element, Symbol, Tape, Tensor, Value};
+use crate::{Element, Symbol, Tape, Tensor, Value};
 
 // Request-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.

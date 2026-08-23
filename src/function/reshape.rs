@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -40,12 +40,14 @@ impl Reshape {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for Reshape {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Reshape {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         unary(operands).reshape(self.shape.clone())
     }
+}
 
-    fn backward(&self, operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Reshape {
+    fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         smallvec![Some(gradient.reshape(operand.shape()))]
     }

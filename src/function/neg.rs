@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Differentiable, Shape};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -29,13 +29,15 @@ impl Neg {
     }
 }
 
-impl<Data: Differentiable> Operation<Data> for Neg {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Neg {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let &operand = unary(operands);
         -operand.clone()
     }
+}
 
-    fn backward(&self, _operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Neg {
+    fn backward(&self, _operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         smallvec![Some(-gradient.clone())]
     }
 }

@@ -16,7 +16,7 @@
 //! it earns a `Function` variant the moment floating point breaks the
 //! composed form, the way `log_softmax` did.
 
-use crate::{Differentiable, Element, Shape, Tensor};
+use crate::{Element, Shape, Tensor};
 
 use super::Value;
 
@@ -30,7 +30,7 @@ impl<'tape, E: Element> Value<'tape, E> {
 
     /// Records the rectified linear unit of this value as the
     /// composition `self.maximum(zero)`, where the zero enters the
-    /// graph as a [`counted`](crate::Differentiable::counted) leaf of
+    /// graph as a [`counted`](crate::Tensor::counted) leaf of
     /// this value's shape — the same leaf a payload literal would
     /// record; the subgradient at zero is one, by `maximum`'s
     /// left-biased tie rule.
@@ -61,7 +61,7 @@ impl<'tape, E: Element> Value<'tape, E> {
 
     /// Records the mean of this value along `axis` as the composition
     /// `self.sum_along(axis) / extent`, where the reduced axis's extent
-    /// enters the graph as a [`counted`](crate::Differentiable::counted)
+    /// enters the graph as a [`counted`](crate::Tensor::counted)
     /// literal; like `sum_along`, the reduced axis is removed.
     ///
     /// # Panics

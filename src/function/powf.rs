@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Elementary, Shape};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -39,13 +39,15 @@ impl Powf {
     }
 }
 
-impl<Data: Elementary> Operation<Data> for Powf {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Powf {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&base, &exponent) = binary(operands);
         base.powf(exponent.clone())
     }
+}
 
-    fn backward(&self, operands: &[&Data], output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Powf {
+    fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&base, &exponent) = binary(operands);
         let lowered = exponent.clone() - exponent.one_like();
         let base_cotangent = gradient.clone() * exponent.clone() * base.powf(lowered);

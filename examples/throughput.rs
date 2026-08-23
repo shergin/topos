@@ -18,7 +18,7 @@
 
 use std::time::Instant;
 
-use topos::{Backend, Shape, Tape, Tensor, Tensorial, init};
+use topos::{Backend, Shape, Tape, Tensor, init};
 
 fn main() {
     let mut accelerated = false;

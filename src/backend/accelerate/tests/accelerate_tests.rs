@@ -1,9 +1,6 @@
 use std::ops::{Add, Mul};
 
-use crate::{
-    BatchNormTask, Differentiable, Elementary, GemmTask, MapOperation, Shape, Tape, Tensor,
-    Tensorial, init,
-};
+use crate::{BatchNormTask, Elementary, GemmTask, MapOperation, Shape, Tape, Tensor, init};
 
 use super::{
     batch_norm_f32, batch_norm_f64, executed_f32, executed_f64, gemm_f32, map_f32, map_f64,

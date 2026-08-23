@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -49,8 +49,8 @@ impl LogSumExp {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for LogSumExp {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl LogSumExp {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let &operand = unary(operands);
         // Shifting by the axis maximum keeps every exponent at or below
         // zero: the sum lands between one and the axis extent, its
@@ -61,8 +61,10 @@ impl<Data: Tensorial> Operation<Data> for LogSumExp {
         let shifted = operand.clone() - peak.broadcast_along(self.axis, operand);
         peak + shifted.exp().sum_along(self.axis).ln()
     }
+}
 
-    fn backward(&self, operands: &[&Data], output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for LogSumExp {
+    fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         // The derivative of log-sum-exp is the softmax; the shift
         // cancels analytically, and `operand - output` reconstructs the

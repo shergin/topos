@@ -1,6 +1,6 @@
 use smallvec::{SmallVec, smallvec};
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -60,12 +60,14 @@ impl Permute {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for Permute {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Permute {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         unary(operands).permute(&self.order)
     }
+}
 
-    fn backward(&self, _operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Permute {
+    fn backward(&self, _operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         smallvec![Some(gradient.permute(&self.inverse()))]
     }
 }

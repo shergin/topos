@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::function::Function;
-use crate::{Differentiable, Tensorial};
+use crate::{Element, Tensor};
 
 use super::candidates::Candidate;
 use super::pattern::Pattern;
@@ -39,16 +39,16 @@ impl ReduceWindow {
     /// Computes the fused call over the already-evaluated `values`:
     /// one direct window walk from the source, the lane views between
     /// them never materialized.
-    pub(crate) fn apply<Data: Tensorial>(&self, values: &[Data]) -> Data {
+    pub(crate) fn apply<E: Element>(&self, values: &[Tensor<E>]) -> Tensor<E> {
         values[self.source].max_pooled(self.size, self.stride)
     }
 }
 
 /// Returns the lane start of `index` if it is a `narrow(4, start, 1)`
 /// of the one shared lanes node, learning that node on first sight.
-fn lane_start<Data: Differentiable>(
+fn lane_start<E: Element>(
     index: usize,
-    view: &View<Data>,
+    view: &View<Tensor<E>>,
     lanes: &mut Option<usize>,
 ) -> Option<usize> {
     let Some(Function::Narrow(narrow)) = view.function(index) else {
@@ -75,7 +75,7 @@ fn lane_start<Data: Differentiable>(
 /// not via single-consumer chains: the lanes node fans out into one
 /// `narrow` per window element, and `Catalog::collect` checks the
 /// keep-set and sharing closure.
-pub(crate) fn match_at<Data: Differentiable>(index: usize, view: &View<Data>) -> Option<Candidate> {
+pub(crate) fn match_at<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Candidate> {
     // The root is the facade squeeze: a rank-4 reshape of a rank-5
     // value whose lane axis has folded down to extent 1.
     let Some(Function::Reshape(reshape)) = view.function(index) else {

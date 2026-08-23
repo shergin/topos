@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -60,12 +60,14 @@ impl Pad {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for Pad {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Pad {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         unary(operands).pad(self.axis, self.start, self.full_extent)
     }
+}
 
-    fn backward(&self, operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Pad {
+    fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         let len = operand.shape().axes()[self.axis];
         smallvec![Some(gradient.narrow(self.axis, self.start, len))]

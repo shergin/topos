@@ -52,19 +52,19 @@ fn rounding_carries_into_the_extremes() {
 
 #[test]
 fn counted_is_exact_up_to_256() {
-    use crate::{Differentiable, Shape};
+    use crate::Differentiable;
 
     for count in [0, 1, 100, 255, 256] {
         assert_eq!(
-            Bf16::counted(Shape::scalar(), count).to_f32(),
+            Bf16::from_count(count).to_f32(),
             count as f32,
             "count {count} must convert exactly"
         );
     }
     // Above 256 the significand steps by two: 257 ties down to the
     // even 256, 259 ties up to the even 260.
-    assert_eq!(Bf16::counted(Shape::scalar(), 257).to_f32(), 256.0);
-    assert_eq!(Bf16::counted(Shape::scalar(), 259).to_f32(), 260.0);
+    assert_eq!(Bf16::from_count(257).to_f32(), 256.0);
+    assert_eq!(Bf16::from_count(259).to_f32(), 260.0);
 }
 
 #[test]
@@ -115,8 +115,6 @@ fn maximum_and_step_answer_exactly() {
 
 #[test]
 fn matmul_accumulates_in_f32_and_rounds_once() {
-    use crate::Tensorial;
-
     // Per-op bf16 accumulation would answer 256: the running total
     // swamps each added one. The pinned contract accumulates in f32
     // (257, then 258) and rounds once, and 258 is exactly a bf16.
@@ -128,7 +126,7 @@ fn matmul_accumulates_in_f32_and_rounds_once() {
 
 #[test]
 fn matmul_accumulation_is_representation_independent() {
-    use crate::{Tensor, Tensorial};
+    use crate::Tensor;
 
     // A constant operand has no gemm operand and takes the composed
     // path; the accumulation contract must answer identically there,
@@ -148,8 +146,6 @@ fn matmul_accumulation_is_representation_independent() {
 
 #[test]
 fn reductions_accumulate_in_f32() {
-    use crate::Tensorial;
-
     // Per-op bf16 summation would swamp at 256; the accumulator
     // contract sums in f32 and rounds once.
     let values = Tensor::new([3], [256.0_f32, 1.0, 1.0].map(Bf16::from_f32).to_vec());
@@ -160,8 +156,6 @@ fn reductions_accumulate_in_f32() {
 
 #[test]
 fn scatter_accumulates_duplicate_rows_in_f32() {
-    use crate::Tensorial;
-
     // Three gradient rows land on the same vocabulary row; their sum
     // accumulates in f32, so the ones keep landing past 256.
     let gradient = Tensor::new([3, 1], [256.0_f32, 1.0, 1.0].map(Bf16::from_f32).to_vec());

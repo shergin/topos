@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::Differentiable;
+use crate::{Element, Tensor};
 
 use super::batch_norm;
 use super::pattern::Pattern;
@@ -55,7 +55,7 @@ impl Candidates {
     /// Matcher order in this body is the first priority axis; within
     /// one matcher, nodes are scanned in recording order. Adding a
     /// pattern is one call here, in its documented overlap position.
-    pub(crate) fn discover<Data: Differentiable>(view: &View<Data>) -> Self {
+    pub(crate) fn discover<E: Element>(view: &View<Tensor<E>>) -> Self {
         let mut all = Vec::new();
         discover_one(view, &mut all, window::match_at);
         discover_one(view, &mut all, reduce_window::match_at);
@@ -85,10 +85,10 @@ impl Candidates {
 /// the candidates that pass the closure check. No claiming happens
 /// here: two candidates may overlap, and each consumer's election
 /// resolves the conflict under its own repertoire.
-fn discover_one<Data: Differentiable>(
-    view: &View<Data>,
+fn discover_one<E: Element>(
+    view: &View<Tensor<E>>,
     all: &mut Vec<Candidate>,
-    matcher: fn(usize, &View<Data>) -> Option<Candidate>,
+    matcher: fn(usize, &View<Tensor<E>>) -> Option<Candidate>,
 ) {
     for index in 0..view.len() {
         if !view.wanted(index) {

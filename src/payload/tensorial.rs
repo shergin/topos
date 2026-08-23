@@ -1,216 +1,140 @@
-use super::{Elementary, Shape};
+use std::fmt::Debug;
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
-/// Matrix, reduction, transpose, and explicit broadcasting operations for
-/// graph payloads.
+use super::{Elementary, Shape, Tensor};
+
+/// The recordable vocabulary: the operations derivative rules — and
+/// any payload-generic algorithm — are written against.
 ///
-/// This trait extends [`Elementary`] because forward and backward evaluation
-/// must be able to execute every operation that can be recorded. For `f32` and
-/// `f64`, [`Tensorial::matmul`] is multiplication and the remaining methods use
-/// scalar identity semantics. `Tensor<Element>` provides the rank-aware
-/// implementations.
+/// The trait has exactly two in-crate interpretations, and that pair
+/// is its purpose. [`Tensor`] computes each operation over its
+/// buffers, so the engine's backward scan runs the rules for real;
+/// [`Trace`](crate::Trace) appends the corresponding node to a tape
+/// and answers with a handle, so `differentiate` records the very
+/// same rules as graph. One body of derivative knowledge, two
+/// interpretations — the rules cannot tell which one they run under.
 ///
-/// Graph operations still validate their recorded [`Shape`](super::Shape).
-/// Consequently, matrix multiplication and named-axis operations reject
-/// scalar [`Value`](crate::Value) nodes even though direct trait calls on
-/// scalar payloads are defined.
-///
-/// Broadcasting is never implicit. [`Tensorial::broadcast_like`] expands a
-/// single-value payload to a reference shape, while
-/// [`Tensorial::broadcast_along`] repeats a payload along one specified axis.
-/// These operations are adjoint to [`Tensorial::sum`] and
-/// [`Tensorial::sum_along`], respectively.
-pub trait Tensorial: Elementary {
-    /// Returns the matrix product of `self` and `rhs`.
-    ///
-    /// Operands of rank above two multiply batched: the trailing two
-    /// axes contract as the plain product, and every leading axis is
-    /// a batch axis, required identical on both operands. Each batch
-    /// slice is bitwise the rank-2 product of that slice.
+/// Membership is the recordable operation set and nothing else:
+/// every method here corresponds to something a tape can record.
+/// What a rule cannot call is deliberately absent — `max_along` (the
+/// stability shift inside the fused log-domain forwards, not a
+/// recorded operation), the `counted` constructor (a rule has no
+/// tape to mint literals on; `zero_like` and `one_like` cover the
+/// identities rules need), and the fused executors
+/// (`windowed_product` and friends are plan-tier kernel faces).
+/// Those live as inherent methods on [`Tensor`] alone, which is what
+/// lets both interpretations implement this trait without a single
+/// panicking member.
+pub trait Tensorial:
+    Clone
+    + Debug
+    + Send
+    + Sync
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Div<Output = Self>
+    + Neg<Output = Self>
+{
+    /// Returns the shape of this value: its extent along every axis.
+    fn shape(&self) -> Shape;
+
+    /// Returns a zero shaped like `self`, seeding gradient
+    /// accumulators.
+    fn zero_like(&self) -> Self;
+
+    /// Returns a one shaped like `self`, seeding the output gradient.
+    fn one_like(&self) -> Self;
+
+    /// Returns `e` raised elementwise to `self`.
+    fn exp(&self) -> Self;
+
+    /// Returns the elementwise natural logarithm of `self`.
+    fn ln(&self) -> Self;
+
+    /// Returns the elementwise square root of `self`.
+    fn sqrt(&self) -> Self;
+
+    /// Returns the elementwise hyperbolic tangent of `self`.
+    fn tanh(&self) -> Self;
+
+    /// Returns `self` raised elementwise to the power of `exponent`.
+    fn powf(&self, exponent: Self) -> Self;
+
+    /// Returns the elementwise maximum of `self` and `other`.
+    fn maximum(&self, other: &Self) -> Self;
+
+    /// Returns the elementwise 0/1 indicator of `self >= threshold`:
+    /// the Heaviside step, ties answering one. It carries the
+    /// derivative of the `maximum` family.
+    fn step(&self, threshold: &Self) -> Self;
+
+    /// Returns the matrix product of `self` and `rhs`; ranks above
+    /// two multiply batched over identical leading axes.
     fn matmul(&self, rhs: &Self) -> Self;
 
     /// Returns `self` with its two axes swapped.
     fn transpose(&self) -> Self;
 
-    /// Returns the sum of every value in `self`, shaped as a single value.
+    /// Returns the sum of every value in `self`, shaped as a single
+    /// value.
     fn sum(&self) -> Self;
 
-    /// Returns `self` with `axis` reduced by summation: the result's
-    /// shape is `self`'s with that axis removed.
+    /// Returns `self` with `axis` reduced by summation.
     fn sum_along(&self, axis: usize) -> Self;
 
-    /// Returns `self` with `axis` reduced to its largest value by the
-    /// elementwise [`maximum`](Elementary::maximum): the result's shape is
-    /// `self`'s with that axis removed.
-    ///
-    /// It is the reduction behind stable normalization (`log_softmax`
-    /// shifts by the axis maximum before exponentiating) and is not a
-    /// recorded graph operation of its own.
-    fn max_along(&self, axis: usize) -> Self;
-
-    /// Returns this payload's single value spread across `reference`'s
-    /// shape.
+    /// Returns this value's single element spread across
+    /// `reference`'s shape.
     fn broadcast_like(&self, reference: &Self) -> Self;
 
     /// Returns `self` repeated along `axis` to match `reference`'s
-    /// shape; `self`'s shape must equal `reference`'s with that axis
-    /// removed.
+    /// shape.
     fn broadcast_along(&self, axis: usize, reference: &Self) -> Self;
 
     /// Returns `self` reinterpreted with `shape`, preserving logical
-    /// row-major order; the volume must not change.
+    /// row-major order.
     fn reshape(&self, shape: Shape) -> Self;
 
     /// Returns `self` with its axes reordered so that axis `i` of the
-    /// result takes axis `order[i]` of `self`; `order` must be a
-    /// permutation of `0..rank`.
+    /// result takes axis `order[i]` of `self`.
     fn permute(&self, order: &[usize]) -> Self;
 
-    /// Returns the window of `len` elements from `start` along `axis`:
-    /// `self` with that axis restricted to `start .. start + len`. The
-    /// window must hold at least one element, because tensors are never
-    /// empty.
+    /// Returns the window of `len` elements from `start` along `axis`.
     fn narrow(&self, axis: usize, start: usize, len: usize) -> Self;
 
-    /// Returns `self` placed into a zero payload whose `axis` has extent
-    /// `full_extent`, at `start ..`, with zeros elsewhere: the adjoint of
-    /// [`narrow`](Tensorial::narrow) and the gradient rule for it.
+    /// Returns `self` placed into zeros whose `axis` has extent
+    /// `full_extent`, at `start ..`: the adjoint of
+    /// [`narrow`](Tensorial::narrow).
     fn pad(&self, axis: usize, start: usize, full_extent: usize) -> Self;
 
-    /// Returns the sliding windows of `self` along `axis`: the axis is
-    /// replaced by a `(count, size)` pair where window `w` starts at
-    /// `w * step` and takes every `dilation`-th element, so
-    /// `count = (extent - dilation * (size - 1) - 1) / step + 1`.
-    ///
-    /// It is the windowing view behind convolution and pooling (the
-    /// torch-semantics single-axis `unfold`; two applications produce 2-D
-    /// windows). Windows overlap when `step < dilation * size`, which is
-    /// safe read-only aliasing: payloads are immutable.
+    /// Returns the sliding windows of `self` along `axis`: the axis
+    /// becomes a `(count, size)` pair.
     fn unfold(&self, axis: usize, size: usize, step: usize, dilation: usize) -> Self;
 
     /// Returns the `(count, size)` window pair at `axis`, `axis + 1`
     /// folded back onto an axis of `extent`: the adjoint of
-    /// [`unfold`](Tensorial::unfold) and the gradient rule for it.
-    ///
-    /// Each source position sums the window elements that were read from
-    /// it, accumulated output-centrically in window order, so the result
-    /// is deterministic under any evaluation strategy. Positions no
-    /// window reaches fold to zero.
+    /// [`unfold`](Tensorial::unfold).
     fn fold(&self, axis: usize, size: usize, step: usize, dilation: usize, extent: usize) -> Self;
 
-    /// Returns the im2col product of `self` (`[batch, channels, height,
-    /// width]`) with the GEMM-shaped `kernel` (`[channels *
-    /// kernel_height * kernel_width, filters]`): the window rows of the
-    /// symmetric zero-padded, stride-stepped sliding windows, matrix-
-    /// multiplied in one call — `[batch * out_h * out_w, filters]`.
-    ///
-    /// It is the fused executor behind the plan tier's window-GEMM
-    /// pattern; the arguments are the descriptor, so neither payloads
-    /// nor backends ever see graph structure. The default implementation
-    /// composes the unfused formula (pad, two unfolds, permute, reshape,
-    /// matmul) and is the bitwise reference; `Tensor` overrides it with
-    /// a specialized patch fill that skips the general odometer walk.
-    fn windowed_product(
-        &self,
-        kernel: &Self,
-        kernel_height: usize,
-        kernel_width: usize,
-        stride: usize,
-        padding: usize,
-    ) -> Self {
-        self.windowed_patches(kernel_height, kernel_width, stride, padding)
-            .matmul(kernel)
-    }
-
-    /// Returns the im2col matrix alone: the window rows of the padded,
-    /// strided sliding windows of `self` (`[batch, channels, height,
-    /// width]`), shaped `[batch * out_h * out_w, channels *
-    /// kernel_height * kernel_width]`.
-    ///
-    /// It is the half of [`Tensorial::windowed_product`] the backward
-    /// rematerializer calls when a fused chain's patches are read for a
-    /// kernel gradient: one fast fill instead of replaying the view
-    /// chain through the general element walk.
-    fn windowed_patches(
-        &self,
-        kernel_height: usize,
-        kernel_width: usize,
-        stride: usize,
-        padding: usize,
-    ) -> Self {
-        composed_windowed_patches(self, kernel_height, kernel_width, stride, padding)
-    }
-
-    /// Returns the training-mode batch normalization of `self`
-    /// (`[batch, features]`) by its own batch statistics, with the
-    /// `[features]` affine `scale` and `shift` and the single-value
-    /// `epsilon`: the output together with the mean and biased
-    /// variance it normalized by — the recorded formula's root and
-    /// named results.
-    ///
-    /// It is the fused executor behind the plan tier's
-    /// batch-normalization pattern; the arguments are the group's
-    /// reads, so neither payloads nor backends ever see graph
-    /// structure. The default implementation composes the recorded
-    /// formula through the same payload operations the rules make,
-    /// in recorded order — the bitwise reference — and `Tensor`
-    /// overrides it to offer the whole task to the backend chain
-    /// first, whose admission keeps the `Exact` posture on this
-    /// reference.
-    fn batch_normalized(&self, scale: &Self, shift: &Self, epsilon: &Self) -> (Self, Self, Self)
-    where
-        Self: Sized,
-    {
-        composed_batch_norm(self, scale, shift, epsilon)
-    }
-
-    /// Returns the max pool of `self` (`[batch, channels, height,
-    /// width]`) over square `size` windows stepped by `stride`, with
-    /// no padding: `[batch, channels, out_h, out_w]`.
-    ///
-    /// It is the fused executor behind the plan tier's reduce-window
-    /// pattern; the arguments are the descriptor, so neither
-    /// payloads nor backends ever see graph structure. The default
-    /// implementation composes the recorded formula — two unfolds,
-    /// the lane permute and reshape, the left-associated `maximum`
-    /// fold in lane order, and the squeeze — and is the bitwise
-    /// reference; `Tensor` overrides it with a direct window walk
-    /// that applies `maximum` in the same lane order, so the
-    /// override is bit-identical while materializing nothing.
-    fn max_pooled(&self, size: usize, stride: usize) -> Self
-    where
-        Self: Sized,
-    {
-        composed_max_pool(self, size, stride)
-    }
-
-    /// Returns the rows of `self` selected by `selection` (a one-hot
-    /// `[count, vocab]` whose vocabulary matches `self`'s first axis): the
-    /// embedding-style row gather, `result[i] = self[selection_index(i)]`.
+    /// Returns the rows of `self` selected by the one-hot `selection`.
     fn gather(&self, selection: &Self) -> Self;
 
-    /// Scatter-adds the rows of `self` into a zero payload of `rows` rows by
-    /// `selection`'s indices: the adjoint of [`gather`](Tensorial::gather)
-    /// and its gradient rule, accumulating rows selected more than once.
-    ///
-    /// The adjoint contract is validated at the boundary: `self` has a
-    /// leading axis of one gradient row per selection index, and `rows`
-    /// equals the selection's vocabulary, so every index lands inside the
-    /// result. Built-in tensors panic on any violation rather than
-    /// discard or misplace gradient rows.
+    /// Scatter-adds the rows of `self` into `rows` rows by
+    /// `selection`'s indices: the adjoint of
+    /// [`gather`](Tensorial::gather).
     fn scatter(&self, selection: &Self, rows: usize) -> Self;
 }
 
 /// Composes the unfused im2col formula — pad, two unfolds, permute,
-/// and the patch reshape — over any tensorial payload: the bitwise
-/// reference the fused fast paths are tested against, and the fallback
-/// for representations without one.
-pub fn composed_windowed_patches<Data: Tensorial>(
-    input: &Data,
+/// and the patch reshape — through the plain tensor operations: the
+/// bitwise reference the fused fast path is tested against.
+pub fn composed_windowed_patches<Element: Elementary>(
+    input: &Tensor<Element>,
     kernel_height: usize,
     kernel_width: usize,
     stride: usize,
     padding: usize,
-) -> Data {
+) -> Tensor<Element> {
     let shape = input.shape();
     let axes = shape.axes();
     let (batch, channels, height, width) = (axes[0], axes[1], axes[2], axes[3]);
@@ -233,23 +157,22 @@ pub fn composed_windowed_patches<Data: Tensorial>(
 
 /// Composes the recorded batch-normalization formula — mean by
 /// `sum_along` over a counted divisor, centering, biased variance,
-/// the epsilon-stabilized deviation, and the learned affine — over
-/// any tensorial payload, in the exact operation order the tape
-/// records: the bitwise reference the fused fast paths are graded
-/// against, and the fallback for representations without one.
-pub fn composed_batch_norm<Data: Tensorial>(
-    input: &Data,
-    scale: &Data,
-    shift: &Data,
-    epsilon: &Data,
-) -> (Data, Data, Data) {
+/// the epsilon-stabilized deviation, and the learned affine — in the
+/// exact operation order the tape records: the bitwise reference the
+/// fused fast path is graded against.
+pub fn composed_batch_norm<Element: Elementary>(
+    input: &Tensor<Element>,
+    scale: &Tensor<Element>,
+    shift: &Tensor<Element>,
+    epsilon: &Tensor<Element>,
+) -> (Tensor<Element>, Tensor<Element>, Tensor<Element>) {
     let shape = input.shape();
     let batch = shape.axes()[0];
     let reduced = shape.without_axis(0);
-    let mean = input.sum_along(0) / Data::counted(reduced.clone(), batch);
+    let mean = input.sum_along(0) / Tensor::counted(reduced.clone(), batch);
     let centered = input.clone() - mean.broadcast_along(0, input);
     let variance =
-        (centered.clone() * centered.clone()).sum_along(0) / Data::counted(reduced, batch);
+        (centered.clone() * centered.clone()).sum_along(0) / Tensor::counted(reduced, batch);
     let deviation = (variance.clone() + epsilon.broadcast_like(&variance)).sqrt();
     let normalized = centered.clone() / deviation.broadcast_along(0, &centered);
     let output =
@@ -259,11 +182,14 @@ pub fn composed_batch_norm<Data: Tensorial>(
 
 /// Composes the recorded max-pool formula — two square unfolds, the
 /// lane permute and merging reshape, a left-associated `maximum`
-/// fold in row-major lane order, and the trailing squeeze — over any
-/// tensorial payload, in the exact operation order the tape records:
-/// the bitwise reference the fused direct walk is graded against,
-/// and the fallback for representations without one.
-pub fn composed_max_pool<Data: Tensorial>(input: &Data, size: usize, stride: usize) -> Data {
+/// fold in row-major lane order, and the trailing squeeze — in the
+/// exact operation order the tape records: the bitwise reference the
+/// fused direct walk is graded against.
+pub fn composed_max_pool<Element: Elementary>(
+    input: &Tensor<Element>,
+    size: usize,
+    stride: usize,
+) -> Tensor<Element> {
     let shape = input.shape();
     let axes = shape.axes();
     let (batch, channels, height, width) = (axes[0], axes[1], axes[2], axes[3]);
@@ -285,182 +211,4 @@ pub fn composed_max_pool<Data: Tensorial>(input: &Data, size: usize, stride: usi
         largest = largest.maximum(&lanes.narrow(4, lane, 1));
     }
     largest.reshape(Shape::new([batch, channels, out_height, out_width]))
-}
-
-impl Tensorial for f32 {
-    /// Scalar payloads use identity semantics: the patches are the
-    /// value itself, so the product degenerates to the scalar matmul.
-    fn windowed_patches(
-        &self,
-        _kernel_height: usize,
-        _kernel_width: usize,
-        _stride: usize,
-        _padding: usize,
-    ) -> Self {
-        *self
-    }
-
-    fn matmul(&self, rhs: &Self) -> Self {
-        self * rhs
-    }
-
-    fn transpose(&self) -> Self {
-        *self
-    }
-
-    fn sum(&self) -> Self {
-        *self
-    }
-
-    fn sum_along(&self, _axis: usize) -> Self {
-        *self
-    }
-
-    fn max_along(&self, _axis: usize) -> Self {
-        *self
-    }
-
-    fn broadcast_like(&self, _reference: &Self) -> Self {
-        *self
-    }
-
-    fn broadcast_along(&self, _axis: usize, _reference: &Self) -> Self {
-        *self
-    }
-
-    fn reshape(&self, shape: Shape) -> Self {
-        // The one movement request a scalar graph can record (volumes
-        // match), so the capability mismatch is rejected here rather
-        // than silently breaking recorded/payload shape coherence.
-        assert_eq!(
-            shape.rank(),
-            0,
-            "a scalar payload cannot take shape {shape}"
-        );
-        *self
-    }
-
-    fn permute(&self, _order: &[usize]) -> Self {
-        *self
-    }
-
-    fn narrow(&self, _axis: usize, _start: usize, _len: usize) -> Self {
-        *self
-    }
-
-    fn pad(&self, _axis: usize, _start: usize, _full_extent: usize) -> Self {
-        *self
-    }
-
-    fn unfold(&self, _axis: usize, _size: usize, _step: usize, _dilation: usize) -> Self {
-        *self
-    }
-
-    fn fold(
-        &self,
-        _axis: usize,
-        _size: usize,
-        _step: usize,
-        _dilation: usize,
-        _extent: usize,
-    ) -> Self {
-        *self
-    }
-
-    fn gather(&self, _selection: &Self) -> Self {
-        *self
-    }
-
-    fn scatter(&self, _selection: &Self, _rows: usize) -> Self {
-        *self
-    }
-}
-
-impl Tensorial for f64 {
-    /// Scalar payloads use identity semantics: the patches are the
-    /// value itself, so the product degenerates to the scalar matmul.
-    fn windowed_patches(
-        &self,
-        _kernel_height: usize,
-        _kernel_width: usize,
-        _stride: usize,
-        _padding: usize,
-    ) -> Self {
-        *self
-    }
-
-    fn matmul(&self, rhs: &Self) -> Self {
-        self * rhs
-    }
-
-    fn transpose(&self) -> Self {
-        *self
-    }
-
-    fn sum(&self) -> Self {
-        *self
-    }
-
-    fn sum_along(&self, _axis: usize) -> Self {
-        *self
-    }
-
-    fn max_along(&self, _axis: usize) -> Self {
-        *self
-    }
-
-    fn broadcast_like(&self, _reference: &Self) -> Self {
-        *self
-    }
-
-    fn broadcast_along(&self, _axis: usize, _reference: &Self) -> Self {
-        *self
-    }
-
-    fn reshape(&self, shape: Shape) -> Self {
-        // The one movement request a scalar graph can record (volumes
-        // match), so the capability mismatch is rejected here rather
-        // than silently breaking recorded/payload shape coherence.
-        assert_eq!(
-            shape.rank(),
-            0,
-            "a scalar payload cannot take shape {shape}"
-        );
-        *self
-    }
-
-    fn permute(&self, _order: &[usize]) -> Self {
-        *self
-    }
-
-    fn narrow(&self, _axis: usize, _start: usize, _len: usize) -> Self {
-        *self
-    }
-
-    fn pad(&self, _axis: usize, _start: usize, _full_extent: usize) -> Self {
-        *self
-    }
-
-    fn unfold(&self, _axis: usize, _size: usize, _step: usize, _dilation: usize) -> Self {
-        *self
-    }
-
-    fn fold(
-        &self,
-        _axis: usize,
-        _size: usize,
-        _step: usize,
-        _dilation: usize,
-        _extent: usize,
-    ) -> Self {
-        *self
-    }
-
-    fn gather(&self, _selection: &Self) -> Self {
-        *self
-    }
-
-    fn scatter(&self, _selection: &Self, _rows: usize) -> Self {
-        *self
-    }
 }

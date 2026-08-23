@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -55,13 +55,15 @@ impl Gather {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for Gather {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Gather {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&table, &selection) = binary(operands);
         table.gather(selection)
     }
+}
 
-    fn backward(&self, operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Gather {
+    fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&table, &selection) = binary(operands);
         let rows = table.shape().axes()[0];
         smallvec![Some(gradient.scatter(selection, rows)), None]

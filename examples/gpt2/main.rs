@@ -55,8 +55,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
 use topos::{
-    Bf16, Differentiable, Element, Emittable, Module, Plan, Request, Run, Symbol, Tape, Tensor,
-    checkpoint,
+    Bf16, Element, Emittable, Module, Plan, Request, Run, Symbol, Tape, Tensor, checkpoint,
 };
 
 use model::{CONTEXT_LEN, EMBED_DIM, Gpt2, VOCABULARY_LEN, load};

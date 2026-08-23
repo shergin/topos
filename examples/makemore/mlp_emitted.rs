@@ -31,7 +31,7 @@ use std::io::{Read, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
-use topos::{Differentiable, Request, Shape, Tape, Tensor, Tensorial, Value, cross_entropy, init};
+use topos::{Request, Shape, Tape, Tensor, Value, cross_entropy, init};
 
 use corpus::{VOCABULARY_LEN, load_names, shuffle, training_samples};
 

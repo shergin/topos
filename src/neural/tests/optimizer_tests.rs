@@ -1,4 +1,4 @@
-use crate::{Adam, AdamW, Differentiable, Optimizer, Sgd, Symbol, Tape, Tensor};
+use crate::{Adam, AdamW, Optimizer, Sgd, Symbol, Tape, Tensor};
 
 /// A tiny two-parameter model: `loss = (w * x + b)^2` summed over a
 /// fixed batch, with a rank-2 weight and a rank-1 bias.

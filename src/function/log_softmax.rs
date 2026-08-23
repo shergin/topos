@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -47,8 +47,8 @@ impl LogSoftmax {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for LogSoftmax {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl LogSoftmax {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let &operand = unary(operands);
         // Shifting by the axis maximum keeps every exponent at or below
         // zero, so the sum cannot overflow; the shift cancels in the
@@ -63,8 +63,10 @@ impl<Data: Tensorial> Operation<Data> for LogSoftmax {
         let normalizer = shifted.exp().sum_along(self.axis).ln();
         shifted.clone() - normalizer.broadcast_along(self.axis, &shifted)
     }
+}
 
-    fn backward(&self, _operands: &[&Data], output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for LogSoftmax {
+    fn backward(&self, _operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let total = gradient
             .sum_along(self.axis)
             .broadcast_along(self.axis, gradient);

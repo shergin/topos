@@ -7,7 +7,7 @@
 /// epsilon-stabilized deviation, apply the learned affine — offered
 /// to the backend chain as a single task.
 ///
-/// Tasks are built by [`Tensorial::batch_normalized`]
+/// Tasks are built by [`Tensor::batch_normalized`](super::Tensor::batch_normalized)
 /// (crate::Tensorial::batch_normalized) when every operand is a
 /// contiguous dense buffer, and read by backend code and by
 /// [`Elementary::batch_norm`](crate::Elementary::batch_norm)

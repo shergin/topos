@@ -464,7 +464,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                 let ones = format!("%v{index}_ones");
                 emitter.line(format!(
                     "{ones} = stablehlo.constant dense<{}> : {result_type}",
-                    Element::counted(Shape::scalar(), 1).literal(),
+                    Element::from_count(1).literal(),
                 ));
                 let zeros = format!("%v{index}_zeros");
                 emitter.line(format!(
@@ -525,8 +525,8 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                 let source_shape = &shapes[source];
                 let count = source_shape.axes()[fold.axis];
                 let weights_shape = Shape::new([count, fold.size, fold.extent]);
-                let one = Element::counted(Shape::scalar(), 1);
-                let zero = Element::counted(Shape::scalar(), 0);
+                let one = Element::from_count(1);
+                let zero = Element::from_count(0);
                 let mut weights = vec![zero; count * fold.size * fold.extent];
                 for window in 0..count {
                     for position in 0..fold.size {

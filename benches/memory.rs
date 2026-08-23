@@ -13,7 +13,7 @@
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use topos::{Tape, Tensor, Tensorial};
+use topos::{Tape, Tensor};
 
 static ALLOCATED: AtomicUsize = AtomicUsize::new(0);
 static FREED: AtomicUsize = AtomicUsize::new(0);

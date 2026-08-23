@@ -1,5 +1,7 @@
 use smallvec::smallvec;
 
+use crate::Tensor;
+
 use super::{Cotangents, Map, MapOperation, Operation};
 
 #[test]
@@ -8,14 +10,14 @@ fn rules_are_plain_math_without_a_network() {
         op: MapOperation::Sqrt,
     };
     assert_eq!(sqrt.arity(), 1);
-    let root: f64 = sqrt.forward(&[&9.0]);
-    assert_eq!(root, 3.0);
+    let root = sqrt.forward(&[&Tensor::from(9.0_f64)]);
+    assert_eq!(root.scalar(), 3.0);
 
     let exp = Map {
         op: MapOperation::Exp,
     };
-    let raised: f64 = exp.forward(&[&0.0]);
-    assert_eq!(raised, 1.0);
+    let raised = exp.forward(&[&Tensor::from(0.0_f64)]);
+    assert_eq!(raised.scalar(), 1.0);
 }
 
 #[test]
@@ -24,8 +26,12 @@ fn sqrt_backward_divides_by_twice_the_output() {
     let sqrt = Map {
         op: MapOperation::Sqrt,
     };
-    let cotangents = sqrt.backward(&[&9.0_f64], &3.0, &6.0);
-    let expected: Cotangents<f64> = smallvec![Some(1.0)];
+    let cotangents = sqrt.backward(
+        &[&Tensor::from(9.0_f64)],
+        &Tensor::from(3.0),
+        &Tensor::from(6.0),
+    );
+    let expected: Cotangents<Tensor<f64>> = smallvec![Some(Tensor::from(1.0))];
     assert_eq!(cotangents, expected);
 }
 
@@ -35,8 +41,12 @@ fn exp_backward_reuses_the_output() {
     let exp = Map {
         op: MapOperation::Exp,
     };
-    let cotangents = exp.backward(&[&2.0_f64], &3.0, &2.0);
-    let expected: Cotangents<f64> = smallvec![Some(6.0)];
+    let cotangents = exp.backward(
+        &[&Tensor::from(2.0_f64)],
+        &Tensor::from(3.0),
+        &Tensor::from(2.0),
+    );
+    let expected: Cotangents<Tensor<f64>> = smallvec![Some(Tensor::from(6.0))];
     assert_eq!(cotangents, expected);
 }
 
@@ -46,8 +56,12 @@ fn ln_backward_divides_by_the_operand() {
     let ln = Map {
         op: MapOperation::Ln,
     };
-    let cotangents = ln.backward(&[&4.0_f64], &4.0_f64.ln(), &1.0);
-    let expected: Cotangents<f64> = smallvec![Some(0.25)];
+    let cotangents = ln.backward(
+        &[&Tensor::from(4.0_f64)],
+        &Tensor::from(4.0_f64.ln()),
+        &Tensor::from(1.0),
+    );
+    let expected: Cotangents<Tensor<f64>> = smallvec![Some(Tensor::from(0.25))];
     assert_eq!(cotangents, expected);
 }
 
@@ -57,8 +71,12 @@ fn tanh_backward_squares_the_output() {
     let tanh = Map {
         op: MapOperation::Tanh,
     };
-    let cotangents = tanh.backward(&[&0.0_f64], &0.5, &1.0);
-    let expected: Cotangents<f64> = smallvec![Some(0.75)];
+    let cotangents = tanh.backward(
+        &[&Tensor::from(0.0_f64)],
+        &Tensor::from(0.5),
+        &Tensor::from(1.0),
+    );
+    let expected: Cotangents<Tensor<f64>> = smallvec![Some(Tensor::from(0.75))];
     assert_eq!(cotangents, expected);
 }
 

@@ -10,7 +10,7 @@
 use malevich::{Frame, Theme};
 
 use super::html;
-use crate::{Bf16, Differentiable, Shape, Tensor};
+use crate::{Bf16, Shape, Tensor};
 
 /// The largest payload rendered as an exact table rather than a chart.
 const TABLE_LIMIT: usize = 144;
@@ -70,27 +70,10 @@ impl Scalar for Bf16 {
     }
 }
 
-/// A payload a notebook can draw: its shape, and its elements in
-/// row-major order.
-pub(crate) trait Renderable: Differentiable {
-    /// Returns every element in row-major order.
-    fn cells(&self) -> Vec<f64>;
-
-    /// Returns the element type's name, for the card header.
-    fn element_name() -> &'static str;
-}
-
-impl<Element: Scalar> Renderable for Tensor<Element>
-where
-    Tensor<Element>: Differentiable,
-{
-    fn cells(&self) -> Vec<f64> {
-        self.iter().map(Scalar::to_f64).collect()
-    }
-
-    fn element_name() -> &'static str {
-        Element::type_name()
-    }
+/// Returns a tensor's elements in row-major order as the `f64` cells
+/// every renderer works in.
+pub(crate) fn cells<Element: Scalar>(tensor: &Tensor<Element>) -> Vec<f64> {
+    tensor.iter().map(Scalar::to_f64).collect()
 }
 
 /// Formats one number at a width a table can align, without trailing
@@ -142,8 +125,8 @@ fn extremes(cells: &[f64]) -> Option<(f64, f64, f64)> {
 
 /// The card header for a payload: shape, element type, and the
 /// summary statistics that say whether the numbers are sane.
-pub(crate) fn header<Data: Renderable>(shape: &Shape, cells: &[f64]) -> String {
-    let mut parts = vec![shape_text(shape), Data::element_name().to_string()];
+pub(crate) fn header<Element: Scalar>(shape: &Shape, cells: &[f64]) -> String {
+    let mut parts = vec![shape_text(shape), Element::type_name().to_string()];
     if let Some((minimum, maximum, mean)) = extremes(cells) {
         parts.push(format!(
             "min {} max {} mean {}",
@@ -223,9 +206,9 @@ fn columns_of(shape: &Shape) -> usize {
 
 /// Renders a payload's body: the exact values when they are few, and a
 /// chart of them when they are many.
-pub(crate) fn body<Data: Renderable>(theme: Theme, data: &Data) -> (String, String) {
+pub(crate) fn body<Element: Scalar>(theme: Theme, data: &Tensor<Element>) -> (String, String) {
     let shape = data.shape();
-    let cells = data.cells();
+    let cells = cells(data);
     let columns = columns_of(&shape);
 
     if cells.len() == 1 {
@@ -252,24 +235,28 @@ pub(crate) fn body<Data: Renderable>(theme: Theme, data: &Data) -> (String, Stri
 }
 
 /// Renders a complete payload card: header, then body.
-pub(crate) fn payload_card<Data: Renderable>(theme: Theme, label: &str, data: &Data) -> String {
+pub(crate) fn payload_card<Element: Scalar>(
+    theme: Theme,
+    label: &str,
+    data: &Tensor<Element>,
+) -> String {
     let shape = data.shape();
-    let cells = data.cells();
+    let cells = cells(data);
     let (body_html, _) = body(theme, data);
     let head = format!(
         "{}  \u{b7}  {}",
         html::escape(label),
-        header::<Data>(&shape, &cells)
+        header::<Element>(&shape, &cells)
     );
     html::card(theme, &head, &body_html)
 }
 
 /// Renders a complete payload as plain text: header, then body.
-pub(crate) fn payload_text<Data: Renderable>(label: &str, data: &Data) -> String {
+pub(crate) fn payload_text<Element: Scalar>(label: &str, data: &Tensor<Element>) -> String {
     let shape = data.shape();
-    let cells = data.cells();
+    let cells = cells(data);
     let (_, body_text) = body(Theme::DARK, data);
-    let mut parts = vec![shape_text(&shape), Data::element_name().to_string()];
+    let mut parts = vec![shape_text(&shape), Element::type_name().to_string()];
     if let Some((minimum, maximum, mean)) = extremes(&cells) {
         parts.push(format!(
             "min {} max {} mean {}",

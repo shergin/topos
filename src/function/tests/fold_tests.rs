@@ -1,4 +1,4 @@
-use crate::{Shape, Tensor, Tensorial};
+use crate::{Shape, Tensor};
 
 use super::{Fold, Operation};
 

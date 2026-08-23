@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -33,12 +33,14 @@ impl SumAlong {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for SumAlong {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl SumAlong {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         unary(operands).sum_along(self.axis)
     }
+}
 
-    fn backward(&self, operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for SumAlong {
+    fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         smallvec![Some(gradient.broadcast_along(self.axis, operand))]
     }

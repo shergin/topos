@@ -1,4 +1,4 @@
-use crate::{Elementary, Shape, Tensor};
+use crate::{Shape, Tensor};
 
 use super::{LogSoftmax, Operation};
 

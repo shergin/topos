@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -42,13 +42,15 @@ impl Broadcast {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for Broadcast {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Broadcast {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&operand, &like) = binary(operands);
         operand.broadcast_like(like)
     }
+}
 
-    fn backward(&self, operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Broadcast {
+    fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&operand, _) = binary(operands);
         // The reduced gradient is rank 0, but the operand may be any
         // volume-1 shape (such as `[1]`); broadcasting the sum back to

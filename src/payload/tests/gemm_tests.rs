@@ -1,6 +1,6 @@
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use crate::{Differentiable, Elementary, Shape, Tensor, Tensorial};
+use crate::{Differentiable, Elementary, Tensor};
 
 use super::GemmTask;
 
@@ -214,17 +214,14 @@ impl Differentiable for Probe {
         accumulated
     }
 
-    fn zero_like(&self) -> Self {
+    fn zero() -> Self {
         Probe(0.0)
     }
-    fn one_like(&self) -> Self {
+    fn one() -> Self {
         Probe(1.0)
     }
-    fn counted(_shape: Shape, count: usize) -> Self {
+    fn from_count(count: usize) -> Self {
         Probe(count as f64)
-    }
-    fn shape(&self) -> Shape {
-        Shape::scalar()
     }
 }
 
@@ -261,22 +258,6 @@ fn the_element_seam_answers_before_the_built_in_kernels() {
     let right = Tensor::new([3, 2], vec![Probe(1.0); 6]);
     let product = left.matmul(&right);
     assert_eq!(product.to_vec(), vec![Probe(42.0); 4]);
-}
-
-#[test]
-fn nested_tensor_elements_multiply_on_the_slice_path() {
-    let element = |value: f64| Tensor::new([2], [value, value + 1.0]);
-    let left = Tensor::new(
-        [2, 2],
-        vec![element(1.0), element(2.0), element(3.0), element(4.0)],
-    );
-    let right = Tensor::new(
-        [2, 2],
-        vec![element(0.5), element(1.5), element(2.5), element(3.5)],
-    );
-    let product = left.matmul(&right);
-    let expected = reference(&left, &right);
-    assert_eq!(product.to_vec(), expected);
 }
 
 /// A probe element whose backend answers are one element short, for
@@ -330,17 +311,14 @@ impl Differentiable for LyingProbe {
         accumulated
     }
 
-    fn zero_like(&self) -> Self {
+    fn zero() -> Self {
         LyingProbe(0.0)
     }
-    fn one_like(&self) -> Self {
+    fn one() -> Self {
         LyingProbe(1.0)
     }
-    fn counted(_shape: Shape, count: usize) -> Self {
+    fn from_count(count: usize) -> Self {
         LyingProbe(count as f64)
-    }
-    fn shape(&self) -> Shape {
-        Shape::scalar()
     }
 }
 

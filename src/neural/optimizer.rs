@@ -1,4 +1,4 @@
-use crate::{Differentiable, Element, Parameters, Tensor, Tensorial};
+use crate::{Element, Parameters, Tensor};
 
 /// A training-step strategy: how gradients and the current parameter
 /// state become the next state.

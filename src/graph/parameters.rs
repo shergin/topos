@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Element, Tensor, Tensorial};
+use crate::{Element, Tensor};
 
 use super::Field;
 
@@ -313,11 +313,10 @@ impl<E: Element> Parameters<E> {
     ///
     /// It is the scalar arithmetic of optimizer state: bias-correction
     /// and decay factors multiply every parameter's entry regardless of
-    /// its shape. For scalar payloads the spread is the identity.
+    /// its shape. For rank-0 entries the spread is the identity.
     ///
     /// # Panics
-    /// For tensor payloads, panics if `factor` holds more than one
-    /// value.
+    /// Panics if `factor` holds more than one value.
     pub fn scale(&self, factor: &Tensor<E>) -> Self {
         self.map(|value| value.clone() * factor.broadcast_like(value))
     }

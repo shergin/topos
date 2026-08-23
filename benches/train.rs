@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 
-use topos::{Tape, Tensor, Tensorial};
+use topos::{Tape, Tensor};
 
 const PARAMETERS: usize = 100;
 

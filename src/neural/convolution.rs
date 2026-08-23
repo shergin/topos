@@ -14,7 +14,7 @@ use std::marker::PhantomData;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Element, Symbol, Tape, Tensor, Value};
+use crate::{Element, Symbol, Tape, Tensor, Value};
 
 use super::{Module, Visitor};
 

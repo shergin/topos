@@ -1,4 +1,4 @@
-use crate::{Shape, Tape, Tensor, Tensorial};
+use crate::{Shape, Tape, Tensor};
 
 use super::Mlp;
 

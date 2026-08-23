@@ -1,4 +1,4 @@
-use crate::{Differentiable, Element, Elementary, Parameters, Symbol, Tensor, Tensorial};
+use crate::{Element, Parameters, Symbol, Tensor};
 
 use super::Optimizer;
 use super::optimizer::assert_single_value;

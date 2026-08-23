@@ -21,7 +21,7 @@ mod corpus;
 use std::time::Instant;
 
 use malevich::{Cells, Frame, Plot, Scale};
-use topos::{Shape, Tape, Tensor, Tensorial, cross_entropy, init};
+use topos::{Shape, Tape, Tensor, cross_entropy, init};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};

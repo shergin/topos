@@ -68,8 +68,8 @@ fn a_long_vector_renders_as_a_chart_rather_than_a_table() {
 #[test]
 fn the_header_reports_shape_type_and_extremes() {
     let tensor = Tensor::new([2, 2], vec![1.0_f64, 2.0, 3.0, 4.0]);
-    let cells = tensor.cells();
-    let header = header::<Tensor<f64>>(&tensor.shape(), &cells);
+    let cells = cells(&tensor);
+    let header = header::<f64>(&tensor.shape(), &cells);
     assert!(header.contains("[2, 2]"));
     assert!(header.contains("f64"));
     assert!(header.contains("min 1"));
@@ -80,8 +80,8 @@ fn the_header_reports_shape_type_and_extremes() {
 #[test]
 fn non_finite_elements_are_counted_and_excluded_from_the_extremes() {
     let tensor = Tensor::new([3], vec![1.0_f64, f64::NAN, 3.0]);
-    let cells = tensor.cells();
-    let header = header::<Tensor<f64>>(&tensor.shape(), &cells);
+    let cells = cells(&tensor);
+    let header = header::<f64>(&tensor.shape(), &cells);
     assert!(header.contains("1 non-finite"));
     assert!(header.contains("min 1"));
     assert!(header.contains("max 3"));
@@ -91,8 +91,8 @@ fn non_finite_elements_are_counted_and_excluded_from_the_extremes() {
 #[test]
 fn an_all_non_finite_payload_still_renders_without_extremes() {
     let tensor = Tensor::new([2], vec![f64::NAN, f64::NAN]);
-    let cells = tensor.cells();
-    let header = header::<Tensor<f64>>(&tensor.shape(), &cells);
+    let cells = cells(&tensor);
+    let header = header::<f64>(&tensor.shape(), &cells);
     assert!(header.contains("2 non-finite"));
     assert!(!header.contains("mean"));
 }
@@ -126,7 +126,7 @@ fn the_theme_changes_the_card_and_nothing_else() {
 
 #[test]
 fn f32_and_bf16_payloads_name_their_element_type() {
-    assert_eq!(<Tensor<f32> as Renderable>::element_name(), "f32");
-    assert_eq!(<Tensor<f64> as Renderable>::element_name(), "f64");
-    assert_eq!(<Tensor<crate::Bf16> as Renderable>::element_name(), "bf16");
+    assert_eq!(<f32 as Scalar>::type_name(), "f32");
+    assert_eq!(<f64 as Scalar>::type_name(), "f64");
+    assert_eq!(<crate::Bf16 as Scalar>::type_name(), "bf16");
 }

@@ -13,7 +13,7 @@
 use std::time::Instant;
 
 use malevich::{Cells, Frame, Line, Plot};
-use topos::{Mlp, Tape, Tensor, Tensorial, init};
+use topos::{Mlp, Tape, Tensor, init};
 
 /// The resolution of the decision-surface chart: how many grid cells
 /// span the unit square along each axis.

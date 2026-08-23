@@ -25,8 +25,8 @@ use std::marker::PhantomData;
 
 use topos::checkpoint::named_restore;
 use topos::{
-    Differentiable, Element, Module, Parameters, Path, RmsNorm, Segment, Sequential, Symbol, Tape,
-    Tensor, Value, Visitor, concat, named_parameters,
+    Element, Module, Parameters, Path, RmsNorm, Segment, Sequential, Symbol, Tape, Tensor, Value,
+    Visitor, concat, named_parameters,
 };
 
 use crate::family::Family;

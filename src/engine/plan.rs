@@ -4,7 +4,7 @@ use cow_vec::CowVec;
 use smallvec::SmallVec;
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Element, Numerics, Shape, Tensor};
+use crate::{Element, Numerics, Shape, Tensor};
 
 use crate::backend::{Backend, Formula, NumericsScope, Precision};
 use crate::function::Function;

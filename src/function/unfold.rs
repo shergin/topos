@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Shape, Tensorial};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -69,12 +69,14 @@ impl Unfold {
     }
 }
 
-impl<Data: Tensorial> Operation<Data> for Unfold {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Unfold {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         unary(operands).unfold(self.axis, self.size, self.step, self.dilation)
     }
+}
 
-    fn backward(&self, operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Unfold {
+    fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         let extent = operand.shape().axes()[self.axis];
         smallvec![Some(gradient.fold(

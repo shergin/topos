@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Elementary, Shape};
+use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -36,13 +36,15 @@ impl Maximum {
     }
 }
 
-impl<Data: Elementary> Operation<Data> for Maximum {
-    fn forward(&self, operands: &[&Data]) -> Data {
+impl Maximum {
+    pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
         let (&left, &right) = binary(operands);
         left.maximum(right)
     }
+}
 
-    fn backward(&self, operands: &[&Data], _output: &Data, gradient: &Data) -> Cotangents<Data> {
+impl<Rule: Tensorial> Operation<Rule> for Maximum {
+    fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&left, &right) = binary(operands);
         let winners = left.step(right);
         let left_cotangent = gradient.clone() * winners.clone();

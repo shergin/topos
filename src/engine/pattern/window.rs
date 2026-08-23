@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::function::Function;
-use crate::{Differentiable, Shape, Tensorial};
+use crate::{Element, Shape, Tensor};
 
 use super::candidates::Candidate;
 use super::pattern::Pattern;
@@ -39,7 +39,7 @@ impl WindowProduct {
     /// Computes the fused call over the already-evaluated `values`:
     /// one windowed product from the source and kernel, the im2col
     /// chain between them never materialized.
-    pub(crate) fn apply<Data: Tensorial>(&self, values: &[Data]) -> Data {
+    pub(crate) fn apply<E: Element>(&self, values: &[Tensor<E>]) -> Tensor<E> {
         values[self.source].windowed_product(
             &values[self.kernel],
             self.kernel_height,
@@ -55,7 +55,7 @@ impl WindowProduct {
 /// the conv parameterization — and returns the candidate group.
 /// Interiors must pass [`View::interior_ok`]: wanted, outside the
 /// keep-set, and consumed exactly once inside the closure.
-pub(crate) fn match_at<Data: Differentiable>(index: usize, view: &View<Data>) -> Option<Candidate> {
+pub(crate) fn match_at<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Candidate> {
     let Some(Function::MatMul(_)) = view.function(index) else {
         return None;
     };

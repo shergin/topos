@@ -28,22 +28,31 @@ assert_impl_all!(Tensor<f64>: Send, Sync);
 /// and buffer-shared, view operations that alias a buffer (transpose and
 /// broadcast) are always safe: no operation ever writes through an alias.
 ///
-/// Arithmetic and [`Elementary`] functions operate elementwise in logical
-/// row-major order. Binary elementwise operations require identical shapes
-/// and never broadcast implicitly. Broadcasting is available only through
-/// [`Tensorial::broadcast_like`] and [`Tensorial::broadcast_along`], and it
-/// produces a view rather than copying.
+/// Arithmetic and the elementwise maps operate in logical row-major
+/// order. Binary elementwise operations require identical shapes and
+/// never broadcast implicitly. Broadcasting is available only through
+/// [`broadcast_like`](Tensor::broadcast_like) and
+/// [`broadcast_along`](Tensor::broadcast_along), and it produces a
+/// view rather than copying.
 ///
-/// [`Tensorial::matmul`] requires rank-2 operands, and
-/// [`Tensorial::transpose`] accepts ranks 0 through 2, returning a view.
-/// Reductions, explicit broadcasts, and reshaping are rank-general;
-/// batched matrix multiplication is not supported.
+/// [`matmul`](Tensor::matmul) requires rank-2 or batched higher-rank
+/// operands, and [`transpose`](Tensor::transpose) accepts ranks 0
+/// through 2, returning a view. Reductions, explicit broadcasts, and
+/// reshaping are rank-general.
 #[derive(Debug, Clone)]
 pub struct Tensor<Element> {
     storage: Storage<Element>,
 }
 
 impl<Element> Tensor<Element> {
+    /// Returns the shape of this tensor: its extent along every axis.
+    ///
+    /// It is what record-time shape inference seeds leaves with. A
+    /// scalar is rank 0.
+    pub fn shape(&self) -> Shape {
+        self.logical_shape().clone()
+    }
+
     /// Returns the logical shape, the one descriptor every representation
     /// answers for.
     fn logical_shape(&self) -> &Shape {
@@ -268,8 +277,7 @@ impl<Element: Differentiable> Tensor<Element> {
     /// Panics if the shape's volume overflows `usize`, the number of elements
     /// differs from that volume, or the shape holds no elements. Empty tensors
     /// are unsupported because reductions initialize their accumulator from
-    /// an existing element; [`Differentiable`] provides shape-preserving
-    /// identities rather than a nullary element constructor.
+    /// an existing element.
     pub fn new(shape: impl Into<Shape>, elements: impl Into<Vec<Element>>) -> Self {
         Self::dense(shape.into(), elements.into())
     }
@@ -349,7 +357,7 @@ impl<Element: Differentiable> Tensor<Element> {
                 "selection index {index} is out of vocabulary {vocab}"
             );
         }
-        let zero = one.zero_like();
+        let zero = Element::zero();
         let shape = Shape::new([indices.len(), vocab]);
         Self {
             storage: Storage::Selection {
@@ -739,54 +747,41 @@ impl<Element: Differentiable> Neg for Tensor<Element> {
     }
 }
 
-impl<Element: Differentiable> Differentiable for Tensor<Element> {
-    /// A tensor accumulates in itself: its own elements already honor
-    /// their element-level accumulator through the operations.
-    type Accumulator = Self;
-
-    fn promote(&self) -> Self {
-        self.clone()
+impl<Element: Differentiable> Tensor<Element> {
+    /// Returns a zero shaped like `self`, stored as a constant: the
+    /// seed of gradient accumulators.
+    pub fn zero_like(&self) -> Self {
+        Self::constant(self.logical_shape().clone(), Element::zero())
     }
 
-    fn demote(accumulated: Self) -> Self {
-        accumulated
-    }
-
-    /// Returns a zero shaped like `self`, stored as a constant.
-    ///
-    /// It reads one element's `zero_like` as the fill, which is exact for
-    /// the scalar payloads a tensor holds: their identity does not vary
-    /// across the buffer.
-    fn zero_like(&self) -> Self {
-        Self::constant(self.logical_shape().clone(), self.get(0).zero_like())
-    }
-
-    /// Returns a one shaped like `self`, stored as a constant.
-    fn one_like(&self) -> Self {
-        Self::constant(self.logical_shape().clone(), self.get(0).one_like())
+    /// Returns a one shaped like `self`, stored as a constant: the
+    /// seed of the output gradient.
+    pub fn one_like(&self) -> Self {
+        Self::constant(self.logical_shape().clone(), Element::one())
     }
 
     /// Returns the count spread across `shape`, stored as a constant;
-    /// the element value comes from the element type's own `counted`.
+    /// the element value comes from the element type's own
+    /// [`from_count`](Differentiable::from_count).
+    ///
+    /// It is the constructor behind size-derived constants: a composed
+    /// formula that divides by an axis extent (a mean, a
+    /// normalization) mints that extent here. Counts convert exactly
+    /// as long as the element type can represent them.
     ///
     /// # Panics
     /// Panics if the shape's volume overflows `usize` or the shape holds
     /// no elements, as documented on [`Tensor::new`].
-    fn counted(shape: Shape, count: usize) -> Self {
-        Self::constant(shape, Element::counted(Shape::scalar(), count))
+    pub fn counted(shape: Shape, count: usize) -> Self {
+        Self::constant(shape, Element::from_count(count))
     }
 
-    fn shape(&self) -> Shape {
-        self.logical_shape().clone()
-    }
-
-    /// A tensor certifies through its elements: the shape matches and
-    /// every element is its own type's counted value.
-    fn is_counted(&self, shape: &Shape, count: usize) -> bool {
-        *self.logical_shape() == *shape
-            && self
-                .iter()
-                .all(|element| element.is_counted(&Shape::scalar(), count))
+    /// Returns whether this tensor is exactly what
+    /// [`counted`](Tensor::counted) mints for `shape` and `count`:
+    /// the recognizer pattern matchers use to certify a recorded
+    /// size-derived constant before raising a formula around it.
+    pub fn is_counted(&self, shape: &Shape, count: usize) -> bool {
+        *self.logical_shape() == *shape && self.iter().all(|element| element.is_count(count))
     }
 }
 
@@ -826,39 +821,57 @@ impl<Element: Elementary> Tensor<Element> {
     }
 }
 
-impl<Element: Elementary> Elementary for Tensor<Element> {
-    fn exp(&self) -> Self {
+impl<Element: Elementary> Tensor<Element> {
+    /// Returns `e` raised to each element.
+    pub fn exp(&self) -> Self {
         self.mapped(MapOperation::Exp, |element| element.exp())
     }
 
-    fn ln(&self) -> Self {
+    /// Returns the natural logarithm of each element.
+    pub fn ln(&self) -> Self {
         self.mapped(MapOperation::Ln, |element| element.ln())
     }
 
-    fn sqrt(&self) -> Self {
+    /// Returns the square root of each element.
+    pub fn sqrt(&self) -> Self {
         self.mapped(MapOperation::Sqrt, |element| element.sqrt())
     }
 
-    fn tanh(&self) -> Self {
+    /// Returns the hyperbolic tangent of each element.
+    pub fn tanh(&self) -> Self {
         self.mapped(MapOperation::Tanh, |element| element.tanh())
     }
 
-    fn powf(&self, exponent: Self) -> Self {
+    /// Returns each element raised to the matching element of
+    /// `exponent`.
+    ///
+    /// # Panics
+    /// Panics if the tensors have different shapes.
+    pub fn powf(&self, exponent: Self) -> Self {
         self.zip(&exponent, |element, exponent| {
             element.powf(exponent.clone())
         })
     }
 
-    fn maximum(&self, other: &Self) -> Self {
+    /// Returns the elementwise maximum of `self` and `other`.
+    ///
+    /// # Panics
+    /// Panics if the tensors have different shapes.
+    pub fn maximum(&self, other: &Self) -> Self {
         self.zip(other, |element, other| element.maximum(other))
     }
 
-    fn step(&self, threshold: &Self) -> Self {
+    /// Returns the elementwise 0/1 indicator of `self >= threshold`:
+    /// the Heaviside step, ties answering one.
+    ///
+    /// # Panics
+    /// Panics if the tensors have different shapes.
+    pub fn step(&self, threshold: &Self) -> Self {
         self.zip(threshold, |element, threshold| element.step(threshold))
     }
 }
 
-impl<Element: Elementary> Tensorial for Tensor<Element> {
+impl<Element: Elementary> Tensor<Element> {
     /// Returns the batch normalization through the payload seam: when
     /// every operand is a contiguous dense buffer the whole group is
     /// offered to the backend chain as one task, and the composed
@@ -869,7 +882,12 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// Panics if `self` is not rank 2 `[batch, features]`, the affine
     /// operands do not hold `features` values, or `epsilon` holds
     /// more than one value.
-    fn batch_normalized(&self, scale: &Self, shift: &Self, epsilon: &Self) -> (Self, Self, Self) {
+    pub fn batch_normalized(
+        &self,
+        scale: &Self,
+        shift: &Self,
+        epsilon: &Self,
+    ) -> (Self, Self, Self) {
         let shape = self.logical_shape().clone();
         let axes = shape.axes();
         assert_eq!(
@@ -930,7 +948,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// # Panics
     /// Panics if `self` is not rank 4, `size` or `stride` is zero,
     /// or a window does not fit the spatial extents.
-    fn max_pooled(&self, size: usize, stride: usize) -> Self {
+    pub fn max_pooled(&self, size: usize, stride: usize) -> Self {
         let shape = self.logical_shape();
         let axes = shape.axes();
         assert_eq!(
@@ -988,7 +1006,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// # Panics
     /// Panics if either operand is not rank 2, the inner dimensions do not
     /// agree, or any dimension is empty.
-    fn matmul(&self, rhs: &Self) -> Self {
+    pub fn matmul(&self, rhs: &Self) -> Self {
         let left = self.logical_shape();
         let right = rhs.logical_shape();
         assert!(left.rank() >= 2, "matmul requires rank-2 or higher tensors");
@@ -1103,7 +1121,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     ///
     /// # Panics
     /// Panics if the tensor's rank exceeds 2.
-    fn transpose(&self) -> Self {
+    pub fn transpose(&self) -> Self {
         match &self.storage {
             Storage::Dense { data, layout } => Self {
                 storage: Storage::Dense {
@@ -1122,7 +1140,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     ///
     /// Elements are accumulated in logical order from left to right without
     /// pairwise or compensated summation.
-    fn sum(&self) -> Self {
+    pub fn sum(&self) -> Self {
         let mut elements = self.iter();
         let first = elements
             .next()
@@ -1140,7 +1158,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     ///
     /// # Panics
     /// Panics if `axis` is out of rank.
-    fn sum_along(&self, axis: usize) -> Self {
+    pub fn sum_along(&self, axis: usize) -> Self {
         let shape = self.logical_shape();
         let axes = shape.axes();
         assert!(axis < axes.len(), "axis {axis} is out of rank for {shape}");
@@ -1171,7 +1189,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     ///
     /// # Panics
     /// Panics if `axis` is out of rank.
-    fn max_along(&self, axis: usize) -> Self {
+    pub fn max_along(&self, axis: usize) -> Self {
         let shape = self.logical_shape();
         let axes = shape.axes();
         assert!(axis < axes.len(), "axis {axis} is out of rank for {shape}");
@@ -1198,7 +1216,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     ///
     /// # Panics
     /// Panics if `self` holds more than one element.
-    fn broadcast_like(&self, reference: &Self) -> Self {
+    pub fn broadcast_like(&self, reference: &Self) -> Self {
         assert_eq!(
             self.logical_shape().volume(),
             1,
@@ -1214,7 +1232,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// # Panics
     /// Panics if `axis` is out of `reference`'s rank or `self`'s shape
     /// differs from `reference`'s with that axis removed.
-    fn broadcast_along(&self, axis: usize, reference: &Self) -> Self {
+    pub fn broadcast_along(&self, axis: usize, reference: &Self) -> Self {
         let reference_shape = reference.logical_shape();
         let axes = reference_shape.axes();
         assert!(
@@ -1250,7 +1268,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     ///
     /// # Panics
     /// Panics if `shape`'s volume differs from `self`'s.
-    fn reshape(&self, shape: Shape) -> Self {
+    pub fn reshape(&self, shape: Shape) -> Self {
         assert_eq!(
             self.logical_shape().volume(),
             shape.volume(),
@@ -1277,7 +1295,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     ///
     /// # Panics
     /// Panics if `order` is not a permutation of `0..rank`.
-    fn permute(&self, order: &[usize]) -> Self {
+    pub fn permute(&self, order: &[usize]) -> Self {
         let shape = self.logical_shape();
         assert_eq!(
             order.len(),
@@ -1317,7 +1335,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// # Panics
     /// Panics if `axis` is out of rank, `len` is zero (tensors cannot be
     /// empty), or `start + len` overflows or exceeds the axis extent.
-    fn narrow(&self, axis: usize, start: usize, len: usize) -> Self {
+    pub fn narrow(&self, axis: usize, start: usize, len: usize) -> Self {
         let shape = self.logical_shape();
         assert!(
             axis < shape.rank(),
@@ -1359,7 +1377,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// # Panics
     /// Panics if `axis` is out of rank or the window overflows or exceeds
     /// `full_extent`.
-    fn pad(&self, axis: usize, start: usize, full_extent: usize) -> Self {
+    pub fn pad(&self, axis: usize, start: usize, full_extent: usize) -> Self {
         let shape = self.logical_shape();
         assert!(
             axis < shape.rank(),
@@ -1376,7 +1394,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
         );
         let outer: usize = axes[..axis].iter().product();
         let inner: usize = axes[axis + 1..].iter().product();
-        let zero = self.get(0).zero_like();
+        let zero = Element::zero();
 
         let mut elements = Vec::with_capacity(outer * full_extent * inner);
         for outer_index in 0..outer {
@@ -1409,7 +1427,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// Panics if `axis` is out of rank, `size`, `step`, or `dilation`
     /// is zero, or the dilated window span `dilation * (size - 1) + 1`
     /// overflows or exceeds the axis extent.
-    fn unfold(&self, axis: usize, size: usize, step: usize, dilation: usize) -> Self {
+    pub fn unfold(&self, axis: usize, size: usize, step: usize, dilation: usize) -> Self {
         let shape = self.logical_shape();
         assert!(
             axis < shape.rank(),
@@ -1459,7 +1477,14 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// `dilation` is zero, the dilated window span overflows or exceeds
     /// `extent`, or the shape at `axis`, `axis + 1` disagrees with the
     /// windows `unfold` would produce for `extent`.
-    fn fold(&self, axis: usize, size: usize, step: usize, dilation: usize, extent: usize) -> Self {
+    pub fn fold(
+        &self,
+        axis: usize,
+        size: usize,
+        step: usize,
+        dilation: usize,
+        extent: usize,
+    ) -> Self {
         let shape = self.logical_shape();
         let axes = shape.axes();
         assert!(
@@ -1492,7 +1517,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
         );
         let outer: usize = axes[..axis].iter().product();
         let inner: usize = axes[axis + 2..].iter().product();
-        let zero = self.get(0).zero_like();
+        let zero = Element::zero();
 
         let mut elements = Vec::with_capacity(outer * extent * inner);
         for outer_index in 0..outer {
@@ -1542,7 +1567,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// # Panics
     /// Panics if `self` is not rank 4, `stride` is zero, or a kernel
     /// window does not fit the padded extents.
-    fn windowed_patches(
+    pub fn windowed_patches(
         &self,
         kernel_height: usize,
         kernel_width: usize,
@@ -1573,7 +1598,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
         let out_height = (height + 2 * padding - kernel_height) / stride + 1;
         let out_width = (width + 2 * padding - kernel_width) / stride + 1;
         let columns = channels * kernel_height * kernel_width;
-        let zero = elements[0].zero_like();
+        let zero = Element::zero();
         let mut patches = vec![zero; batch * out_height * out_width * columns];
         for image in 0..batch {
             for out_y in 0..out_height {
@@ -1621,7 +1646,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// # Panics
     /// Panics if `selection` is not a `[count, vocab]` selection, `self` has
     /// no axes, or the vocabulary does not match `self`'s first axis.
-    fn gather(&self, selection: &Self) -> Self {
+    pub fn gather(&self, selection: &Self) -> Self {
         let table = self.logical_shape();
         let indices = selection.selection_indices();
         assert!(table.rank() >= 1, "gather table needs at least one axis");
@@ -1649,7 +1674,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
     /// zero `[rows, ...]` payload by `selection`'s indices: the adjoint of
     /// [`gather`](Tensorial::gather) and its gradient rule. Rows selected
     /// more than once accumulate.
-    fn scatter(&self, selection: &Self, rows: usize) -> Self {
+    pub fn scatter(&self, selection: &Self, rows: usize) -> Self {
         let gradient = self.logical_shape();
         assert!(
             gradient.rank() >= 1,
@@ -1670,7 +1695,7 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
         let volume = rows
             .checked_mul(row_size)
             .expect("shape volume overflows `usize`");
-        let zero = self.get(0).zero_like();
+        let zero = Element::zero();
 
         let mut accumulators = vec![zero.promote(); volume];
         for (source, &target) in indices.iter().enumerate() {
@@ -1685,6 +1710,129 @@ impl<Element: Elementary> Tensorial for Tensor<Element> {
             result,
             accumulators.into_iter().map(Element::demote).collect(),
         )
+    }
+}
+
+impl<Element: Elementary> Tensor<Element> {
+    /// Returns the im2col product of `self` with the GEMM-shaped
+    /// `kernel`: the window rows of the padded, strided sliding
+    /// windows, matrix-multiplied in one call. It is the fused
+    /// executor behind the plan tier's window-GEMM pattern; the
+    /// composed reference is
+    /// [`composed_windowed_patches`](crate::reference::composed_windowed_patches)
+    /// followed by the plain product.
+    pub fn windowed_product(
+        &self,
+        kernel: &Self,
+        kernel_height: usize,
+        kernel_width: usize,
+        stride: usize,
+        padding: usize,
+    ) -> Self {
+        self.windowed_patches(kernel_height, kernel_width, stride, padding)
+            .matmul(kernel)
+    }
+}
+
+/// The compute interpretation of the recordable vocabulary: every
+/// rule operation is the inherent tensor method of the same name, so
+/// running a derivative rule over tensors is running it over the
+/// engine's one payload.
+impl<E: Element> Tensorial for Tensor<E> {
+    fn shape(&self) -> Shape {
+        Tensor::shape(self)
+    }
+
+    fn zero_like(&self) -> Self {
+        Tensor::zero_like(self)
+    }
+
+    fn one_like(&self) -> Self {
+        Tensor::one_like(self)
+    }
+
+    fn exp(&self) -> Self {
+        Tensor::exp(self)
+    }
+
+    fn ln(&self) -> Self {
+        Tensor::ln(self)
+    }
+
+    fn sqrt(&self) -> Self {
+        Tensor::sqrt(self)
+    }
+
+    fn tanh(&self) -> Self {
+        Tensor::tanh(self)
+    }
+
+    fn powf(&self, exponent: Self) -> Self {
+        Tensor::powf(self, exponent)
+    }
+
+    fn maximum(&self, other: &Self) -> Self {
+        Tensor::maximum(self, other)
+    }
+
+    fn step(&self, threshold: &Self) -> Self {
+        Tensor::step(self, threshold)
+    }
+
+    fn matmul(&self, rhs: &Self) -> Self {
+        Tensor::matmul(self, rhs)
+    }
+
+    fn transpose(&self) -> Self {
+        Tensor::transpose(self)
+    }
+
+    fn sum(&self) -> Self {
+        Tensor::sum(self)
+    }
+
+    fn sum_along(&self, axis: usize) -> Self {
+        Tensor::sum_along(self, axis)
+    }
+
+    fn broadcast_like(&self, reference: &Self) -> Self {
+        Tensor::broadcast_like(self, reference)
+    }
+
+    fn broadcast_along(&self, axis: usize, reference: &Self) -> Self {
+        Tensor::broadcast_along(self, axis, reference)
+    }
+
+    fn reshape(&self, shape: Shape) -> Self {
+        Tensor::reshape(self, shape)
+    }
+
+    fn permute(&self, order: &[usize]) -> Self {
+        Tensor::permute(self, order)
+    }
+
+    fn narrow(&self, axis: usize, start: usize, len: usize) -> Self {
+        Tensor::narrow(self, axis, start, len)
+    }
+
+    fn pad(&self, axis: usize, start: usize, full_extent: usize) -> Self {
+        Tensor::pad(self, axis, start, full_extent)
+    }
+
+    fn unfold(&self, axis: usize, size: usize, step: usize, dilation: usize) -> Self {
+        Tensor::unfold(self, axis, size, step, dilation)
+    }
+
+    fn fold(&self, axis: usize, size: usize, step: usize, dilation: usize, extent: usize) -> Self {
+        Tensor::fold(self, axis, size, step, dilation, extent)
+    }
+
+    fn gather(&self, selection: &Self) -> Self {
+        Tensor::gather(self, selection)
+    }
+
+    fn scatter(&self, selection: &Self, rows: usize) -> Self {
+        Tensor::scatter(self, selection, rows)
     }
 }
 

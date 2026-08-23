@@ -4,7 +4,7 @@ use std::sync::Arc;
 use smallvec::SmallVec;
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Element, Numerics, Tensor};
+use crate::{Element, Numerics, Tensor};
 
 use crate::backend::NumericsScope;
 use crate::function::{Function, SlotId};

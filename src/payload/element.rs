@@ -21,3 +21,7 @@ pub trait Element: Differentiable + Elementary {}
 impl Element for f32 {}
 
 impl Element for f64 {}
+
+#[cfg(test)]
+#[path = "tests/element_tests.rs"]
+mod tests;
