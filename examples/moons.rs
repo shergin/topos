@@ -42,9 +42,9 @@ fn moon(flipped: bool, noise: &[f32]) -> (Vec<f32>, Vec<f32>) {
     for index in 0..MOON_LEN {
         let angle = PI * index as f32 / (MOON_LEN - 1) as f32;
         let (x, y) = if flipped {
-            (1.0 - angle.cos(), 0.5 - angle.sin())
+            (1.0 - libm::cosf(angle), 0.5 - libm::sinf(angle))
         } else {
-            (angle.cos(), angle.sin())
+            (libm::cosf(angle), libm::sinf(angle))
         };
         moon_x.push(x + noise[index * 2]);
         moon_y.push(y + noise[index * 2 + 1]);

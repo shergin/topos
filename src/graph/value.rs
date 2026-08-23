@@ -224,7 +224,8 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// Records the error function of this value on the same tape and
     /// returns a proxy to it.
     ///
-    /// The computation is crate-owned; its derivative rule speaks
+    /// The computation delegates to the pure-Rust `libm` crate, like
+    /// every transcendental; its derivative rule speaks
     /// [`erf_derivative`](Self::erf_derivative), the closed pair that
     /// keeps the constant `2/sqrt(pi)` inside per-element kernels
     /// rather than in any recorded graph.

@@ -183,7 +183,12 @@ a practical decision for one-line specs and a one-pass oracle.
 `Tanh`, `Sin`, `Cos`, `Log1p`, `Expm1`, `Erf`, `ErfDerivative`) —
 the same vocabulary the acceleration seam's whole-buffer
 map task speaks, so the IR and the backend chain name these
-instructions once. Everything operation-specific — the printed
+instructions once. The reference path computes every map through the
+pure-Rust `libm` crate (`sqrt` excepted: the hardware instruction is
+correctly rounded by IEEE mandate), so the oracle's transcendental
+bits are identical on every platform — the system's own math library
+varies in last bits between targets, which would scope seeded replay
+to one machine. Everything operation-specific — the printed
 mnemonic (`Tanh`, never `Map`), the read set, the derivative —
 dispatches on the carried operation; only the shape behavior is
 shared, since a map keeps its operand's shape. Adding a

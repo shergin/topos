@@ -90,35 +90,35 @@ impl Differentiable for Audited {
 
 impl Elementary for Audited {
     fn exp(&self) -> Self {
-        Audited(self.0.exp())
+        Audited(Elementary::exp(&self.0))
     }
 
     fn ln(&self) -> Self {
-        Audited(self.0.ln())
+        Audited(Elementary::ln(&self.0))
     }
 
     fn sqrt(&self) -> Self {
-        Audited(self.0.sqrt())
+        Audited(Elementary::sqrt(&self.0))
     }
 
     fn tanh(&self) -> Self {
-        Audited(self.0.tanh())
+        Audited(Elementary::tanh(&self.0))
     }
 
     fn sin(&self) -> Self {
-        Audited(self.0.sin())
+        Audited(Elementary::sin(&self.0))
     }
 
     fn cos(&self) -> Self {
-        Audited(self.0.cos())
+        Audited(Elementary::cos(&self.0))
     }
 
     fn log1p(&self) -> Self {
-        Audited(self.0.ln_1p())
+        Audited(Elementary::log1p(&self.0))
     }
 
     fn expm1(&self) -> Self {
-        Audited(self.0.exp_m1())
+        Audited(Elementary::expm1(&self.0))
     }
 
     fn erf(&self) -> Self {
@@ -130,7 +130,7 @@ impl Elementary for Audited {
     }
 
     fn powf(&self, exponent: Self) -> Self {
-        Audited(self.0.powf(exponent.0))
+        Audited(Elementary::powf(&self.0, exponent.0))
     }
 
     fn maximum(&self, other: &Self) -> Self {

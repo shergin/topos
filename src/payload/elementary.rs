@@ -43,9 +43,14 @@ pub enum MapOperation {
 ///
 /// This trait extends [`Differentiable`] without making transcendental
 /// functions or order comparisons part of the base arithmetic
-/// contract. `f32` and `f64` use the corresponding standard
-/// operations; [`Tensor`](super::Tensor) applies an element's maps
-/// elementwise through its inherent methods.
+/// contract. `f32` and `f64` compute their transcendentals through
+/// the pure-Rust `libm` crate rather than the standard library, so
+/// the reference bits are the same on every platform — the system's
+/// own math library varies in last bits between targets, which would
+/// scope bit-identity to one machine. The exception is `sqrt`, which
+/// IEEE 754 requires to be correctly rounded and the hardware already
+/// answers identically everywhere. [`Tensor`](super::Tensor) applies
+/// an element's maps elementwise through its inherent methods.
 pub trait Elementary: Differentiable {
     /// Returns `e` raised to the power of `self`.
     fn exp(&self) -> Self;
@@ -90,9 +95,10 @@ pub trait Elementary: Differentiable {
 
     /// Returns the error function of `self`.
     ///
-    /// The computation is crate-owned (the standard library has no
-    /// `erf`, and the C library would need `unsafe`); see the `erf`
-    /// module for the three-piece derivation. It pairs with
+    /// The computation delegates to `libm` like the rest of the
+    /// transcendentals (the standard library has no `erf`, and the C
+    /// library would need `unsafe` and vary by platform). It pairs
+    /// with
     /// [`erf_derivative`](Elementary::erf_derivative), which its
     /// derivative rule speaks — the closure that keeps the
     /// transcendental constant `2/sqrt(pi)` out of the generic rules
@@ -175,35 +181,39 @@ pub trait Elementary: Differentiable {
 
 impl Elementary for f32 {
     fn exp(&self) -> Self {
-        f32::exp(*self)
+        libm::expf(*self)
     }
 
     fn ln(&self) -> Self {
-        f32::ln(*self)
+        libm::logf(*self)
     }
 
+    /// The one transcendental left on the standard library: IEEE 754
+    /// requires `sqrt` to be correctly rounded, and the hardware
+    /// instruction behind `f32::sqrt` already answers the same bits
+    /// on every platform.
     fn sqrt(&self) -> Self {
         f32::sqrt(*self)
     }
 
     fn tanh(&self) -> Self {
-        f32::tanh(*self)
+        libm::tanhf(*self)
     }
 
     fn sin(&self) -> Self {
-        f32::sin(*self)
+        libm::sinf(*self)
     }
 
     fn cos(&self) -> Self {
-        f32::cos(*self)
+        libm::cosf(*self)
     }
 
     fn log1p(&self) -> Self {
-        f32::ln_1p(*self)
+        libm::log1pf(*self)
     }
 
     fn expm1(&self) -> Self {
-        f32::exp_m1(*self)
+        libm::expm1f(*self)
     }
 
     /// Routed through the `f64` core and rounded once at the end,
@@ -217,7 +227,7 @@ impl Elementary for f32 {
     }
 
     fn powf(&self, exponent: Self) -> Self {
-        f32::powf(*self, exponent)
+        libm::powf(*self, exponent)
     }
 
     fn maximum(&self, other: &Self) -> Self {
@@ -243,35 +253,37 @@ impl Elementary for f32 {
 
 impl Elementary for f64 {
     fn exp(&self) -> Self {
-        f64::exp(*self)
+        libm::exp(*self)
     }
 
     fn ln(&self) -> Self {
-        f64::ln(*self)
+        libm::log(*self)
     }
 
+    /// See the `f32` note: the hardware square root is correctly
+    /// rounded everywhere already.
     fn sqrt(&self) -> Self {
         f64::sqrt(*self)
     }
 
     fn tanh(&self) -> Self {
-        f64::tanh(*self)
+        libm::tanh(*self)
     }
 
     fn sin(&self) -> Self {
-        f64::sin(*self)
+        libm::sin(*self)
     }
 
     fn cos(&self) -> Self {
-        f64::cos(*self)
+        libm::cos(*self)
     }
 
     fn log1p(&self) -> Self {
-        f64::ln_1p(*self)
+        libm::log1p(*self)
     }
 
     fn expm1(&self) -> Self {
-        f64::exp_m1(*self)
+        libm::expm1(*self)
     }
 
     fn erf(&self) -> Self {
@@ -283,7 +295,7 @@ impl Elementary for f64 {
     }
 
     fn powf(&self, exponent: Self) -> Self {
-        f64::powf(*self, exponent)
+        libm::pow(*self, exponent)
     }
 
     fn maximum(&self, other: &Self) -> Self {

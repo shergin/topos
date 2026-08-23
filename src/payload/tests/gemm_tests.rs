@@ -227,28 +227,28 @@ impl Differentiable for Probe {
 
 impl Elementary for Probe {
     fn exp(&self) -> Self {
-        Probe(self.0.exp())
+        Probe(Elementary::exp(&self.0))
     }
     fn ln(&self) -> Self {
-        Probe(self.0.ln())
+        Probe(Elementary::ln(&self.0))
     }
     fn sqrt(&self) -> Self {
-        Probe(self.0.sqrt())
+        Probe(Elementary::sqrt(&self.0))
     }
     fn tanh(&self) -> Self {
-        Probe(self.0.tanh())
+        Probe(Elementary::tanh(&self.0))
     }
     fn sin(&self) -> Self {
-        Probe(self.0.sin())
+        Probe(Elementary::sin(&self.0))
     }
     fn cos(&self) -> Self {
-        Probe(self.0.cos())
+        Probe(Elementary::cos(&self.0))
     }
     fn log1p(&self) -> Self {
-        Probe(self.0.ln_1p())
+        Probe(Elementary::log1p(&self.0))
     }
     fn expm1(&self) -> Self {
-        Probe(self.0.exp_m1())
+        Probe(Elementary::expm1(&self.0))
     }
 
     fn erf(&self) -> Self {
@@ -259,7 +259,7 @@ impl Elementary for Probe {
         Probe(Elementary::erf_derivative(&self.0))
     }
     fn powf(&self, exponent: Self) -> Self {
-        Probe(self.0.powf(exponent.0))
+        Probe(Elementary::powf(&self.0, exponent.0))
     }
     fn maximum(&self, other: &Self) -> Self {
         Probe(self.0.max(other.0))
@@ -344,28 +344,28 @@ impl Differentiable for LyingProbe {
 
 impl Elementary for LyingProbe {
     fn exp(&self) -> Self {
-        LyingProbe(self.0.exp())
+        LyingProbe(Elementary::exp(&self.0))
     }
     fn ln(&self) -> Self {
-        LyingProbe(self.0.ln())
+        LyingProbe(Elementary::ln(&self.0))
     }
     fn sqrt(&self) -> Self {
-        LyingProbe(self.0.sqrt())
+        LyingProbe(Elementary::sqrt(&self.0))
     }
     fn tanh(&self) -> Self {
-        LyingProbe(self.0.tanh())
+        LyingProbe(Elementary::tanh(&self.0))
     }
     fn sin(&self) -> Self {
-        LyingProbe(self.0.sin())
+        LyingProbe(Elementary::sin(&self.0))
     }
     fn cos(&self) -> Self {
-        LyingProbe(self.0.cos())
+        LyingProbe(Elementary::cos(&self.0))
     }
     fn log1p(&self) -> Self {
-        LyingProbe(self.0.ln_1p())
+        LyingProbe(Elementary::log1p(&self.0))
     }
     fn expm1(&self) -> Self {
-        LyingProbe(self.0.exp_m1())
+        LyingProbe(Elementary::expm1(&self.0))
     }
 
     fn erf(&self) -> Self {
@@ -376,7 +376,7 @@ impl Elementary for LyingProbe {
         LyingProbe(Elementary::erf_derivative(&self.0))
     }
     fn powf(&self, exponent: Self) -> Self {
-        LyingProbe(self.0.powf(exponent.0))
+        LyingProbe(Elementary::powf(&self.0, exponent.0))
     }
     fn maximum(&self, other: &Self) -> Self {
         LyingProbe(self.0.max(other.0))

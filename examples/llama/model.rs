@@ -96,9 +96,9 @@ impl Rope {
                 // `base^(-2 (j mod half) / head)`, the duplicated-halves
                 // layout the rotate-half convention pairs with.
                 let exponent = -2.0 * (column % half) as f64 / head_dim as f64;
-                let angle = position as f64 * ROPE_BASE.powf(exponent);
-                cosines.push(E::from(angle.cos() as f32));
-                sines.push(E::from(angle.sin() as f32));
+                let angle = position as f64 * libm::pow(ROPE_BASE, exponent);
+                cosines.push(E::from(libm::cos(angle) as f32));
+                sines.push(E::from(libm::sin(angle) as f32));
             }
         }
         Self {

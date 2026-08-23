@@ -80,7 +80,10 @@ fn fan_aware_initializers_reject_other_ranks() {
 #[test]
 fn seeded_streams_are_pinned_forever() {
     // Bits captured from the concrete-f64 implementation before the
-    // factories went generic (2026-08-02). The `f64` path must stay
+    // factories went generic (2026-08-02), re-baselined once on
+    // 2026-08-23 when the transcendentals moved to `libm` (one ulp in
+    // the Box-Muller cosine) — in exchange the pinned bits now hold
+    // on every platform, not only this one. The `f64` path must stay
     // bit-identical to them forever, and the `f32` path is the same
     // stream rounded once per element.
     let goldens: [(&[u64; 4], Tensor<f64>, Tensor<f32>); 4] = [
@@ -98,7 +101,7 @@ fn seeded_streams_are_pinned_forever() {
             &[
                 0x3fffa194ec47d228,
                 0xc00dd3fde5949e97,
-                0x3f800ea29c8645d7,
+                0x3f800ea29c8645d8,
                 0xbff0efc91ba890b4,
             ],
             normal::<f64>(7, 2.0)(&Shape::new([4])),
@@ -118,7 +121,7 @@ fn seeded_streams_are_pinned_forever() {
             &[
                 0x3fefa194ec47d228,
                 0xbffdd3fde5949e97,
-                0x3f700ea29c8645d7,
+                0x3f700ea29c8645d8,
                 0xbfe0efc91ba890b4,
             ],
             kaiming::<f64>(7)(&Shape::new([2, 2])),

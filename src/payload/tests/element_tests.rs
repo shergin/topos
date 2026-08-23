@@ -73,35 +73,35 @@ impl Differentiable for F64 {
 
 impl Elementary for F64 {
     fn exp(&self) -> Self {
-        F64(self.0.exp())
+        F64(Elementary::exp(&self.0))
     }
 
     fn ln(&self) -> Self {
-        F64(self.0.ln())
+        F64(Elementary::ln(&self.0))
     }
 
     fn sqrt(&self) -> Self {
-        F64(self.0.sqrt())
+        F64(Elementary::sqrt(&self.0))
     }
 
     fn tanh(&self) -> Self {
-        F64(self.0.tanh())
+        F64(Elementary::tanh(&self.0))
     }
 
     fn sin(&self) -> Self {
-        F64(self.0.sin())
+        F64(Elementary::sin(&self.0))
     }
 
     fn cos(&self) -> Self {
-        F64(self.0.cos())
+        F64(Elementary::cos(&self.0))
     }
 
     fn log1p(&self) -> Self {
-        F64(self.0.ln_1p())
+        F64(Elementary::log1p(&self.0))
     }
 
     fn expm1(&self) -> Self {
-        F64(self.0.exp_m1())
+        F64(Elementary::expm1(&self.0))
     }
 
     fn erf(&self) -> Self {
@@ -113,7 +113,7 @@ impl Elementary for F64 {
     }
 
     fn powf(&self, exponent: Self) -> Self {
-        F64(self.0.powf(exponent.0))
+        F64(Elementary::powf(&self.0, exponent.0))
     }
 
     fn maximum(&self, other: &Self) -> Self {

@@ -13,8 +13,8 @@ fn assert_close(actual: f64, expected: f64, tolerance: f64, probe: f64) {
 #[test]
 fn erf_matches_the_reference_table() {
     // Expected values from CPython's `math.erf` (the platform libm),
-    // covering every piece: the alternating series, the positive
-    // series, the continued-fraction tail, and saturation.
+    // covering the small-argument, mid-range, tail, and saturation
+    // regimes; `libm`'s FDLIBM port must agree within a few ulps.
     let table = [
         (1e-300, 1.1283791670955125e-300),
         (1e-20, 1.1283791670955125e-20),

@@ -65,9 +65,11 @@ fn unit(state: &mut u64) -> f64 {
 /// It is one half of a Box-Muller pair; the sine partner is discarded
 /// for simplicity.
 fn standard_normal(state: &mut u64) -> f64 {
-    let radius = (-2.0 * (1.0 - unit(state)).ln()).sqrt();
+    // `libm` keeps the drawn bits identical on every platform, like
+    // the payload's transcendentals.
+    let radius = (-2.0 * libm::log(1.0 - unit(state))).sqrt();
     let angle = std::f64::consts::TAU * unit(state);
-    radius * angle.cos()
+    radius * libm::cos(angle)
 }
 
 /// Builds a tensor of `shape` with every element drawn from `draw`,

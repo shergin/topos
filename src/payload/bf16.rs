@@ -206,11 +206,11 @@ impl Differentiable for Bf16 {
 
 impl Elementary for Bf16 {
     fn exp(&self) -> Self {
-        Self::from_f32(self.to_f32().exp())
+        Self::from_f32(Elementary::exp(&self.to_f32()))
     }
 
     fn ln(&self) -> Self {
-        Self::from_f32(self.to_f32().ln())
+        Self::from_f32(Elementary::ln(&self.to_f32()))
     }
 
     fn sqrt(&self) -> Self {
@@ -218,23 +218,23 @@ impl Elementary for Bf16 {
     }
 
     fn tanh(&self) -> Self {
-        Self::from_f32(self.to_f32().tanh())
+        Self::from_f32(Elementary::tanh(&self.to_f32()))
     }
 
     fn sin(&self) -> Self {
-        Self::from_f32(self.to_f32().sin())
+        Self::from_f32(Elementary::sin(&self.to_f32()))
     }
 
     fn cos(&self) -> Self {
-        Self::from_f32(self.to_f32().cos())
+        Self::from_f32(Elementary::cos(&self.to_f32()))
     }
 
     fn log1p(&self) -> Self {
-        Self::from_f32(self.to_f32().ln_1p())
+        Self::from_f32(Elementary::log1p(&self.to_f32()))
     }
 
     fn expm1(&self) -> Self {
-        Self::from_f32(self.to_f32().exp_m1())
+        Self::from_f32(Elementary::expm1(&self.to_f32()))
     }
 
     fn erf(&self) -> Self {
@@ -246,7 +246,7 @@ impl Elementary for Bf16 {
     }
 
     fn powf(&self, exponent: Self) -> Self {
-        Self::from_f32(self.to_f32().powf(exponent.to_f32()))
+        Self::from_f32(Elementary::powf(&self.to_f32(), exponent.to_f32()))
     }
 
     /// The result is one of the operands, both exactly representable,

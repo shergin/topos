@@ -313,7 +313,7 @@ fn draw(logits: &[f32], temperature: f64, top: usize, state: &mut u64) -> usize 
     let peak = ranked[0].1 as f64;
     let weights: Vec<f64> = ranked
         .iter()
-        .map(|&(_, logit)| ((logit as f64 - peak) / temperature).exp())
+        .map(|&(_, logit)| libm::exp((logit as f64 - peak) / temperature))
         .collect();
     let total: f64 = weights.iter().sum();
     let mut remaining = unit(state) * total;
