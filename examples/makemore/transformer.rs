@@ -173,7 +173,7 @@ impl<'tape> Model<'tape> {
         extraction: Value<'tape, f32>,
     ) -> Value<'tape, f32> {
         let product = states.gather(extraction).matmul(self.logit_weights);
-        product + self.logit_bias.broadcast_along(0, product)
+        product + self.logit_bias.broadcast_along_like(0, product)
     }
 }
 

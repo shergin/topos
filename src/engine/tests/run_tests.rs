@@ -106,7 +106,7 @@ fn dense_layer_gradients_match_finite_differences() {
         let bias = tape.leaf(tensors[2].clone());
         let y = tape.leaf(tensors[3].clone());
         let product = x.matmul(w);
-        let activated = (product + bias.broadcast_along(0, product)).tanh();
+        let activated = (product + bias.broadcast_along_like(0, product)).tanh();
         let error = activated - y;
         let loss = (error * error).sum().symbol();
         let network = tape.into_network();
@@ -119,7 +119,7 @@ fn dense_layer_gradients_match_finite_differences() {
     let bias = tape.leaf(base[2].clone());
     let y = tape.leaf(base[3].clone());
     let product = x.matmul(w);
-    let activated = (product + bias.broadcast_along(0, product)).tanh();
+    let activated = (product + bias.broadcast_along_like(0, product)).tanh();
     let error = activated - y;
     let loss = (error * error).sum();
     let (x, w, bias, y, loss) = (
@@ -438,7 +438,7 @@ fn backward_skips_singular_producers_of_axis_references() {
     let input = tape.leaf(Tensor::new([2, 2], [0.0_f64, 1.0, 2.0, 3.0]));
     let singular_reference = input / input;
     let source = tape.leaf(Tensor::new([2], [5.0_f64, 7.0]));
-    let output = source.broadcast_along(0, singular_reference).sum();
+    let output = source.broadcast_along_like(0, singular_reference).sum();
     let (input, singular_reference, source, output) = (
         input.symbol(),
         singular_reference.symbol(),

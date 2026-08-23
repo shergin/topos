@@ -95,12 +95,12 @@ fn broadcast_views_match_the_logical_order() {
     let reference_shape = varied(3, 4, 0);
     let left = varied(1, 4, 1)
         .reshape([4].into())
-        .broadcast_along(0, &reference_shape);
+        .broadcast_along_like(0, &reference_shape);
     assert_matches_reference_f64(&left, &varied(4, 2, 2));
     let right_reference = varied(4, 5, 0);
     let right = varied(1, 4, 3)
         .reshape([4].into())
-        .broadcast_along(1, &right_reference);
+        .broadcast_along_like(1, &right_reference);
     assert_matches_reference_f64(&varied(2, 4, 4), &right);
 }
 

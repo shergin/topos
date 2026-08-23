@@ -7,7 +7,7 @@ fn model(tape: &Tape<f64>) -> (Symbol, Symbol, Symbol) {
     let bias = tape.parameter(Tensor::new([2], [0.1_f64, -0.2]));
     let x = tape.leaf(Tensor::new([3, 2], [1.0_f64, 2.0, -1.0, 0.5, 0.25, -2.0]));
     let product = x.matmul(weights);
-    let shifted = product + bias.broadcast_along(0, product);
+    let shifted = product + bias.broadcast_along_like(0, product);
     let loss = (shifted * shifted).sum();
     (loss.symbol(), weights.symbol(), bias.symbol())
 }

@@ -35,8 +35,8 @@ fn broadcast(criterion: &mut Criterion) {
     let matrix = filled(volume, 1).reshape(Shape::new([rows, columns]));
     let row = filled(columns, 2);
     let column = filled(rows, 3);
-    let row_spread = row.broadcast_along(0, &matrix);
-    let column_spread = column.broadcast_along(1, &matrix);
+    let row_spread = row.broadcast_along_like(0, &matrix);
+    let column_spread = column.broadcast_along_like(1, &matrix);
 
     group.throughput(Throughput::Elements(volume as u64));
     group.bench_function("f32/add-row-spread-2m", |bencher| {

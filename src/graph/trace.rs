@@ -168,12 +168,12 @@ impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
         Self::of(self.value.sum_along(axis))
     }
 
-    fn broadcast_like(&self, reference: &Self) -> Self {
-        Self::of(self.value.broadcast_like(reference.value))
+    fn broadcast(&self, shape: Shape) -> Self {
+        Self::of(self.value.broadcast(shape))
     }
 
-    fn broadcast_along(&self, axis: usize, reference: &Self) -> Self {
-        Self::of(self.value.broadcast_along(axis, reference.value))
+    fn broadcast_along(&self, axis: usize, extent: usize) -> Self {
+        Self::of(self.value.broadcast_along(axis, extent))
     }
 
     fn reshape(&self, shape: Shape) -> Self {

@@ -123,15 +123,15 @@ impl<E: Element> Module<E> for LayerNorm<E> {
         // The per-sample statistics `m_i` and biased `v_i`, both
         // `[batch]`-shaped, repeated back across the feature axis.
         let mean = input.mean_along(1);
-        let centered = input - mean.broadcast_along(1, input);
+        let centered = input - mean.broadcast_along_like(1, input);
         let variance = (centered * centered).mean_along(1);
         // `(input - m_i) / sqrt(v_i + epsilon)`; the epsilon expands
         // in-graph because the variance's `[batch]` shape is a
         // per-expression fact the single-value leaf cannot know.
         let deviation = (variance + epsilon.broadcast_like(variance)).sqrt();
-        let normalized = centered / deviation.broadcast_along(1, input);
+        let normalized = centered / deviation.broadcast_along_like(1, input);
         // The learned per-feature affine `scale[j] * n + shift[j]`.
-        normalized * scale.broadcast_along(0, input) + shift.broadcast_along(0, input)
+        normalized * scale.broadcast_along_like(0, input) + shift.broadcast_along_like(0, input)
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

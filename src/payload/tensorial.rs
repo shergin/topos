@@ -80,13 +80,12 @@ pub trait Tensorial:
     /// Returns `self` with `axis` reduced by summation.
     fn sum_along(&self, axis: usize) -> Self;
 
-    /// Returns this value's single element spread across
-    /// `reference`'s shape.
-    fn broadcast_like(&self, reference: &Self) -> Self;
+    /// Returns this value's single element spread across `shape`.
+    fn broadcast(&self, shape: Shape) -> Self;
 
-    /// Returns `self` repeated along `axis` to match `reference`'s
-    /// shape.
-    fn broadcast_along(&self, axis: usize, reference: &Self) -> Self;
+    /// Returns `self` repeated along a new axis of `extent` inserted
+    /// at `axis`.
+    fn broadcast_along(&self, axis: usize, extent: usize) -> Self;
 
     /// Returns `self` reinterpreted with `shape`, preserving logical
     /// row-major order.
@@ -167,13 +166,13 @@ pub fn composed_batch_norm<Element: Elementary>(
     let batch = shape.axes()[0];
     let reduced = shape.without_axis(0);
     let mean = input.sum_along(0) / Tensor::counted(reduced.clone(), batch);
-    let centered = input.clone() - mean.broadcast_along(0, input);
+    let centered = input.clone() - mean.broadcast_along_like(0, input);
     let variance =
         (centered.clone() * centered.clone()).sum_along(0) / Tensor::counted(reduced, batch);
     let deviation = (variance.clone() + epsilon.broadcast_like(&variance)).sqrt();
-    let normalized = centered.clone() / deviation.broadcast_along(0, &centered);
-    let output =
-        normalized * scale.broadcast_along(0, &centered) + shift.broadcast_along(0, &centered);
+    let normalized = centered.clone() / deviation.broadcast_along_like(0, &centered);
+    let output = normalized * scale.broadcast_along_like(0, &centered)
+        + shift.broadcast_along_like(0, &centered);
     (output, mean, variance)
 }
 

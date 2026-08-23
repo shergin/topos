@@ -414,7 +414,7 @@ fn describe_snapshots_the_fused_forward_plan() {
    9  Permute        1  order=[1, 2, 3, 0] [1, 3, 3, 2] freed after 10
   10  Reshape        9  shape=[9, 2]    [9, 2]       freed after 11
   11  MatMul         8, 10              [32, 2]      freed after 13
-  12  BroadcastAlong 2, 11  axis=0      [32, 2]      freed after 13
+  12  BroadcastAlong 2  axis=0 extent=32 [32, 2]     freed after 13
   13  Add            11, 12             [32, 2]      freed after 14
   14  Reshape        13  shape=[2, 4, 4, 2] [2, 4, 4, 2] freed after 15
   15  Permute        14  order=[0, 3, 1, 2] [2, 2, 4, 4] freed after 17

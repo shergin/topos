@@ -113,7 +113,7 @@ impl<E: Element> Module<E> for RmsNorm<E> {
         let power = (input * input).mean_along(1);
         let root = (power + epsilon.broadcast_like(power)).sqrt();
         // `input / r_i * scale[j]`.
-        input / root.broadcast_along(1, input) * scale.broadcast_along(0, input)
+        input / root.broadcast_along_like(1, input) * scale.broadcast_along_like(0, input)
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

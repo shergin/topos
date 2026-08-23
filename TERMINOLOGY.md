@@ -669,8 +669,11 @@ projection back, and `Display` prints it as the bare number.
 Cloning shares the buffer and copies only metadata, so it is O(1).
 Elementwise operations require identical shapes; the tensor-native tier
 adds `matmul`, `transpose`, the reductions `sum` and `sum_along`, and
-the explicit broadcasts `broadcast_like` and `broadcast_along`. Because
-tensors are immutable and buffer-shared, `transpose` and the broadcasts
+the explicit broadcasts `broadcast` (a target shape) and
+`broadcast_along` (an inserted axis of a written extent), with
+`broadcast_like` and `broadcast_along_like` reading a reference value
+for its shape alone. Because
+tensors are immutable and buffer-shared, the views and the broadcasts
 are O(1) views (or constants) rather than copies: no operation ever
 writes through an alias. Elements are read in logical row-major order
 through `iter`, as a contiguous slice through `as_slice` when the
@@ -741,8 +744,11 @@ reversed-order permute; the
 axis-wise pair is rank-general; `reshape` reinterprets the elements
 in logical order. Summation
 and broadcasting are adjoint in two matched pairs: `sum` with
-`broadcast_like` (the whole shape) and `sum_along` with `broadcast_along`
-(one named axis), each the other's gradient rule. The view operations route their gradient the
+`broadcast` (the whole shape) and `sum_along` with `broadcast_along`
+(one named axis of a written extent), each the other's gradient rule.
+Both broadcasts are unary and carry their target as recorded
+parameters — a shape is static record-time data, not dataflow, so no
+operand edge ever exists just to be read for its shape. The view operations route their gradient the
 same adjoint way: `reshape` and `permute` invert their view, and
 `narrow` selects a window whose gradient `pad`s back into the excluded
 positions as zeros (`narrow` with `pad` as the third adjoint pair),
@@ -767,7 +773,7 @@ single value spread across a named reference's shape, or a payload
 repeated along one named axis of a reference — the axis is always
 written, and no operation aligns shapes implicitly. In topos: the
 [`Tensorial`](src/payload/tensorial.rs) trait, recorded into graphs via
-`Value::matmul`, `sum`, `sum_along`, `broadcast_like`,
+`Value::matmul`, `sum`, `sum_along`, `broadcast`,
 `broadcast_along`, `reshape`, `permute`, `narrow`, `gather`,
 `scatter`, `fold`, `step`, `log_softmax`, `logsumexp`, and the
 `reshape`-based `squeeze` and `unsqueeze`. The last three adjoints

@@ -86,9 +86,9 @@ fn express<'tape>(
         .gather(contexts)
         .reshape([rows, CONTEXT_LEN * EMBED_DIM]);
     let product = embedded.matmul(hidden_weights);
-    let hidden = (product + hidden_bias.broadcast_along(0, product)).tanh();
+    let hidden = (product + hidden_bias.broadcast_along_like(0, product)).tanh();
     let product = hidden.matmul(output_weights);
-    product + output_bias.broadcast_along(0, product)
+    product + output_bias.broadcast_along_like(0, product)
 }
 
 /// One-hot payloads for a batch slice, contexts then targets.

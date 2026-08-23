@@ -93,7 +93,7 @@ impl<'tape> Model<'tape> {
     fn logits(&self, normalized: Value<'tape, f32>) -> Value<'tape, f32> {
         let hidden = normalized.tanh();
         let product = hidden.matmul(self.output_weights);
-        product + self.output_bias.broadcast_along(0, product)
+        product + self.output_bias.broadcast_along_like(0, product)
     }
 }
 

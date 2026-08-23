@@ -271,7 +271,7 @@ fn broadcast_along_closes() {
     let tape = Tape::new();
     let a = tape.parameter(varied([3], 1));
     let reference = tape.leaf(varied([2, 3], 2));
-    let loss = (a.broadcast_along(0, reference) * reference).sum();
+    let loss = (a.broadcast_along_like(0, reference) * reference).sum();
     assert_closure(loss.symbol(), &[a.symbol()], tape);
 }
 
@@ -386,7 +386,7 @@ fn a_composed_loss_closes_through_a_plan() {
     let x = tape.input(varied([2, 3], 1));
     let weights = tape.parameter(varied([3, 2], 2));
     let bias = tape.parameter(varied([2], 3));
-    let logits = x.matmul(weights) + bias.broadcast_along(0, x.matmul(weights));
+    let logits = x.matmul(weights) + bias.broadcast_along_like(0, x.matmul(weights));
     let loss = logits.tanh().sum();
 
     let targets = [weights.symbol(), bias.symbol()];
@@ -529,7 +529,7 @@ fn a_recorded_training_loop_matches_the_engine_bitwise() {
         let weights = tape.parameter(varied([3, 4], 2));
         let bias = tape.parameter(varied([4], 3));
         let product = x.matmul(weights);
-        let hidden = (product + bias.broadcast_along(0, product)).tanh();
+        let hidden = (product + bias.broadcast_along_like(0, product)).tanh();
         let head = tape.parameter(varied([4, 2], 4));
         let loss = hidden.matmul(head).log_softmax(1).sum();
         (

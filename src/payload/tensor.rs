@@ -1211,32 +1211,69 @@ impl<Element: Elementary> Tensor<Element> {
         Self::dense(shape.without_axis(axis), elements)
     }
 
-    /// Returns this tensor's single element spread across `reference`'s
-    /// shape as a constant: the whole-shape form of explicit broadcasting.
+    /// Returns this tensor's single element spread across `shape` as a
+    /// constant: the whole-shape form of explicit broadcasting.
     ///
     /// # Panics
     /// Panics if `self` holds more than one element.
-    pub fn broadcast_like(&self, reference: &Self) -> Self {
+    pub fn broadcast(&self, shape: Shape) -> Self {
         assert_eq!(
             self.logical_shape().volume(),
             1,
             "broadcast requires a single-element tensor"
         );
-        Self::constant(reference.logical_shape().clone(), self.get(0))
+        Self::constant(shape, self.get(0))
+    }
+
+    /// Returns this tensor's single element spread across `reference`'s
+    /// shape: [`broadcast`](Self::broadcast) reading the reference for
+    /// its shape alone.
+    ///
+    /// # Panics
+    /// Panics if `self` holds more than one element.
+    pub fn broadcast_like(&self, reference: &Self) -> Self {
+        self.broadcast(reference.logical_shape().clone())
+    }
+
+    /// Returns the tensor repeated along a new axis of `extent`
+    /// inserted at `axis`, as a stride-0 view: the named-axis form of
+    /// explicit broadcasting.
+    ///
+    /// # Panics
+    /// Panics if `axis` exceeds this tensor's rank or `extent` is zero.
+    pub fn broadcast_along(&self, axis: usize, extent: usize) -> Self {
+        let shape = self.logical_shape();
+        assert!(
+            axis <= shape.rank(),
+            "broadcast axis {axis} is out of rank for {shape}"
+        );
+        assert!(extent > 0, "broadcast extent must be positive");
+        let mut axes: Vec<usize> = shape.axes().to_vec();
+        axes.insert(axis, extent);
+        let widened = Shape::new(axes);
+        match &self.storage {
+            Storage::Constant { value, .. } => Self::constant(widened, value.clone()),
+            Storage::Dense { data, layout } => Self {
+                storage: Storage::Dense {
+                    data: Arc::clone(data),
+                    layout: layout.broadcast_along(axis, &widened),
+                },
+            },
+            Storage::Selection { .. } => self.densify().broadcast_along(axis, extent),
+        }
     }
 
     /// Returns the tensor repeated along `axis` to match `reference`'s
-    /// shape as a stride-0 view: the named-axis form of explicit
-    /// broadcasting.
+    /// shape: [`broadcast_along`](Self::broadcast_along) reading the
+    /// reference for its shape alone.
     ///
     /// # Panics
     /// Panics if `axis` is out of `reference`'s rank or `self`'s shape
     /// differs from `reference`'s with that axis removed.
-    pub fn broadcast_along(&self, axis: usize, reference: &Self) -> Self {
+    pub fn broadcast_along_like(&self, axis: usize, reference: &Self) -> Self {
         let reference_shape = reference.logical_shape();
-        let axes = reference_shape.axes();
         assert!(
-            axis < axes.len(),
+            axis < reference_shape.rank(),
             "axis {axis} is out of rank for {reference_shape}"
         );
         assert_eq!(
@@ -1244,18 +1281,7 @@ impl<Element: Elementary> Tensor<Element> {
             &reference_shape.without_axis(axis),
             "broadcast along axis {axis} of {reference_shape} requires the remaining shape"
         );
-        match &self.storage {
-            Storage::Constant { value, .. } => {
-                Self::constant(reference_shape.clone(), value.clone())
-            }
-            Storage::Dense { data, layout } => Self {
-                storage: Storage::Dense {
-                    data: Arc::clone(data),
-                    layout: layout.broadcast_along(axis, reference_shape),
-                },
-            },
-            Storage::Selection { .. } => self.densify().broadcast_along(axis, reference),
-        }
+        self.broadcast_along(axis, reference_shape.axes()[axis])
     }
 
     /// Returns `self` reinterpreted with `shape` in logical row-major
@@ -1787,12 +1813,12 @@ impl<E: Element> Tensorial for Tensor<E> {
         Tensor::sum_along(self, axis)
     }
 
-    fn broadcast_like(&self, reference: &Self) -> Self {
-        Tensor::broadcast_like(self, reference)
+    fn broadcast(&self, shape: Shape) -> Self {
+        Tensor::broadcast(self, shape)
     }
 
-    fn broadcast_along(&self, axis: usize, reference: &Self) -> Self {
-        Tensor::broadcast_along(self, axis, reference)
+    fn broadcast_along(&self, axis: usize, extent: usize) -> Self {
+        Tensor::broadcast_along(self, axis, extent)
     }
 
     fn reshape(&self, shape: Shape) -> Self {

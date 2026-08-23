@@ -75,9 +75,11 @@ struct Tail {
 
 /// Matches the shared normalization tail rooted at the `Add` at
 /// `index`: `centered / sqrt(variance + epsilon) * scale + shift`,
-/// with every broadcast referencing the recorded operands. The
-/// interiors are collected by walking the formula — `centered` fans
-/// out five ways — and `Catalog::collect` checks the closure.
+/// with every broadcast a unary node whose axis parameter names the
+/// batch axis; the shapes agree by the record-time equal-shape
+/// assertions of the binary nodes between them. The interiors are
+/// collected by walking the formula — `centered` fans out five ways —
+/// and `Catalog::collect` checks the closure.
 fn match_tail<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Tail> {
     let Some(Function::Add(_)) = view.function(index) else {
         return None;
@@ -95,31 +97,28 @@ fn match_tail<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Tail> 
     let Some(Function::Mul(_)) = view.function(scaled) else {
         return None;
     };
-    let shift = view.operand(shift_bcast, 0);
-    let centered = view.operand(shift_bcast, 1);
+    let shift = view.sole_operand(shift_bcast);
     let normalized = view.operand(scaled, 0);
     let scale_bcast = view.operand(scaled, 1);
     let Some(Function::BroadcastAlong(scale_along)) = view.function(scale_bcast) else {
         return None;
     };
-    if shift_along.axis != 0 || scale_along.axis != 0 || view.operand(scale_bcast, 1) != centered {
+    if shift_along.axis != 0 || scale_along.axis != 0 {
         return None;
     }
-    let scale = view.operand(scale_bcast, 0);
+    let scale = view.sole_operand(scale_bcast);
     let Some(Function::Div(_)) = view.function(normalized) else {
         return None;
     };
-    if view.operand(normalized, 0) != centered {
-        return None;
-    }
+    let centered = view.operand(normalized, 0);
     let dev_bcast = view.operand(normalized, 1);
     let Some(Function::BroadcastAlong(dev_along)) = view.function(dev_bcast) else {
         return None;
     };
-    if dev_along.axis != 0 || view.operand(dev_bcast, 1) != centered {
+    if dev_along.axis != 0 {
         return None;
     }
-    let deviation = view.operand(dev_bcast, 0);
+    let deviation = view.sole_operand(dev_bcast);
     let Some(Function::Map(Map {
         op: MapOperation::Sqrt,
     })) = view.function(deviation)
@@ -135,10 +134,7 @@ fn match_tail<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Tail> 
     let Some(Function::Broadcast(_)) = view.function(eps_bcast) else {
         return None;
     };
-    if view.operand(eps_bcast, 1) != variance {
-        return None;
-    }
-    let epsilon = view.operand(eps_bcast, 0);
+    let epsilon = view.sole_operand(eps_bcast);
     // The raise renders epsilon as the operation's attribute, so it
     // must be a single-value leaf whose payload emission can read.
     let Some(Function::Leaf(_)) = view.function(epsilon) else {
@@ -155,10 +151,10 @@ fn match_tail<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Tail> 
     let Some(Function::BroadcastAlong(mean_along)) = view.function(mean_bcast) else {
         return None;
     };
-    if mean_along.axis != 0 || view.operand(mean_bcast, 1) != input {
+    if mean_along.axis != 0 {
         return None;
     }
-    let mean = view.operand(mean_bcast, 0);
+    let mean = view.sole_operand(mean_bcast);
     Some(Tail {
         group: BatchNormalization {
             input,

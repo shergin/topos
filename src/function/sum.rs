@@ -39,6 +39,6 @@ impl Sum {
 impl<Rule: Tensorial> Operation<Rule> for Sum {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
-        smallvec![Some(gradient.broadcast_like(operand))]
+        smallvec![Some(gradient.broadcast(operand.shape()))]
     }
 }

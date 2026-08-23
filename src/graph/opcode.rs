@@ -56,12 +56,17 @@ pub enum Opcode {
         /// The reduced axis.
         axis: usize,
     },
-    /// A single element spread across the reference operand's shape.
-    Broadcast,
-    /// The operand repeated along one axis of the reference operand.
+    /// A single element spread across the carried target shape.
+    Broadcast {
+        /// The target shape.
+        shape: Shape,
+    },
+    /// The operand repeated along one new axis of the carried extent.
     BroadcastAlong {
-        /// The widened axis.
+        /// The inserted axis.
         axis: usize,
+        /// The inserted axis's extent.
+        extent: usize,
     },
     /// The elements reinterpreted with a new shape in logical order.
     Reshape {
@@ -158,7 +163,7 @@ impl Opcode {
             Opcode::MatMul => "MatMul",
             Opcode::Sum => "Sum",
             Opcode::SumAlong { .. } => "SumAlong",
-            Opcode::Broadcast => "Broadcast",
+            Opcode::Broadcast { .. } => "Broadcast",
             Opcode::BroadcastAlong { .. } => "BroadcastAlong",
             Opcode::Reshape { .. } => "Reshape",
             Opcode::Permute { .. } => "Permute",
@@ -181,6 +186,8 @@ impl Opcode {
             | Opcode::Map { .. }
             | Opcode::Sum
             | Opcode::SumAlong { .. }
+            | Opcode::Broadcast { .. }
+            | Opcode::BroadcastAlong { .. }
             | Opcode::Reshape { .. }
             | Opcode::Permute { .. }
             | Opcode::Narrow { .. }
@@ -197,8 +204,6 @@ impl Opcode {
             | Opcode::Maximum
             | Opcode::Step
             | Opcode::MatMul
-            | Opcode::Broadcast
-            | Opcode::BroadcastAlong { .. }
             | Opcode::Gather
             | Opcode::Scatter => 2,
         }
@@ -216,10 +221,10 @@ impl Opcode {
     pub(crate) fn parameter_text(&self) -> String {
         match self {
             Opcode::SumAlong { axis }
-            | Opcode::BroadcastAlong { axis }
             | Opcode::LogSoftmax { axis }
             | Opcode::LogSumExp { axis } => format!("axis={axis}"),
-            Opcode::Reshape { shape } => format!("shape={shape}"),
+            Opcode::Broadcast { shape } | Opcode::Reshape { shape } => format!("shape={shape}"),
+            Opcode::BroadcastAlong { axis, extent } => format!("axis={axis} extent={extent}"),
             Opcode::Permute { order } => {
                 let axes: Vec<String> = order.iter().map(usize::to_string).collect();
                 format!("order=[{}]", axes.join(", "))

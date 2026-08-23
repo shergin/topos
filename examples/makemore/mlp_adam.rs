@@ -107,9 +107,9 @@ impl<'tape> Model<'tape> {
             .gather(contexts)
             .reshape([rows, CONTEXT_LEN * EMBED_DIM]);
         let product = embedded.matmul(self.hidden_weights);
-        let hidden = (product + self.hidden_bias.broadcast_along(0, product)).tanh();
+        let hidden = (product + self.hidden_bias.broadcast_along_like(0, product)).tanh();
         let product = hidden.matmul(self.output_weights);
-        product + self.output_bias.broadcast_along(0, product)
+        product + self.output_bias.broadcast_along_like(0, product)
     }
 }
 

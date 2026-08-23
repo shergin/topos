@@ -132,12 +132,12 @@ fn an_unverified_divisor_is_not_a_training_mean() {
         (0..6).map(|v| v as f64 * 0.9 - 2.5).collect::<Vec<_>>(),
     ));
     let mean = input.mean_along(0);
-    let centered = input - mean.broadcast_along(0, input);
+    let centered = input - mean.broadcast_along_like(0, input);
     let variance = (centered * centered).sum_along(0) / Tensor::filled([2], 2.0);
     let deviation = (variance + epsilon.broadcast_like(variance)).sqrt();
-    let normalized = centered / deviation.broadcast_along(0, centered);
-    let output =
-        normalized * scale.broadcast_along(0, centered) + shift.broadcast_along(0, centered);
+    let normalized = centered / deviation.broadcast_along_like(0, centered);
+    let output = normalized * scale.broadcast_along_like(0, centered)
+        + shift.broadcast_along_like(0, centered);
     let root = output.symbol().id.index();
     let network = tape.into_network();
 

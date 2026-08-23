@@ -116,17 +116,16 @@ impl<Data> Function<Data> {
         Function::SumAlong(SumAlong { axis })
     }
 
-    /// Creates the explicit broadcast across the `[operand, like]`
-    /// operands: the first spread across the second's shape.
-    pub(crate) fn broadcast() -> Self {
-        Function::Broadcast(Broadcast)
+    /// Creates the explicit broadcast of the single-value operand
+    /// across `shape`.
+    pub(crate) fn broadcast(shape: Shape) -> Self {
+        Function::Broadcast(Broadcast { shape })
     }
 
-    /// Creates the explicit repetition along `axis` for the
-    /// `[operand, like]` operands: the first repeated along that axis of
-    /// the second's shape.
-    pub(crate) fn broadcast_along(axis: usize) -> Self {
-        Function::BroadcastAlong(BroadcastAlong { axis })
+    /// Creates the explicit repetition of the single operand along a
+    /// new axis of `extent` inserted at `axis`.
+    pub(crate) fn broadcast_along(axis: usize, extent: usize) -> Self {
+        Function::BroadcastAlong(BroadcastAlong { axis, extent })
     }
 
     /// Creates the reshape of the single operand to `shape`.
@@ -241,9 +240,12 @@ impl<Data> Function<Data> {
             Function::SumAlong(sum_along) => Opcode::SumAlong {
                 axis: sum_along.axis,
             },
-            Function::Broadcast(_) => Opcode::Broadcast,
+            Function::Broadcast(broadcast) => Opcode::Broadcast {
+                shape: broadcast.shape.clone(),
+            },
             Function::BroadcastAlong(broadcast_along) => Opcode::BroadcastAlong {
                 axis: broadcast_along.axis,
+                extent: broadcast_along.extent,
             },
             Function::Reshape(reshape) => Opcode::Reshape {
                 shape: reshape.shape.clone(),

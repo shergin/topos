@@ -379,12 +379,12 @@ fn broadcast_along_repeats_the_named_axis() {
     let row = Tensor::new([3], [1.0_f64, 2.0, 3.0]);
     let reference = Tensor::filled([2, 3], 0.0);
 
-    let spread = row.broadcast_along(0, &reference);
+    let spread = row.broadcast_along_like(0, &reference);
     assert_eq!(spread.shape(), Shape::new([2, 3]));
     assert_eq!(spread.to_vec(), &[1.0, 2.0, 3.0, 1.0, 2.0, 3.0]);
 
     let column = Tensor::new([2], [1.0_f64, 2.0]);
-    let spread = column.broadcast_along(1, &reference);
+    let spread = column.broadcast_along_like(1, &reference);
     assert_eq!(spread.to_vec(), &[1.0, 1.0, 1.0, 2.0, 2.0, 2.0]);
 }
 
@@ -394,7 +394,7 @@ fn axis_sum_and_broadcast_are_adjoint() {
     let bias = tape.leaf(Tensor::new([3], [1.0_f64, 2.0, 3.0]));
     let reference = tape.leaf(Tensor::filled([2, 3], 0.0));
 
-    let loss = bias.broadcast_along(0, reference).sum();
+    let loss = bias.broadcast_along_like(0, reference).sum();
 
     let (bias, reference, loss) = (bias.symbol(), reference.symbol(), loss.symbol());
     let network = tape.into_network();
@@ -422,7 +422,7 @@ fn broadcast_along_rejects_mismatched_operands() {
     let tape: Tape<f64> = Tape::new();
     let wrong = tape.leaf(Tensor::new([2], [1.0_f64, 2.0]));
     let reference = tape.leaf(Tensor::filled([2, 3], 0.0));
-    wrong.broadcast_along(0, reference);
+    wrong.broadcast_along_like(0, reference);
 }
 
 #[test]
@@ -678,7 +678,9 @@ fn reshape_of_a_strided_view_materializes_in_order() {
 fn reshape_of_a_broadcast_view_keeps_the_view() {
     let row = Tensor::new([1, 3], [1.0_f64, 2.0, 3.0]);
     let like = Tensor::filled([5, 1, 3], 0.0);
-    let squeezed = row.broadcast_along(0, &like).reshape(Shape::new([5, 3]));
+    let squeezed = row
+        .broadcast_along_like(0, &like)
+        .reshape(Shape::new([5, 3]));
     // The reshape drops only a unit axis, so the stride-0 view survives
     // instead of materializing a contiguous copy.
     assert!(squeezed.as_slice().is_none());
@@ -688,8 +690,8 @@ fn reshape_of_a_broadcast_view_keeps_the_view() {
 #[test]
 fn arithmetic_over_spread_views_matches_the_materialized_twins() {
     let matrix = Tensor::new([2, 3], [1.0_f64, 2.0, 3.0, 4.0, 5.0, 6.0]);
-    let row_spread = Tensor::new([3], [10.0_f64, 20.0, 30.0]).broadcast_along(0, &matrix);
-    let column_spread = Tensor::new([2], [100.0_f64, 200.0]).broadcast_along(1, &matrix);
+    let row_spread = Tensor::new([3], [10.0_f64, 20.0, 30.0]).broadcast_along_like(0, &matrix);
+    let column_spread = Tensor::new([2], [100.0_f64, 200.0]).broadcast_along_like(1, &matrix);
     let materialized = |view: &Tensor<f64>| Tensor::new([2, 3], view.to_vec());
 
     // A unit-stride run against a stride-0 run, both ways around, and a
@@ -730,7 +732,7 @@ fn arithmetic_over_transposed_views_matches_the_materialized_twins() {
 fn map_of_a_broadcast_view_keeps_the_view() {
     let row = Tensor::new([3], [1.0_f64, 2.0, 3.0]);
     let like = Tensor::filled([4, 3], 0.0);
-    let spread = row.broadcast_along(0, &like);
+    let spread = row.broadcast_along_like(0, &like);
     let negated = -spread.clone();
     // The map transforms the three distinct elements and keeps the
     // stride-0 layout instead of materializing twelve.
@@ -760,7 +762,7 @@ fn map_of_a_narrow_sliver_falls_back_to_the_logical_walk() {
 fn zip_of_a_spread_view_and_a_constant_keeps_the_view() {
     let row = Tensor::new([3], [1.0_f64, 2.0, 3.0]);
     let like = Tensor::filled([4, 3], 0.0);
-    let spread = row.broadcast_along(0, &like);
+    let spread = row.broadcast_along_like(0, &like);
     let shifted = spread + Tensor::filled([4, 3], 10.0);
     assert!(shifted.as_slice().is_none());
     assert_eq!(shifted.to_vec(), [11.0, 12.0, 13.0].repeat(4));

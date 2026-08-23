@@ -42,6 +42,7 @@ impl SumAlong {
 impl<Rule: Tensorial> Operation<Rule> for SumAlong {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
-        smallvec![Some(gradient.broadcast_along(self.axis, operand))]
+        let extent = operand.shape().axes()[self.axis];
+        smallvec![Some(gradient.broadcast_along(self.axis, extent))]
     }
 }

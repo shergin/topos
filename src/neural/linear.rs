@@ -98,7 +98,7 @@ impl<E: Element> Module<E> for Linear<E> {
         let product = input.matmul(weights);
         // The bias is repeated across the batch axis; its gradient sums
         // back along the same axis, one contribution per sample.
-        product + bias.broadcast_along(0, product)
+        product + bias.broadcast_along_like(0, product)
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

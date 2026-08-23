@@ -77,6 +77,39 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.sum_along(axis) / Tensor::counted(shape.without_axis(axis), extent)
     }
 
+    /// Records this single-value payload spread across `reference`'s
+    /// shape: [`broadcast`](Self::broadcast) reading the reference for
+    /// its shape alone, one node, no operand edge — a shape is static
+    /// record-time data, not dataflow.
+    ///
+    /// # Panics
+    /// Panics if this value's shape does not contain exactly one
+    /// element.
+    pub fn broadcast_like(self, reference: Self) -> Self {
+        self.broadcast(reference.shape())
+    }
+
+    /// Records this value repeated along `axis` to match `reference`'s
+    /// shape: [`broadcast_along`](Self::broadcast_along) reading the
+    /// reference for its extent alone, one node, no operand edge.
+    ///
+    /// # Panics
+    /// Panics if `axis` is out of `reference`'s rank or this value's
+    /// shape differs from `reference`'s with that axis removed.
+    pub fn broadcast_along_like(self, axis: usize, reference: Self) -> Self {
+        let reference_shape = reference.shape();
+        assert!(
+            axis < reference_shape.rank(),
+            "axis {axis} is out of rank for {reference_shape}"
+        );
+        assert_eq!(
+            self.shape(),
+            reference_shape.without_axis(axis),
+            "broadcast along axis {axis} of {reference_shape} requires the remaining shape"
+        );
+        self.broadcast_along(axis, reference_shape.axes()[axis])
+    }
+
     /// Records the transposition of this value — its axes reversed — as
     /// a `permute` of the reversed order, and returns a proxy to it.
     /// The once-dedicated opcode was retired as a strict special case:
@@ -124,7 +157,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// aligned target axis or have extent one, in which case it is repeated
     /// to the target extent. It composes the shape-changing primitives -- a
     /// right-aligning `reshape` that prepends the missing leading axes, then
-    /// one `broadcast_along` per repeated axis, or a single `broadcast_like`
+    /// one `broadcast_along` per repeated axis, or a single `broadcast`
     /// when the source holds one element -- so the gradient is the chain
     /// rule over their adjoints: the incoming gradient summed back over
     /// every repeated axis.
@@ -151,11 +184,9 @@ impl<'tape, E: Element> Value<'tape, E> {
                  {axis} of extent {extent} to extent {aligned}"
             );
         }
-        // A single-element source reaches any shape in one node; the
-        // reference operand carries only the target shape.
+        // A single-element source reaches any shape in one node.
         if source.volume() == 1 {
-            let reference = self.literal(Tensor::counted(target, 0));
-            return self.broadcast_like(reference);
+            return self.broadcast(target);
         }
         // Right-align the source under the target by prepending unit axes, so
         // every axis is then either already matched or an extent-one axis to
@@ -173,12 +204,8 @@ impl<'tape, E: Element> Value<'tape, E> {
                 continue;
             }
             // The only remaining mismatch is an extent-one axis; drop it and
-            // repeat it to the target extent through the axis-wise adjoint,
-            // whose reference is the current shape with this axis widened.
-            let mut axes = current.shape().axes().to_vec();
-            axes[axis] = aligned;
-            let reference = self.literal(Tensor::counted(Shape::new(axes), 0));
-            current = current.squeeze(axis).broadcast_along(axis, reference);
+            // repeat it to the target extent through the axis-wise adjoint.
+            current = current.squeeze(axis).broadcast_along(axis, aligned);
         }
         current
     }

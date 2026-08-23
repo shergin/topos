@@ -9,7 +9,7 @@ fn describe_prints_the_golden_spec() {
     let input = tape.input(Tensor::filled([8, 10], 0.0));
     let product = input.matmul(weights);
     let bias = tape.parameter(Tensor::filled([32], 0.0));
-    let shifted = product + bias.broadcast_along(0, product);
+    let shifted = product + bias.broadcast_along_like(0, product);
     let _activated = shifted.tanh();
     let network = tape.into_network();
 
@@ -19,7 +19,7 @@ fn describe_prints_the_golden_spec() {
          \x20  1  Input                             [8, 10]\n\
          \x20  2  MatMul         1, 0               [8, 32]\n\
          \x20  3  Parameter                         [32]\n\
-         \x20  4  BroadcastAlong 3, 2  axis=0       [8, 32]\n\
+         \x20  4  BroadcastAlong 3  axis=0 extent=8 [8, 32]\n\
          \x20  5  Add            2, 4               [8, 32]\n\
          \x20  6  Tanh           5                  [8, 32]\n\
          network: 7 nodes, 2 parameters, 1 input\n"

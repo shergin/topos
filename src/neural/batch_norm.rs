@@ -103,7 +103,7 @@ impl<E: Element> BatchNorm<E> {
     /// value agreeing with the parameters on the feature count.
     pub fn express<'tape>(&self, input: Value<'tape, E>) -> Normalization<'tape, E> {
         let mean = input.mean_along(0);
-        let centered = input - mean.broadcast_along(0, input);
+        let centered = input - mean.broadcast_along_like(0, input);
         // The biased (population) variance, which normalization uses at
         // training time; an unbiased running estimate is the caller's
         // averaging policy, not the graph's.
@@ -135,7 +135,7 @@ impl<E: Element> BatchNorm<E> {
         mean: Value<'tape, E>,
         variance: Value<'tape, E>,
     ) -> Value<'tape, E> {
-        let centered = input - mean.broadcast_along(0, input);
+        let centered = input - mean.broadcast_along_like(0, input);
         self.normalize(centered, variance)
     }
 
@@ -166,8 +166,9 @@ impl<E: Element> BatchNorm<E> {
         // in-graph to the variance's `[features]` shape, the family's
         // shared single-value epsilon contract.
         let deviation = (variance + epsilon.broadcast_like(variance)).sqrt();
-        let normalized = centered / deviation.broadcast_along(0, centered);
-        normalized * scale.broadcast_along(0, centered) + shift.broadcast_along(0, centered)
+        let normalized = centered / deviation.broadcast_along_like(0, centered);
+        normalized * scale.broadcast_along_like(0, centered)
+            + shift.broadcast_along_like(0, centered)
     }
 }
 

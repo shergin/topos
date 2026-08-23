@@ -266,41 +266,40 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.apply(Function::sum_along(axis), &[self.id])
     }
 
-    /// Records the explicit broadcast of this single-value payload across
-    /// `reference`'s shape on the same tape and returns a proxy to it.
+    /// Records the explicit broadcast of this single-value payload
+    /// across `shape` on the same tape and returns a proxy to it.
     ///
     /// This is the narrowest expansion opcode: the operand must hold
-    /// exactly one element, and the target shape always comes from a
-    /// reference value, never from an alignment rule. For a source of any
-    /// broadcastable shape, use the composite
+    /// exactly one element, and the target shape is a recorded
+    /// parameter, never an alignment rule. To read the shape off
+    /// another value, use [`broadcast_like`](Self::broadcast_like); for
+    /// a source of any broadcastable shape, use the composite
     /// [`broadcast_to`](Self::broadcast_to), which applies the
     /// right-aligned NumPy rule over this opcode and
     /// [`broadcast_along`](Self::broadcast_along).
     ///
     /// # Panics
-    /// Panics if the values belong to different tapes or this value's
-    /// shape does not contain exactly one element.
-    pub fn broadcast_like(self, reference: Self) -> Self {
-        self.assert_same_tape(&reference);
-        self.apply(Function::broadcast(), &[self.id, reference.id])
+    /// Panics if this value's shape does not contain exactly one
+    /// element.
+    pub fn broadcast(self, shape: impl Into<Shape>) -> Self {
+        self.apply(Function::broadcast(shape.into()), &[self.id])
     }
 
-    /// Records the explicit repetition of this value along `axis` of
-    /// `reference`'s shape on the same tape and returns a proxy to
-    /// it; this value's shape must equal `reference`'s with that axis
-    /// removed.
+    /// Records the explicit repetition of this value along a new axis
+    /// of `extent` inserted at `axis` on the same tape and returns a
+    /// proxy to it.
     ///
     /// This opcode widens exactly one named axis and never infers an
-    /// alignment. To widen several axes at once, or to expand under the
-    /// right-aligned NumPy rule, use the composite
+    /// alignment. To read the extent off a reference value, use
+    /// [`broadcast_along_like`](Self::broadcast_along_like); to widen
+    /// several axes at once, or to expand under the right-aligned
+    /// NumPy rule, use the composite
     /// [`broadcast_to`](Self::broadcast_to).
     ///
     /// # Panics
-    /// Panics if the values belong to different tapes, `axis` is out of
-    /// `reference`'s rank, or the remaining shapes differ.
-    pub fn broadcast_along(self, axis: usize, reference: Self) -> Self {
-        self.assert_same_tape(&reference);
-        self.apply(Function::broadcast_along(axis), &[self.id, reference.id])
+    /// Panics if `axis` exceeds this value's rank or `extent` is zero.
+    pub fn broadcast_along(self, axis: usize, extent: usize) -> Self {
+        self.apply(Function::broadcast_along(axis, extent), &[self.id])
     }
 
     /// Records a reshape of this value to `shape` on the same tape and

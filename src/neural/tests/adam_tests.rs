@@ -80,7 +80,7 @@ fn adamw_decays_weights_and_spares_biases() {
     let bias = tape.parameter(Tensor::new([2], [0.5_f64, -1.0]));
     let x = tape.leaf(Tensor::new([1, 2], [1.0_f64, -1.0]));
     let product = x.matmul(weights);
-    let shifted = product + bias.broadcast_along(0, product);
+    let shifted = product + bias.broadcast_along_like(0, product);
     let loss = (shifted * shifted).sum();
     let (weights, bias, loss) = (weights.symbol(), bias.symbol(), loss.symbol());
     let network = tape.into_network();

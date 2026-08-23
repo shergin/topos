@@ -124,7 +124,7 @@ pub fn conv2d<'tape, E: Element>(
         .permute([1, 2, 3, 0])
         .reshape([channels * kernel_height * kernel_width, filters]);
     let product = patches.matmul(kernel);
-    let shifted = product + bias.broadcast_along(0, product);
+    let shifted = product + bias.broadcast_along_like(0, product);
     shifted
         .reshape([batch, out_height, out_width, filters])
         .permute([0, 3, 1, 2])

@@ -174,7 +174,7 @@ fn recorded(
         };
         let scores = project(0).matmul(project(1).permute([0, 2, 1]));
         let scaled = scores * scale.broadcast_like(scores);
-        let weights = (scaled + mask.broadcast_along(0, scaled)).softmax(2);
+        let weights = (scaled + mask.broadcast_along_like(0, scaled)).softmax(2);
         let context = weights.matmul(project(2));
         context.permute([1, 0, 2]).reshape([PACKED_LEN, EMBED_DIM])
     } else {
@@ -200,7 +200,10 @@ fn recorded(
             .matmul(output_weights);
     let states = final_norm.express(stream);
     let product = states.gather(extraction).matmul(logit_weights);
-    let loss = cross_entropy(product + logit_bias.broadcast_along(0, product), targets);
+    let loss = cross_entropy(
+        product + logit_bias.broadcast_along_like(0, product),
+        targets,
+    );
 
     let forward_nodes = tape.len();
     let wrt: Vec<Symbol> = std::iter::once(embeddings)

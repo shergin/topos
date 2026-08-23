@@ -58,7 +58,7 @@ impl LogSumExp {
         // is finite for every finite operand — even where the shifted
         // difference itself underflows to `-inf`.
         let peak = operand.max_along(self.axis);
-        let shifted = operand.clone() - peak.broadcast_along(self.axis, operand);
+        let shifted = operand.clone() - peak.broadcast_along_like(self.axis, operand);
         peak + shifted.exp().sum_along(self.axis).ln()
     }
 }
@@ -69,9 +69,10 @@ impl<Rule: Tensorial> Operation<Rule> for LogSumExp {
         // The derivative of log-sum-exp is the softmax; the shift
         // cancels analytically, and `operand - output` reconstructs the
         // stable log-probabilities directly.
-        let probabilities = (operand.clone() - output.broadcast_along(self.axis, operand)).exp();
+        let extent = operand.shape().axes()[self.axis];
+        let probabilities = (operand.clone() - output.broadcast_along(self.axis, extent)).exp();
         smallvec![Some(
-            gradient.broadcast_along(self.axis, operand) * probabilities
+            gradient.broadcast_along(self.axis, extent) * probabilities
         )]
     }
 }

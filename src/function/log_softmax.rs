@@ -58,18 +58,19 @@ impl LogSoftmax {
         // `-inf` — the mathematically faithful log-probability).
         let peak = operand
             .max_along(self.axis)
-            .broadcast_along(self.axis, operand);
+            .broadcast_along_like(self.axis, operand);
         let shifted = operand.clone() - peak;
         let normalizer = shifted.exp().sum_along(self.axis).ln();
-        shifted.clone() - normalizer.broadcast_along(self.axis, &shifted)
+        shifted.clone() - normalizer.broadcast_along_like(self.axis, &shifted)
     }
 }
 
 impl<Rule: Tensorial> Operation<Rule> for LogSoftmax {
     fn backward(&self, _operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
+        let extent = gradient.shape().axes()[self.axis];
         let total = gradient
             .sum_along(self.axis)
-            .broadcast_along(self.axis, gradient);
+            .broadcast_along(self.axis, extent);
         smallvec![Some(gradient.clone() - output.exp() * total)]
     }
 }
