@@ -4,7 +4,7 @@ use std::ptr;
 
 use static_assertions::assert_impl_all;
 
-use crate::{Differentiable, Elementary, Shape, Tensorial};
+use crate::{Differentiable, Elementary, MapOperation, Shape, Tensorial};
 
 use crate::function::Function;
 
@@ -150,25 +150,25 @@ impl<'tape, Data: Elementary> Value<'tape, Data> {
     /// Records the hyperbolic tangent of this value on the same tape
     /// and returns a proxy to it.
     pub fn tanh(self) -> Self {
-        self.apply(Function::tanh(), &[self.id])
+        self.apply(Function::map(MapOperation::Tanh), &[self.id])
     }
 
     /// Records the exponential of this value on the same tape and
     /// returns a proxy to it.
     pub fn exp(self) -> Self {
-        self.apply(Function::exp(), &[self.id])
+        self.apply(Function::map(MapOperation::Exp), &[self.id])
     }
 
     /// Records the natural logarithm of this value on the same tape
     /// and returns a proxy to it.
     pub fn ln(self) -> Self {
-        self.apply(Function::ln(), &[self.id])
+        self.apply(Function::map(MapOperation::Ln), &[self.id])
     }
 
     /// Records the square root of this value on the same tape and
     /// returns a proxy to it.
     pub fn sqrt(self) -> Self {
-        self.apply(Function::sqrt(), &[self.id])
+        self.apply(Function::map(MapOperation::Sqrt), &[self.id])
     }
 
     /// Records this value raised elementwise to the power of `exponent`
@@ -315,31 +315,6 @@ impl<'tape, Data: Tensorial> Value<'tape, Data> {
     /// Panics if `order` is not a permutation of `0..rank`.
     pub fn permute(self, order: impl IntoIterator<Item = usize>) -> Self {
         self.apply(Function::permute(order), &[self.id])
-    }
-
-    /// Records this value with a new extent-1 axis inserted at `axis`: a
-    /// reshape that leaves the elements unchanged.
-    ///
-    /// # Panics
-    /// Panics if `axis` exceeds this value's rank.
-    pub fn unsqueeze(self, axis: usize) -> Self {
-        let mut axes: Vec<usize> = self.shape().axes().to_vec();
-        assert!(axis <= axes.len(), "unsqueeze axis {axis} is out of rank");
-        axes.insert(axis, 1);
-        self.reshape(axes)
-    }
-
-    /// Records this value with the extent-1 axis at `axis` removed: a
-    /// reshape that leaves the elements unchanged.
-    ///
-    /// # Panics
-    /// Panics if `axis` is out of rank or that axis is not extent 1.
-    pub fn squeeze(self, axis: usize) -> Self {
-        let mut axes: Vec<usize> = self.shape().axes().to_vec();
-        assert!(axis < axes.len(), "squeeze axis {axis} is out of rank");
-        assert_eq!(axes[axis], 1, "squeeze requires an extent-1 axis");
-        axes.remove(axis);
-        self.reshape(axes)
     }
 
     /// Records the window of `len` elements from `start` along `axis` on

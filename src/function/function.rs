@@ -1,12 +1,12 @@
 use super::SlotId;
-use crate::{Differentiable, Shape, Tensorial};
+use crate::{Differentiable, MapOperation, Shape, Tensorial};
 
 use static_assertions::assert_impl_all;
 
 use super::{
-    Add, Broadcast, BroadcastAlong, Cotangents, Div, Exp, Fold, Gather, Input, Leaf, Ln,
-    LogSoftmax, LogSumExp, MatMul, Maximum, Mul, Narrow, Neg, Operation, Pad, Parameter, Permute,
-    Powf, Reads, Relu, Reshape, Scatter, Sqrt, Step, Sub, Sum, SumAlong, Tanh, Transpose, Unfold,
+    Add, Broadcast, BroadcastAlong, Cotangents, Div, Fold, Gather, Input, Leaf, LogSoftmax,
+    LogSumExp, Map, MatMul, Maximum, Mul, Narrow, Neg, Operation, Pad, Parameter, Permute, Powf,
+    Reads, Relu, Reshape, Scatter, Step, Sub, Sum, SumAlong, Transpose, Unfold,
 };
 
 // Request-time thread-safety contract; the anchor rationale is documented
@@ -32,9 +32,7 @@ pub(crate) enum Function<Data> {
     Mul(Mul),
     Div(Div),
     Neg(Neg),
-    Tanh(Tanh),
-    Exp(Exp),
-    Ln(Ln),
+    Map(Map),
     MatMul(MatMul),
     Transpose(Transpose),
     Sum(Sum),
@@ -51,7 +49,6 @@ pub(crate) enum Function<Data> {
     Scatter(Scatter),
     LogSoftmax(LogSoftmax),
     LogSumExp(LogSumExp),
-    Sqrt(Sqrt),
     Powf(Powf),
     Maximum(Maximum),
     Relu(Relu),
@@ -99,19 +96,10 @@ impl<Data> Function<Data> {
         Function::Neg(Neg)
     }
 
-    /// Creates the hyperbolic tangent of the single operand.
-    pub(crate) fn tanh() -> Self {
-        Function::Tanh(Tanh)
-    }
-
-    /// Creates the exponential of the single operand.
-    pub(crate) fn exp() -> Self {
-        Function::Exp(Exp)
-    }
-
-    /// Creates the natural logarithm of the single operand.
-    pub(crate) fn ln() -> Self {
-        Function::Ln(Ln)
+    /// Creates the unary elementwise transcendental `op` of the single
+    /// operand.
+    pub(crate) fn map(op: MapOperation) -> Self {
+        Function::Map(Map { op })
     }
 
     /// Creates the matrix product of the `[left, right]` operands.
@@ -231,11 +219,6 @@ impl<Data> Function<Data> {
         Function::Scatter(Scatter { rows })
     }
 
-    /// Creates the square root of the single operand.
-    pub(crate) fn sqrt() -> Self {
-        Function::Sqrt(Sqrt)
-    }
-
     /// Creates the elementwise power of the `[base, exponent]` operands.
     pub(crate) fn powf() -> Self {
         Function::Powf(Powf)
@@ -262,9 +245,7 @@ impl<Data> Function<Data> {
             Function::Mul(_) => "Mul",
             Function::Div(_) => "Div",
             Function::Neg(_) => "Neg",
-            Function::Tanh(_) => "Tanh",
-            Function::Exp(_) => "Exp",
-            Function::Ln(_) => "Ln",
+            Function::Map(map) => map.name(),
             Function::MatMul(_) => "MatMul",
             Function::Transpose(_) => "Transpose",
             Function::Sum(_) => "Sum",
@@ -282,7 +263,6 @@ impl<Data> Function<Data> {
             Function::Step(_) => "Step",
             Function::Fold(_) => "Fold",
             Function::Scatter(_) => "Scatter",
-            Function::Sqrt(_) => "Sqrt",
             Function::Powf(_) => "Powf",
             Function::Maximum(_) => "Maximum",
             Function::Relu(_) => "Relu",
@@ -300,9 +280,7 @@ impl<Data> Function<Data> {
             Function::Mul(mul) => mul.reads(),
             Function::Div(div) => div.reads(),
             Function::Neg(neg) => neg.reads(),
-            Function::Tanh(tanh) => tanh.reads(),
-            Function::Exp(exp) => exp.reads(),
-            Function::Ln(ln) => ln.reads(),
+            Function::Map(map) => map.reads(),
             Function::MatMul(matmul) => matmul.reads(),
             Function::Transpose(transpose) => transpose.reads(),
             Function::Sum(sum) => sum.reads(),
@@ -320,7 +298,6 @@ impl<Data> Function<Data> {
             Function::Step(step) => step.reads(),
             Function::Fold(fold) => fold.reads(),
             Function::Scatter(scatter) => scatter.reads(),
-            Function::Sqrt(sqrt) => sqrt.reads(),
             Function::Powf(powf) => powf.reads(),
             Function::Maximum(maximum) => maximum.reads(),
             Function::Relu(relu) => relu.reads(),
@@ -339,9 +316,7 @@ impl<Data> Function<Data> {
             Function::Mul(mul) => mul.arity(),
             Function::Div(div) => div.arity(),
             Function::Neg(neg) => neg.arity(),
-            Function::Tanh(tanh) => tanh.arity(),
-            Function::Exp(exp) => exp.arity(),
-            Function::Ln(ln) => ln.arity(),
+            Function::Map(map) => map.arity(),
             Function::MatMul(matmul) => matmul.arity(),
             Function::Transpose(transpose) => transpose.arity(),
             Function::Sum(sum) => sum.arity(),
@@ -359,7 +334,6 @@ impl<Data> Function<Data> {
             Function::Step(step) => step.arity(),
             Function::Fold(fold) => fold.arity(),
             Function::Scatter(scatter) => scatter.arity(),
-            Function::Sqrt(sqrt) => sqrt.arity(),
             Function::Powf(powf) => powf.arity(),
             Function::Maximum(maximum) => maximum.arity(),
             Function::Relu(relu) => relu.arity(),
@@ -388,9 +362,7 @@ impl<Data> Function<Data> {
             Function::Mul(mul) => mul.infer_shape(operands),
             Function::Div(div) => div.infer_shape(operands),
             Function::Neg(neg) => neg.infer_shape(operands),
-            Function::Tanh(tanh) => tanh.infer_shape(operands),
-            Function::Exp(exp) => exp.infer_shape(operands),
-            Function::Ln(ln) => ln.infer_shape(operands),
+            Function::Map(map) => map.infer_shape(operands),
             Function::MatMul(matmul) => matmul.infer_shape(operands),
             Function::Transpose(transpose) => transpose.infer_shape(operands),
             Function::Sum(sum) => sum.infer_shape(operands),
@@ -408,7 +380,6 @@ impl<Data> Function<Data> {
             Function::Step(step) => step.infer_shape(operands),
             Function::Fold(fold) => fold.infer_shape(operands),
             Function::Scatter(scatter) => scatter.infer_shape(operands),
-            Function::Sqrt(sqrt) => sqrt.infer_shape(operands),
             Function::Powf(powf) => powf.infer_shape(operands),
             Function::Maximum(maximum) => maximum.infer_shape(operands),
             Function::Relu(relu) => relu.infer_shape(operands),
@@ -439,9 +410,7 @@ impl<Data: Tensorial> Function<Data> {
             Function::Mul(mul) => mul.forward(operands),
             Function::Div(div) => div.forward(operands),
             Function::Neg(neg) => neg.forward(operands),
-            Function::Tanh(tanh) => tanh.forward(operands),
-            Function::Exp(exp) => exp.forward(operands),
-            Function::Ln(ln) => ln.forward(operands),
+            Function::Map(map) => map.forward(operands),
             Function::MatMul(matmul) => matmul.forward(operands),
             Function::Transpose(transpose) => transpose.forward(operands),
             Function::Sum(sum) => sum.forward(operands),
@@ -459,7 +428,6 @@ impl<Data: Tensorial> Function<Data> {
             Function::Step(step) => step.forward(operands),
             Function::Fold(fold) => fold.forward(operands),
             Function::Scatter(scatter) => scatter.forward(operands),
-            Function::Sqrt(sqrt) => sqrt.forward(operands),
             Function::Powf(powf) => powf.forward(operands),
             Function::Maximum(maximum) => maximum.forward(operands),
             Function::Relu(relu) => relu.forward(operands),
@@ -490,9 +458,7 @@ impl<Data: Tensorial> Function<Data> {
             Function::Mul(mul) => mul.backward(operands, output, gradient),
             Function::Div(div) => div.backward(operands, output, gradient),
             Function::Neg(neg) => neg.backward(operands, output, gradient),
-            Function::Tanh(tanh) => tanh.backward(operands, output, gradient),
-            Function::Exp(exp) => exp.backward(operands, output, gradient),
-            Function::Ln(ln) => ln.backward(operands, output, gradient),
+            Function::Map(map) => map.backward(operands, output, gradient),
             Function::MatMul(matmul) => matmul.backward(operands, output, gradient),
             Function::Transpose(transpose) => transpose.backward(operands, output, gradient),
             Function::Sum(sum) => sum.backward(operands, output, gradient),
@@ -512,7 +478,6 @@ impl<Data: Tensorial> Function<Data> {
             Function::Step(step) => step.backward(operands, output, gradient),
             Function::Fold(fold) => fold.backward(operands, output, gradient),
             Function::Scatter(scatter) => scatter.backward(operands, output, gradient),
-            Function::Sqrt(sqrt) => sqrt.backward(operands, output, gradient),
             Function::Powf(powf) => powf.backward(operands, output, gradient),
             Function::Maximum(maximum) => maximum.backward(operands, output, gradient),
             Function::Relu(relu) => relu.backward(operands, output, gradient),

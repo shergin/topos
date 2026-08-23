@@ -58,6 +58,31 @@ impl<'tape, Data: Tensorial> Value<'tape, Data> {
         self.sum_along(axis) / Data::counted(shape.without_axis(axis), extent)
     }
 
+    /// Records this value with a new extent-1 axis inserted at `axis`:
+    /// a `reshape` that leaves the elements unchanged.
+    ///
+    /// # Panics
+    /// Panics if `axis` exceeds this value's rank.
+    pub fn unsqueeze(self, axis: usize) -> Self {
+        let mut axes: Vec<usize> = self.shape().axes().to_vec();
+        assert!(axis <= axes.len(), "unsqueeze axis {axis} is out of rank");
+        axes.insert(axis, 1);
+        self.reshape(axes)
+    }
+
+    /// Records this value with the extent-1 axis at `axis` removed: a
+    /// `reshape` that leaves the elements unchanged.
+    ///
+    /// # Panics
+    /// Panics if `axis` is out of rank or that axis is not extent 1.
+    pub fn squeeze(self, axis: usize) -> Self {
+        let mut axes: Vec<usize> = self.shape().axes().to_vec();
+        assert!(axis < axes.len(), "squeeze axis {axis} is out of rank");
+        assert_eq!(axes[axis], 1, "squeeze requires an extent-1 axis");
+        axes.remove(axis);
+        self.reshape(axes)
+    }
+
     /// Records this value broadcast to `shape` under the right-aligned
     /// NumPy and TensorFlow rule, and returns a proxy to it.
     ///

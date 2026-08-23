@@ -1,7 +1,7 @@
 use smallvec::{SmallVec, smallvec};
 
-use crate::function::Function;
-use crate::{Differentiable, Tensorial};
+use crate::function::{Function, Map};
+use crate::{Differentiable, MapOperation, Tensorial};
 
 use super::candidates::Candidate;
 use super::pattern::Pattern;
@@ -117,7 +117,10 @@ fn match_tail<Data: Differentiable>(index: usize, view: &View<Data>) -> Option<T
         return None;
     }
     let deviation = view.operand(dev_bcast, 0);
-    let Some(Function::Sqrt(_)) = view.function(deviation) else {
+    let Some(Function::Map(Map {
+        op: MapOperation::Sqrt,
+    })) = view.function(deviation)
+    else {
         return None;
     };
     let var_plus = view.sole_operand(deviation);

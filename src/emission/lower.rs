@@ -18,7 +18,7 @@ use std::fmt::{self, Display, Write};
 
 use crate::engine::{BatchNormalization, Catalog, Pattern, ReduceWindow, WindowProduct};
 use crate::function::Function;
-use crate::{Backend, Plan, Shape, Tensor};
+use crate::{Backend, MapOperation, Plan, Shape, Tensor};
 
 use super::builder::{
     Emittable, dense_index_literal, dense_literal, index_tensor_type, named_tensor_type,
@@ -244,10 +244,15 @@ impl<Element: Emittable> Plan<Tensor<Element>> {
             Function::Maximum(_) => binary("maximum", emitter),
             Function::Powf(_) => binary("power", emitter),
             Function::Neg(_) => unary("negate", emitter),
-            Function::Tanh(_) => unary("tanh", emitter),
-            Function::Exp(_) => unary("exponential", emitter),
-            Function::Ln(_) => unary("log", emitter),
-            Function::Sqrt(_) => unary("sqrt", emitter),
+            Function::Map(map) => {
+                let name = match map.op {
+                    MapOperation::Exp => "exponential",
+                    MapOperation::Ln => "log",
+                    MapOperation::Sqrt => "sqrt",
+                    MapOperation::Tanh => "tanh",
+                };
+                unary(name, emitter)
+            }
             Function::Relu(_) => {
                 let zero = format!("%v{index}_zero");
                 emitter.line(format!(

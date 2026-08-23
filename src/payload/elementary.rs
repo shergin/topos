@@ -4,11 +4,14 @@ use super::Differentiable;
 use super::gemm::GemmTask;
 use super::normalized::{BatchNormTask, Normalized};
 
-/// One whole-buffer elementwise transcendental: the unit of the
-/// seam's elementwise sibling, mirroring [`GemmTask`] for the
-/// operations whose scalar form is a libm call the compiler cannot
-/// vectorize.
-#[non_exhaustive]
+/// One unary elementwise transcendental: the shared vocabulary of the
+/// IR's `Map` node and the backend chain's whole-buffer map task,
+/// mirroring [`GemmTask`] for the operations whose scalar form is a
+/// libm call the compiler cannot vectorize.
+///
+/// The enum is deliberately exhaustive: adding an operation is a
+/// visible, breaking exhaustiveness change at every rule, backend, and
+/// emission match — the closed-core tell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MapOperation {
     /// `e` raised to each element.

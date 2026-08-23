@@ -124,7 +124,7 @@ engine to accumulate. No rule ever sees the tape, a `ValueId`, or a run
 buffer, so every rule is plain math, testable without a network. In
 topos: the [`Operation`](src/function/operation.rs) trait,
 implemented by each computed `Function` variant (`Add`, `Sub`, `Mul`,
-`Div`, `Neg`, `Tanh`, `Exp`, `Ln`, `Sqrt`, `Powf`, `Maximum`, `Relu`,
+`Div`, `Neg`, `Map`, `Powf`, `Maximum`, `Relu`,
 `MatMul`, `Transpose`, `Sum`, `SumAlong`, `Broadcast`, `BroadcastAlong`,
 `Reshape`, `Permute`, `Narrow`, `Gather`, `LogSoftmax` under
 [`src/function/`](src/function/)) and dispatched with a
@@ -134,6 +134,21 @@ the enum's dispatch handles them directly instead of through the trait.
 Arithmetic variants need only `Differentiable`; the transcendental and
 tensor-native ones raise the bound of running (not building) a graph to
 `Elementary` and `Tensorial` respectively.
+
+**Map.** The unary elementwise transcendentals as one node kind:
+`Function::Map` carries a `MapOperation` (`Exp`, `Ln`, `Sqrt`,
+`Tanh`) — the same vocabulary the acceleration seam's whole-buffer
+map task speaks, so the IR and the backend chain name these
+instructions once. Everything operation-specific — the printed
+mnemonic (`Tanh`, never `Map`), the read set, the derivative —
+dispatches on the carried operation; only the shape behavior is
+shared, since a map keeps its operand's shape. Adding a
+transcendental is a `MapOperation` variant, an `Elementary` method,
+the `Map` rule arms, a `Value` mnemonic, and an emission arm — never
+a new `Function` variant. Binary elementwise operations (`Powf`,
+`Maximum`, `Step`) are not maps: the seam's map task is a unary
+whole-buffer kernel. In topos: [`Map`](src/function/map.rs) carrying
+[`MapOperation`](src/payload/elementary.rs).
 
 **Leaf.** A node with no operands: a constant supplied at recording
 time. Gradients stop there and get read out; its `backward` is a no-op.
@@ -213,9 +228,10 @@ opcode mnemonics, each recording exactly one computed node (payload
 literals additionally record a leaf — data injection, not computation);
 [`composite.rs`](src/graph/composite.rs) holds the composites (`abs` as
 `maximum(-self)`, `softmax` as `exp(log_softmax)` — stable by inheritance,
-since log-probabilities cannot make `exp` overflow — and `mean_along`,
+since log-probabilities cannot make `exp` overflow — `mean_along`,
 `sum_along` divided by the reduced axis's
-extent minted as a `counted` literal); and named formulas whose operands play distinct roles (a
+extent minted as a `counted` literal, and the `reshape`-based `squeeze`
+and `unsqueeze`); and named formulas whose operands play distinct roles (a
 loss's logits and targets have no natural `self`) are free functions in
 domain modules. Composites compile against the public operation surface
 alone — they need no privileged engine access — and once recorded they
@@ -906,7 +922,7 @@ topos: the [`Optimizer`](src/neural/optimizer.rs) trait and
 **Activation.** The nonlinearity applied to a stage's affine output,
 which is what gives stacked affine maps expressive power. It is a
 graph operation like any other, so it participates in differentiation
-(`Function::Tanh`, recorded by `Value::tanh`, whose derivative
+(the `Tanh` map, recorded by `Value::tanh`, whose derivative
 `1 - tanh(x)^2` reuses the node's own output; `Function::Relu`, recorded
 by `Value::relu`, whose gradient is masked by the 0/1 `step` indicator —
 a dedicated unary variant so the mask costs one node and no zero leaf
