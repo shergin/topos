@@ -8,7 +8,7 @@ use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::trace::Trace;
 use super::{
-    Adjoints, Network, Node, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId,
+    Adjoints, Keep, Network, Node, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId,
 };
 
 // Entry-time thread-safety contract; the anchor rationale is documented
@@ -54,6 +54,36 @@ pub struct Tape<E> {
 }
 
 impl<E: Element> Tape<E> {
+    /// Records a whole graph in one closure and seals it: the
+    /// default construction path, whose return value *is* the
+    /// construction keep-set.
+    ///
+    /// The closure builds on a fresh tape and returns its keep-set
+    /// in detached form — one [`Keep::keep`] call turns any array,
+    /// `Vec`, or tuple of values into symbols — and the seal follows
+    /// immediately, so no proxy can escape the phase and the names
+    /// later phases read are a value, not a pile of `.symbol()`
+    /// locals. Reopen, twins, and piecewise recording keep the
+    /// explicit [`Tape::new`] / [`Tape::into_network`] pair.
+    ///
+    /// # Examples
+    /// ```
+    /// use topos::{Keep, Tape};
+    ///
+    /// let (network, [w, loss]) = Tape::record(|tape| {
+    ///     let w = tape.parameter(3.0_f64);
+    ///     let loss = w * w;
+    ///     [w, loss].keep()
+    /// });
+    /// assert_eq!(network.parameters().of(w).scalar(), 3.0);
+    /// # let _ = loss;
+    /// ```
+    pub fn record<Out: Keep>(build: impl FnOnce(&Self) -> Out) -> (Network<E>, Out::Kept) {
+        let tape = Self::new();
+        let kept = build(&tape).keep();
+        (tape.into_network(), kept)
+    }
+
     /// Creates an empty `Tape`.
     pub fn new() -> Self {
         Self {
@@ -107,7 +137,7 @@ impl<E: Element> Tape<E> {
     /// Constants are fixed at recording time; see `parameter` for
     /// trainable leaves and `input` for leaves fed per run.
     pub fn leaf(&self, data: impl Into<Tensor<E>>) -> Value<'_, E> {
-        let id = self.record(Function::leaf(data.into()), &[]);
+        let id = self.record_node(Function::leaf(data.into()), &[]);
         Value::bind(self, id)
     }
 
@@ -262,7 +292,11 @@ impl<E: Element> Tape<E> {
     /// Panics if `operands` does not match the function's arity or
     /// references a node that is not recorded on this tape, or if the
     /// operands' shapes are incompatible.
-    pub(crate) fn record(&self, function: Function<Tensor<E>>, operands: &[ValueId]) -> ValueId {
+    pub(crate) fn record_node(
+        &self,
+        function: Function<Tensor<E>>,
+        operands: &[ValueId],
+    ) -> ValueId {
         assert_eq!(
             operands.len(),
             function.arity(),

@@ -127,7 +127,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// Records a computed node produced by `function` over the positional
     /// `operands` on the same tape and returns a proxy to it.
     fn apply(&self, function: Function<Tensor<E>>, operands: &[ValueId]) -> Self {
-        let id = self.tape.record(function, operands);
+        let id = self.tape.record_node(function, operands);
         Self::bind(self.tape, id)
     }
 
@@ -137,7 +137,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// It backs the payload-literal operator sugar: every literal
     /// appearance records its own leaf.
     pub(crate) fn literal(&self, data: Tensor<E>) -> Self {
-        Self::bind(self.tape, self.tape.record(Function::leaf(data), &[]))
+        Self::bind(self.tape, self.tape.record_node(Function::leaf(data), &[]))
     }
 
     /// Panics if `other` belongs to a different tape.

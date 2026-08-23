@@ -8,22 +8,20 @@
 //! parameters — training never touches the graph:
 //!
 //! ```
-//! use topos::{Tape, Tensor};
+//! use topos::{Keep, Tape, Tensor};
 //!
-//! let tape = Tape::new();
-//! let w = tape.parameter(0.0_f64);
-//! let x = tape.input(0.0);
-//! let y = tape.input(0.0);
-//!
-//! // Operators record the graph; values are `Copy` and never consumed.
-//! // A scalar is a rank-0 tensor: the graph is always tensors, and the
-//! // element type (`f64` here) is the open seam.
-//! let error = w * x - y;
-//! let loss = error * error;
-//!
-//! // Symbols are the detached names every later phase speaks.
-//! let (w, x, y, loss) = (w.symbol(), x.symbol(), y.symbol(), loss.symbol());
-//! let network = tape.into_network();
+//! // Record the graph in one closure; the return value is the
+//! // keep-set, detached to symbols in one call. Operators record as
+//! // they run; values are `Copy` and never consumed. A scalar is a
+//! // rank-0 tensor: the graph is always tensors, and the element
+//! // type (`f64` here) is the open seam.
+//! let (network, [w, x, y, loss]) = Tape::record(|tape| {
+//!     let w = tape.parameter(0.0_f64);
+//!     let x = tape.input(0.0);
+//!     let y = tape.input(0.0);
+//!     let error = w * x - y;
+//!     [w, x, y, error * error].keep()
+//! });
 //! let mut parameters = network.parameters();
 //!
 //! // The graph is recorded once; every step feeds one sample of the line
@@ -85,8 +83,8 @@ pub use backend::{
 pub use emission::{EmitError, Emittable};
 pub use engine::{BoundEntry, Entry, Plan, Run};
 pub use graph::{
-    Adjoints, Field, Gradients, Network, Node, Opcode, Parameters, Symbol, Tape, Trace, Value,
-    concat, stack,
+    Adjoints, Field, Gradients, Keep, Network, Node, Opcode, Parameters, Symbol, Tape, Trace,
+    Value, concat, stack,
 };
 pub use neural::{
     Activation, Adam, AdamW, BatchNorm, Conv2d, Dropout, LayerNorm, Linear, Mlp, Module,

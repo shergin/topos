@@ -14,39 +14,36 @@ use std::time::Instant;
 use rayon::prelude::*;
 
 use malevich::{Frame, Line, Plot};
-use topos::{Symbol, Tape, Tensor};
+use topos::{Keep, Tape, Tensor};
 
 fn main() {
-    let tape = Tape::new();
+    // The whole recording is one closure; its return value is the
+    // keep-set, detached to symbols in one `keep` call.
+    let (network, (w, b, loss, sample_losses)) = Tape::record(|tape| {
+        // Learnable parameters, starting from zero.
+        let w = tape.parameter(0.0_f64);
+        let b = tape.parameter(0.0);
 
-    // Learnable parameters, starting from zero.
-    let w = tape.parameter(0.0_f64);
-    let b = tape.parameter(0.0);
-
-    // Training data for the target line `y = 2 * x + 1`, recorded as plain
-    // leaves. Each sample's squared error is kept as a separate target;
-    // the total loss is their sum.
-    let samples = [(1.0, 3.0), (2.0, 5.0), (3.0, 7.0)];
-    let mut sample_losses = Vec::new();
-    for (x, y) in samples {
-        let x = tape.leaf(x);
-        let y = tape.leaf(y);
-        let error = w * x + b - y;
-        sample_losses.push(error * error);
-    }
-    // Values are `Copy`, so the per-sample losses fold into a total loss
-    // with a plain reduce.
-    let loss = sample_losses
-        .iter()
-        .copied()
-        .reduce(|total, squared| total + squared)
-        .expect("at least one sample");
-
-    // Symbols are the names every phase after recording speaks; the
-    // seal consumes the tape and hands back the immutable spec.
-    let sample_losses: Vec<Symbol> = sample_losses.iter().map(|value| value.symbol()).collect();
-    let (w, b, loss) = (w.symbol(), b.symbol(), loss.symbol());
-    let network = tape.into_network();
+        // Training data for the target line `y = 2 * x + 1`, recorded
+        // as plain leaves. Each sample's squared error is kept as a
+        // separate target; the total loss is their sum.
+        let samples = [(1.0, 3.0), (2.0, 5.0), (3.0, 7.0)];
+        let mut sample_losses = Vec::new();
+        for (x, y) in samples {
+            let x = tape.leaf(x);
+            let y = tape.leaf(y);
+            let error = w * x + b - y;
+            sample_losses.push(error * error);
+        }
+        // Values are `Copy`, so the per-sample losses fold into a total
+        // loss with a plain reduce.
+        let loss = sample_losses
+            .iter()
+            .copied()
+            .reduce(|total, squared| total + squared)
+            .expect("at least one sample");
+        (w, b, loss, sample_losses).keep()
+    });
     let parameters = network.parameters();
 
     // One run feeds many backward sweeps: each rayon thread

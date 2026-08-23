@@ -360,6 +360,20 @@ caller's `Parameters` and mints no new network, so the questions the
 old generation machinery answered (which generation does a symbol,
 field, or plan bind to; who may record next) can no longer be asked.
 
+**Keep (keep-set).** The one-call mass detach of a construction
+keep-set: `[w, x, y, loss].keep()` turns an array, `Vec`, or mixed
+tuple of `Value`s, `Symbol`s, and `Adjoints` into its detached form,
+so the names later phases read are a value rather than an N-way
+`.symbol()` destructure. `Tape::record(|tape| ...)` is the default
+construction path built on it: one closure records the whole graph
+and returns its keep-set, the seal follows immediately, and no proxy
+can escape the phase — a returned `Value` is rejected by the borrow
+checker before the `Keep` bound is consulted. The construction
+keep-set and the execution keep-set are different declarations:
+`keep` answers "what did I name?", an `Entry` answers "what do I
+run?". In topos: [`Keep`](src/graph/keep.rs),
+[`Tape::record`](src/graph/tape.rs).
+
 **Slot store.** A dense table of payloads keyed by [`SlotId`](src/graph/slot.rs),
 each row also holding the tape [`ValueId`](src/graph/value.rs) of the
 node that names that slot. Parameter initials and input defaults share
