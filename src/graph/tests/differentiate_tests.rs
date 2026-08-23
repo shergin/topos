@@ -241,6 +241,22 @@ fn transpose_closes() {
 }
 
 #[test]
+fn sin_closes() {
+    let tape = Tape::new();
+    let a = tape.parameter(varied([2, 3], 1));
+    let loss = a.sin().sum();
+    assert_closure(loss.symbol(), &[a.symbol()], tape);
+}
+
+#[test]
+fn cos_closes() {
+    let tape = Tape::new();
+    let a = tape.parameter(varied([2, 3], 1));
+    let loss = a.cos().sum();
+    assert_closure(loss.symbol(), &[a.symbol()], tape);
+}
+
+#[test]
 fn sum_closes() {
     let tape = Tape::new();
     let a = tape.parameter(varied([2, 3], 1));

@@ -158,6 +158,8 @@ impl Opcode {
                 MapOperation::Ln => "Ln",
                 MapOperation::Sqrt => "Sqrt",
                 MapOperation::Tanh => "Tanh",
+                MapOperation::Sin => "Sin",
+                MapOperation::Cos => "Cos",
             },
             Opcode::Powf => "Powf",
             Opcode::Maximum => "Maximum",

@@ -842,6 +842,16 @@ impl<Element: Elementary> Tensor<Element> {
         self.mapped(MapOperation::Tanh, |element| element.tanh())
     }
 
+    /// Returns the sine of each element.
+    pub fn sin(&self) -> Self {
+        self.mapped(MapOperation::Sin, |element| element.sin())
+    }
+
+    /// Returns the cosine of each element.
+    pub fn cos(&self) -> Self {
+        self.mapped(MapOperation::Cos, |element| element.cos())
+    }
+
     /// Returns each element raised to the matching element of
     /// `exponent`.
     ///
@@ -1787,6 +1797,14 @@ impl<E: Element> Tensorial for Tensor<E> {
 
     fn tanh(&self) -> Self {
         Tensor::tanh(self)
+    }
+
+    fn sin(&self) -> Self {
+        Tensor::sin(self)
+    }
+
+    fn cos(&self) -> Self {
+        Tensor::cos(self)
     }
 
     fn powf(&self, exponent: Self) -> Self {

@@ -23,6 +23,8 @@ pub(super) fn map_pipeline_index(operation: MapOperation) -> usize {
         MapOperation::Ln => 1,
         MapOperation::Sqrt => 2,
         MapOperation::Tanh => 3,
+        MapOperation::Sin => 4,
+        MapOperation::Cos => 5,
     }
 }
 

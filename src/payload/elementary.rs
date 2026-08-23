@@ -22,6 +22,10 @@ pub enum MapOperation {
     Sqrt,
     /// The hyperbolic tangent of each element.
     Tanh,
+    /// The sine of each element.
+    Sin,
+    /// The cosine of each element.
+    Cos,
 }
 
 /// Elementary numeric functions of an element, plus its backend
@@ -48,6 +52,16 @@ pub trait Elementary: Differentiable {
 
     /// Returns the hyperbolic tangent of `self`.
     fn tanh(&self) -> Self;
+
+    /// Returns the sine of `self`.
+    ///
+    /// It pairs with [`cos`](Elementary::cos): the two are each
+    /// other's derivative (up to sign), so the recordable set carries
+    /// both or neither.
+    fn sin(&self) -> Self;
+
+    /// Returns the cosine of `self`.
+    fn cos(&self) -> Self;
 
     /// Returns `self` raised to the power of `exponent`.
     fn powf(&self, exponent: Self) -> Self;
@@ -134,6 +148,14 @@ impl Elementary for f32 {
         f32::tanh(*self)
     }
 
+    fn sin(&self) -> Self {
+        f32::sin(*self)
+    }
+
+    fn cos(&self) -> Self {
+        f32::cos(*self)
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         f32::powf(*self, exponent)
     }
@@ -174,6 +196,14 @@ impl Elementary for f64 {
 
     fn tanh(&self) -> Self {
         f64::tanh(*self)
+    }
+
+    fn sin(&self) -> Self {
+        f64::sin(*self)
+    }
+
+    fn cos(&self) -> Self {
+        f64::cos(*self)
     }
 
     fn powf(&self, exponent: Self) -> Self {

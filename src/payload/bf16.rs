@@ -221,6 +221,14 @@ impl Elementary for Bf16 {
         Self::from_f32(self.to_f32().tanh())
     }
 
+    fn sin(&self) -> Self {
+        Self::from_f32(self.to_f32().sin())
+    }
+
+    fn cos(&self) -> Self {
+        Self::from_f32(self.to_f32().cos())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Self::from_f32(self.to_f32().powf(exponent.to_f32()))
     }

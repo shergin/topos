@@ -30,16 +30,16 @@ impl Map {
 
     /// Returns the read set of the derivative rules below, per
     /// operation: `Exp`, `Sqrt`, and `Tanh` reuse their own output,
-    /// while `Ln` divides by its operand. The set is deliberately not
-    /// uniform — a shared one would retain buffers liveness does not
-    /// need.
+    /// while `Ln`, `Sin`, and `Cos` read their operand. The set is
+    /// deliberately not uniform — a shared one would retain buffers
+    /// liveness does not need.
     pub(crate) fn reads(&self) -> Reads {
         match self.op {
             MapOperation::Exp | MapOperation::Sqrt | MapOperation::Tanh => Reads {
                 operands: [false, false],
                 output: true,
             },
-            MapOperation::Ln => Reads {
+            MapOperation::Ln | MapOperation::Sin | MapOperation::Cos => Reads {
                 operands: [true, false],
                 output: false,
             },
@@ -60,6 +60,8 @@ impl Map {
             MapOperation::Ln => operand.ln(),
             MapOperation::Sqrt => operand.sqrt(),
             MapOperation::Tanh => operand.tanh(),
+            MapOperation::Sin => operand.sin(),
+            MapOperation::Cos => operand.cos(),
         }
     }
 }
@@ -85,6 +87,17 @@ impl<Rule: Tensorial> Operation<Rule> for Map {
             // minus the square of the node's own output.
             MapOperation::Tanh => {
                 gradient.clone() * (output.one_like() - output.clone() * output.clone())
+            }
+            // The derivative of `sin(x)` is `cos(x)`: the pair closes
+            // over itself, which is why the two ship together.
+            MapOperation::Sin => {
+                let &operand = unary(operands);
+                gradient.clone() * operand.cos()
+            }
+            // The derivative of `cos(x)` is `-sin(x)`.
+            MapOperation::Cos => {
+                let &operand = unary(operands);
+                -(gradient.clone() * operand.sin())
             }
         };
         smallvec![Some(cotangent)]

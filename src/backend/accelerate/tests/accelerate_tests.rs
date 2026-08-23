@@ -211,11 +211,13 @@ fn vforce_maps_match_libm_within_ulps() {
     let inputs_f32: Vec<f32> = inputs_f64.iter().map(|&value| value as f32).collect();
     let positives_f32: Vec<f32> = positives_f64.iter().map(|&value| value as f32).collect();
 
-    let cases_f64: [MapCaseF64<'_>; 4] = [
+    let cases_f64: [MapCaseF64<'_>; 6] = [
         (MapOperation::Exp, &inputs_f64, f64::exp),
         (MapOperation::Ln, &positives_f64, f64::ln),
         (MapOperation::Sqrt, &positives_f64, f64::sqrt),
         (MapOperation::Tanh, &inputs_f64, f64::tanh),
+        (MapOperation::Sin, &inputs_f64, f64::sin),
+        (MapOperation::Cos, &inputs_f64, f64::cos),
     ];
     for (operation, elements, scalar) in cases_f64 {
         let mapped = map_f64(operation, elements).expect("above the threshold");
@@ -227,11 +229,13 @@ fn vforce_maps_match_libm_within_ulps() {
             );
         }
     }
-    let cases_f32: [MapCaseF32<'_>; 4] = [
+    let cases_f32: [MapCaseF32<'_>; 6] = [
         (MapOperation::Exp, &inputs_f32, f32::exp),
         (MapOperation::Ln, &positives_f32, f32::ln),
         (MapOperation::Sqrt, &positives_f32, f32::sqrt),
         (MapOperation::Tanh, &inputs_f32, f32::tanh),
+        (MapOperation::Sin, &inputs_f32, f32::sin),
+        (MapOperation::Cos, &inputs_f32, f32::cos),
     ];
     for (operation, elements, scalar) in cases_f32 {
         let mapped = map_f32(operation, elements).expect("above the threshold");

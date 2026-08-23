@@ -88,6 +88,14 @@ impl Elementary for F64 {
         F64(self.0.tanh())
     }
 
+    fn sin(&self) -> Self {
+        F64(self.0.sin())
+    }
+
+    fn cos(&self) -> Self {
+        F64(self.0.cos())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         F64(self.0.powf(exponent.0))
     }

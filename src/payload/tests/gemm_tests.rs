@@ -238,6 +238,12 @@ impl Elementary for Probe {
     fn tanh(&self) -> Self {
         Probe(self.0.tanh())
     }
+    fn sin(&self) -> Self {
+        Probe(self.0.sin())
+    }
+    fn cos(&self) -> Self {
+        Probe(self.0.cos())
+    }
     fn powf(&self, exponent: Self) -> Self {
         Probe(self.0.powf(exponent.0))
     }
@@ -334,6 +340,12 @@ impl Elementary for LyingProbe {
     }
     fn tanh(&self) -> Self {
         LyingProbe(self.0.tanh())
+    }
+    fn sin(&self) -> Self {
+        LyingProbe(self.0.sin())
+    }
+    fn cos(&self) -> Self {
+        LyingProbe(self.0.cos())
     }
     fn powf(&self, exponent: Self) -> Self {
         LyingProbe(self.0.powf(exponent.0))

@@ -105,6 +105,14 @@ impl Elementary for Audited {
         Audited(self.0.tanh())
     }
 
+    fn sin(&self) -> Self {
+        Audited(self.0.sin())
+    }
+
+    fn cos(&self) -> Self {
+        Audited(self.0.cos())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Audited(self.0.powf(exponent.0))
     }

@@ -163,9 +163,11 @@ fn maps_match_the_host_within_tolerance() {
         .map(|index| (index as f32 + 1.0) / 300.0)
         .collect();
     type MapCase<'elements> = (MapOperation, &'elements [f32], fn(f32) -> f32);
-    let cases: [MapCase; 4] = [
+    let cases: [MapCase; 6] = [
         (MapOperation::Exp, &signed, f32::exp),
         (MapOperation::Tanh, &signed, f32::tanh),
+        (MapOperation::Sin, &signed, f32::sin),
+        (MapOperation::Cos, &signed, f32::cos),
         (MapOperation::Ln, &positive, f32::ln),
         (MapOperation::Sqrt, &positive, f32::sqrt),
     ];

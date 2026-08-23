@@ -58,6 +58,12 @@ pub trait Tensorial:
     /// Returns the elementwise hyperbolic tangent of `self`.
     fn tanh(&self) -> Self;
 
+    /// Returns the elementwise sine of `self`.
+    fn sin(&self) -> Self;
+
+    /// Returns the elementwise cosine of `self`.
+    fn cos(&self) -> Self;
+
     /// Returns `self` raised elementwise to the power of `exponent`.
     fn powf(&self, exponent: Self) -> Self;
 

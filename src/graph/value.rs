@@ -187,6 +187,18 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.apply(Function::map(MapOperation::Sqrt), &[self.id])
     }
 
+    /// Records the sine of this value on the same tape and returns a
+    /// proxy to it.
+    pub fn sin(self) -> Self {
+        self.apply(Function::map(MapOperation::Sin), &[self.id])
+    }
+
+    /// Records the cosine of this value on the same tape and returns
+    /// a proxy to it.
+    pub fn cos(self) -> Self {
+        self.apply(Function::map(MapOperation::Cos), &[self.id])
+    }
+
     /// Records this value raised elementwise to the power of `exponent`
     /// on the same tape and returns a proxy to it.
     ///

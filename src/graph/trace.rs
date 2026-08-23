@@ -144,6 +144,14 @@ impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
         Self::of(self.value.tanh())
     }
 
+    fn sin(&self) -> Self {
+        Self::of(self.value.sin())
+    }
+
+    fn cos(&self) -> Self {
+        Self::of(self.value.cos())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Self::of(self.value.powf(exponent.value))
     }

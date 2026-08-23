@@ -50,3 +50,25 @@ kernel void map_tanh_f32(
         destination[index] = tanh(source[index]);
     }
 }
+
+kernel void map_sin_f32(
+    device const float *source [[buffer(0)]],
+    device float *destination [[buffer(1)]],
+    constant uint &count [[buffer(2)]],
+    uint index [[thread_position_in_grid]]
+) {
+    if (index < count) {
+        destination[index] = sin(source[index]);
+    }
+}
+
+kernel void map_cos_f32(
+    device const float *source [[buffer(0)]],
+    device float *destination [[buffer(1)]],
+    constant uint &count [[buffer(2)]],
+    uint index [[thread_position_in_grid]]
+) {
+    if (index < count) {
+        destination[index] = cos(source[index]);
+    }
+}

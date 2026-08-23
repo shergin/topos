@@ -180,7 +180,8 @@ a practical decision for one-line specs and a one-pass oracle.
 
 **Map.** The unary elementwise transcendentals as one node kind:
 `Function::Map` carries a `MapOperation` (`Exp`, `Ln`, `Sqrt`,
-`Tanh`) — the same vocabulary the acceleration seam's whole-buffer
+`Tanh`, `Sin`, `Cos`) — the same vocabulary the acceleration seam's
+whole-buffer
 map task speaks, so the IR and the backend chain name these
 instructions once. Everything operation-specific — the printed
 mnemonic (`Tanh`, never `Map`), the read set, the derivative —
