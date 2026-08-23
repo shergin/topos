@@ -1,4 +1,4 @@
-use crate::{Shape, Tape, Tensor, concat, stack};
+use crate::{Elementary, Shape, Tape, Tensor, concat, stack};
 
 #[test]
 fn abs_composes_from_maximum() {
@@ -14,6 +14,36 @@ fn abs_composes_from_maximum() {
 
     let gradients = run.backward(loss);
     assert_eq!(gradients.of(x).to_vec(), &[-1.0, 1.0, 1.0]);
+}
+
+#[test]
+fn gelu_composes_the_exact_form_with_counted_constants() {
+    let tape: Tape<f64> = Tape::new();
+    let probes = [-3.0_f64, -0.5, 0.0, 0.5, 3.0];
+    let x = tape.parameter(Tensor::new([5], probes));
+    let activated = x.gelu();
+    let loss = activated.sum();
+    let (x, activated, loss) = (x.symbol(), activated.symbol(), loss.symbol());
+    let network = tape.into_network();
+
+    let run = network.forward(&network.parameters(), []);
+    let values = run.of(activated).to_vec();
+    // The composite is the exact formula in the exact recorded order,
+    // so scalar arithmetic over the same operations matches bitwise.
+    for (index, probe) in probes.into_iter().enumerate() {
+        let expected = probe * (1.0 + Elementary::erf(&(probe / 2.0_f64.sqrt()))) / 2.0;
+        assert_eq!(
+            values[index].to_bits(),
+            expected.to_bits(),
+            "gelu({probe}) = {}, the formula answers {expected}",
+            values[index]
+        );
+    }
+
+    // `gelu'(0) = 1/2` exactly: the erf term vanishes and the
+    // Gaussian term is multiplied by zero.
+    let gradients = run.backward(loss);
+    assert_eq!(gradients.of(x).to_vec()[2], 0.5);
 }
 
 #[test]

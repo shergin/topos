@@ -221,6 +221,28 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.apply(Function::map(MapOperation::Expm1), &[self.id])
     }
 
+    /// Records the error function of this value on the same tape and
+    /// returns a proxy to it.
+    ///
+    /// The computation is crate-owned; its derivative rule speaks
+    /// [`erf_derivative`](Self::erf_derivative), the closed pair that
+    /// keeps the constant `2/sqrt(pi)` inside per-element kernels
+    /// rather than in any recorded graph.
+    pub fn erf(self) -> Self {
+        self.apply(Function::map(MapOperation::Erf), &[self.id])
+    }
+
+    /// Records the derivative of the error function of this value —
+    /// the scaled Gaussian `(2/sqrt(pi)) * e^(-x^2)` — on the same
+    /// tape and returns a proxy to it: what `differentiate` emits
+    /// where the engine's rules call
+    /// [`Elementary::erf_derivative`](crate::Elementary::erf_derivative).
+    /// Its own derivative is `-2x` times itself, so the pair closes
+    /// under differentiation.
+    pub fn erf_derivative(self) -> Self {
+        self.apply(Function::map(MapOperation::ErfDerivative), &[self.id])
+    }
+
     /// Records this value raised elementwise to the power of `exponent`
     /// on the same tape and returns a proxy to it.
     ///

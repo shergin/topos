@@ -249,19 +249,51 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
             Function::Maximum(_) => binary("maximum", emitter),
             Function::Powf(_) => binary("power", emitter),
             Function::Neg(_) => unary("negate", emitter),
-            Function::Map(map) => {
-                let name = match map.op {
-                    MapOperation::Exp => "exponential",
-                    MapOperation::Ln => "log",
-                    MapOperation::Sqrt => "sqrt",
-                    MapOperation::Tanh => "tanh",
-                    MapOperation::Sin => "sine",
-                    MapOperation::Cos => "cosine",
-                    MapOperation::Log1p => "log_plus_one",
-                    MapOperation::Expm1 => "exponential_minus_one",
-                };
-                unary(name, emitter)
-            }
+            Function::Map(map) => match map.op {
+                MapOperation::Exp => unary("exponential", emitter),
+                MapOperation::Ln => unary("log", emitter),
+                MapOperation::Sqrt => unary("sqrt", emitter),
+                MapOperation::Tanh => unary("tanh", emitter),
+                MapOperation::Sin => unary("sine", emitter),
+                MapOperation::Cos => unary("cosine", emitter),
+                MapOperation::Log1p => unary("log_plus_one", emitter),
+                MapOperation::Expm1 => unary("exponential_minus_one", emitter),
+                // StableHLO core has no erf; the op lives in the CHLO
+                // companion dialect, which the XLA world registers.
+                MapOperation::Erf => {
+                    let source = emitter.name(operand(0)).to_string();
+                    emitter.line(format!(
+                        "{result} = chlo.erf {source} : {result_type} -> {result_type}"
+                    ));
+                }
+                // The scaled Gaussian decomposes over core ops; the
+                // constant is decimal text the parser rounds into the
+                // element type — emission has a concrete element in
+                // scope, so stating it here is kernel-tier legitimate.
+                MapOperation::ErfDerivative => {
+                    let source = emitter.name(operand(0)).to_string();
+                    let squared = format!("%v{index}_squared");
+                    let negated = format!("%v{index}_negated");
+                    let bell = format!("%v{index}_bell");
+                    let scale = format!("%v{index}_scale");
+                    emitter.line(format!(
+                        "{squared} = stablehlo.multiply {source}, {source} : {result_type}"
+                    ));
+                    emitter.line(format!(
+                        "{negated} = stablehlo.negate {squared} : {result_type}"
+                    ));
+                    emitter.line(format!(
+                        "{bell} = stablehlo.exponential {negated} : {result_type}"
+                    ));
+                    emitter.line(format!(
+                        "{scale} = stablehlo.constant dense<{}> : {result_type}",
+                        std::f64::consts::FRAC_2_SQRT_PI,
+                    ));
+                    emitter.line(format!(
+                        "{result} = stablehlo.multiply {bell}, {scale} : {result_type}"
+                    ));
+                }
+            },
             Function::MatMul(_) => {
                 let left = operand(0);
                 let right = operand(1);

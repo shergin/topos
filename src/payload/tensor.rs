@@ -864,6 +864,19 @@ impl<Element: Elementary> Tensor<Element> {
         self.mapped(MapOperation::Expm1, |element| element.expm1())
     }
 
+    /// Returns the error function of each element.
+    pub fn erf(&self) -> Self {
+        self.mapped(MapOperation::Erf, |element| element.erf())
+    }
+
+    /// Returns the derivative of the error function of each element:
+    /// the scaled Gaussian `(2/sqrt(pi)) * e^(-x^2)`.
+    pub fn erf_derivative(&self) -> Self {
+        self.mapped(MapOperation::ErfDerivative, |element| {
+            element.erf_derivative()
+        })
+    }
+
     /// Returns each element raised to the matching element of
     /// `exponent`.
     ///
@@ -1825,6 +1838,14 @@ impl<E: Element> Tensorial for Tensor<E> {
 
     fn expm1(&self) -> Self {
         Tensor::expm1(self)
+    }
+
+    fn erf(&self) -> Self {
+        Tensor::erf(self)
+    }
+
+    fn erf_derivative(&self) -> Self {
+        Tensor::erf_derivative(self)
     }
 
     fn powf(&self, exponent: Self) -> Self {

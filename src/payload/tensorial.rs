@@ -72,6 +72,14 @@ pub trait Tensorial:
     /// near zero.
     fn expm1(&self) -> Self;
 
+    /// Returns the elementwise error function of `self`.
+    fn erf(&self) -> Self;
+
+    /// Returns the elementwise derivative of the error function of
+    /// `self`: the scaled Gaussian `(2/sqrt(pi)) * e^(-x^2)`, the
+    /// operation `erf`'s derivative rule speaks.
+    fn erf_derivative(&self) -> Self;
+
     /// Returns `self` raised elementwise to the power of `exponent`.
     fn powf(&self, exponent: Self) -> Self;
 

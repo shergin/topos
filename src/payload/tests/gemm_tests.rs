@@ -250,6 +250,14 @@ impl Elementary for Probe {
     fn expm1(&self) -> Self {
         Probe(self.0.exp_m1())
     }
+
+    fn erf(&self) -> Self {
+        Probe(Elementary::erf(&self.0))
+    }
+
+    fn erf_derivative(&self) -> Self {
+        Probe(Elementary::erf_derivative(&self.0))
+    }
     fn powf(&self, exponent: Self) -> Self {
         Probe(self.0.powf(exponent.0))
     }
@@ -358,6 +366,14 @@ impl Elementary for LyingProbe {
     }
     fn expm1(&self) -> Self {
         LyingProbe(self.0.exp_m1())
+    }
+
+    fn erf(&self) -> Self {
+        LyingProbe(Elementary::erf(&self.0))
+    }
+
+    fn erf_derivative(&self) -> Self {
+        LyingProbe(Elementary::erf_derivative(&self.0))
     }
     fn powf(&self, exponent: Self) -> Self {
         LyingProbe(self.0.powf(exponent.0))

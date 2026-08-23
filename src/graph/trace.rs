@@ -160,6 +160,14 @@ impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
         Self::of(self.value.expm1())
     }
 
+    fn erf(&self) -> Self {
+        Self::of(self.value.erf())
+    }
+
+    fn erf_derivative(&self) -> Self {
+        Self::of(self.value.erf_derivative())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Self::of(self.value.powf(exponent.value))
     }

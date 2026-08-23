@@ -105,6 +105,11 @@ pub(crate) fn gemm_f32(task: &GemmTask<'_, f32>) -> Option<Vec<f32>> {
 /// `None`: below the threshold, beyond `u32` extents, or with the
 /// module poisoned or unavailable.
 pub(crate) fn map_f32(operation: MapOperation, elements: &[f32]) -> Option<Vec<f32>> {
+    // MSL has no erf built-in; a shader for the pair would have to
+    // earn its place with a measurement first.
+    if matches!(operation, MapOperation::Erf | MapOperation::ErfDerivative) {
+        return None;
+    }
     if elements.len() < MAP_THRESHOLD || elements.len() > u32::MAX as usize {
         return None;
     }

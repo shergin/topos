@@ -237,6 +237,14 @@ impl Elementary for Bf16 {
         Self::from_f32(self.to_f32().exp_m1())
     }
 
+    fn erf(&self) -> Self {
+        Self::from_f32(Elementary::erf(&self.to_f32()))
+    }
+
+    fn erf_derivative(&self) -> Self {
+        Self::from_f32(Elementary::erf_derivative(&self.to_f32()))
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Self::from_f32(self.to_f32().powf(exponent.to_f32()))
     }

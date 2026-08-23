@@ -121,6 +121,14 @@ impl Elementary for Audited {
         Audited(self.0.exp_m1())
     }
 
+    fn erf(&self) -> Self {
+        Audited(Elementary::erf(&self.0))
+    }
+
+    fn erf_derivative(&self) -> Self {
+        Audited(Elementary::erf_derivative(&self.0))
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Audited(self.0.powf(exponent.0))
     }

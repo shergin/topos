@@ -31,6 +31,11 @@ pub enum MapOperation {
     Log1p,
     /// `e` raised to each element, minus one, accurate near zero.
     Expm1,
+    /// The error function of each element.
+    Erf,
+    /// The derivative of the error function of each element: the
+    /// scaled Gaussian `(2/sqrt(pi)) * e^(-x^2)`.
+    ErfDerivative,
 }
 
 /// Elementary numeric functions of an element, plus its backend
@@ -82,6 +87,23 @@ pub trait Elementary: Differentiable {
     /// [`log1p`](Elementary::log1p): the composed subtraction cancels
     /// catastrophically near zero, and the fused form does not.
     fn expm1(&self) -> Self;
+
+    /// Returns the error function of `self`.
+    ///
+    /// The computation is crate-owned (the standard library has no
+    /// `erf`, and the C library would need `unsafe`); see the `erf`
+    /// module for the three-piece derivation. It pairs with
+    /// [`erf_derivative`](Elementary::erf_derivative), which its
+    /// derivative rule speaks — the closure that keeps the
+    /// transcendental constant `2/sqrt(pi)` out of the generic rules
+    /// and inside these per-element kernels.
+    fn erf(&self) -> Self;
+
+    /// Returns the derivative of the error function of `self`: the
+    /// scaled Gaussian `(2/sqrt(pi)) * e^(-x^2)`, whose own
+    /// derivative is `-2x` times itself — the pair is closed under
+    /// differentiation.
+    fn erf_derivative(&self) -> Self;
 
     /// Returns `self` raised to the power of `exponent`.
     fn powf(&self, exponent: Self) -> Self;
@@ -184,6 +206,16 @@ impl Elementary for f32 {
         f32::exp_m1(*self)
     }
 
+    /// Routed through the `f64` core and rounded once at the end,
+    /// like `Bf16` routes through `f32`.
+    fn erf(&self) -> Self {
+        super::erf::erf(f64::from(*self)) as f32
+    }
+
+    fn erf_derivative(&self) -> Self {
+        super::erf::erf_derivative(f64::from(*self)) as f32
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         f32::powf(*self, exponent)
     }
@@ -240,6 +272,14 @@ impl Elementary for f64 {
 
     fn expm1(&self) -> Self {
         f64::exp_m1(*self)
+    }
+
+    fn erf(&self) -> Self {
+        super::erf::erf(*self)
+    }
+
+    fn erf_derivative(&self) -> Self {
+        super::erf::erf_derivative(*self)
     }
 
     fn powf(&self, exponent: Self) -> Self {

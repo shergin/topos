@@ -162,6 +162,8 @@ impl Opcode {
                 MapOperation::Cos => "Cos",
                 MapOperation::Log1p => "Log1p",
                 MapOperation::Expm1 => "Expm1",
+                MapOperation::Erf => "Erf",
+                MapOperation::ErfDerivative => "ErfDerivative",
             },
             Opcode::Powf => "Powf",
             Opcode::Maximum => "Maximum",

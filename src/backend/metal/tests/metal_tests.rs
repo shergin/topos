@@ -200,6 +200,9 @@ fn large_maps_run_through_the_module_entry() {
     let elements: Vec<f32> = (0..super::MAP_THRESHOLD)
         .map(|index| (index % 100) as f32 / 50.0 - 1.0)
         .collect();
+    // The erf pair declines: no MSL built-in, no measured shader.
+    assert_eq!(map_f32(MapOperation::Erf, &elements), None);
+    assert_eq!(map_f32(MapOperation::ErfDerivative, &elements), None);
     let through_entry = map_f32(MapOperation::Tanh, &elements).expect("the entry accepts");
     let direct = super::map::executed(context, MapOperation::Tanh, &elements)
         .expect("the dispatch succeeds");

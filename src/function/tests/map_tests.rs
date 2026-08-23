@@ -142,6 +142,37 @@ fn expm1_backward_adds_one_to_the_output() {
 }
 
 #[test]
+fn erf_backward_speaks_its_derivative_operation() {
+    // `d erf(x) / dx` at 0 is `2 / sqrt(pi)`.
+    let erf = Map {
+        op: MapOperation::Erf,
+    };
+    let cotangents = erf.backward(
+        &[&Tensor::from(0.0_f64)],
+        &Tensor::from(0.0),
+        &Tensor::from(2.0),
+    );
+    let expected: Cotangents<Tensor<f64>> =
+        smallvec![Some(Tensor::from(2.0 * std::f64::consts::FRAC_2_SQRT_PI))];
+    assert_eq!(cotangents, expected);
+}
+
+#[test]
+fn erf_derivative_backward_doubles_negates_and_reuses_the_output() {
+    // `d/dx (2/sqrt(pi)) e^(-x^2)` at `x` is `-2x` times the output.
+    let rule = Map {
+        op: MapOperation::ErfDerivative,
+    };
+    let cotangents = rule.backward(
+        &[&Tensor::from(3.0_f64)],
+        &Tensor::from(0.5),
+        &Tensor::from(2.0),
+    );
+    let expected: Cotangents<Tensor<f64>> = smallvec![Some(Tensor::from(-(2.0 * 6.0 * 0.5)))];
+    assert_eq!(cotangents, expected);
+}
+
+#[test]
 fn reads_follow_the_operation() {
     // Output-reusing rules must not retain their operand; the
     // operand-reading rules must retain exactly their operand;
@@ -161,11 +192,18 @@ fn reads_follow_the_operation() {
         MapOperation::Sin,
         MapOperation::Cos,
         MapOperation::Log1p,
+        MapOperation::Erf,
     ] {
         let reads = Map { op }.reads();
         assert!(!reads.output);
         assert!(reads.operands[0]);
     }
+    let reads = Map {
+        op: MapOperation::ErfDerivative,
+    }
+    .reads();
+    assert!(reads.output);
+    assert!(reads.operands[0]);
 }
 
 #[test]
@@ -179,12 +217,25 @@ fn names_print_the_operation_not_the_kind() {
         MapOperation::Cos,
         MapOperation::Log1p,
         MapOperation::Expm1,
+        MapOperation::Erf,
+        MapOperation::ErfDerivative,
     ]
     .into_iter()
     .map(|operation| crate::Opcode::Map { operation }.name())
     .collect();
     assert_eq!(
         names,
-        ["Exp", "Ln", "Sqrt", "Tanh", "Sin", "Cos", "Log1p", "Expm1"]
+        [
+            "Exp",
+            "Ln",
+            "Sqrt",
+            "Tanh",
+            "Sin",
+            "Cos",
+            "Log1p",
+            "Expm1",
+            "Erf",
+            "ErfDerivative",
+        ]
     );
 }

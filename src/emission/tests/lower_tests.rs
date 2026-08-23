@@ -115,6 +115,43 @@ fn softplus_case() -> Case {
     }
 }
 
+/// Builds the erf consumer: an exact-GELU head over a projection,
+/// with a gradient among the results so `chlo.erf` and the
+/// decomposed scaled Gaussian both cross the boundary.
+fn gelu_case() -> Case {
+    let tape = Tape::new();
+    let weights = Tensor::new(
+        [2, 3],
+        (0..6).map(|v| v as f32 * 0.45 - 1.0).collect::<Vec<_>>(),
+    );
+    let weights_value = tape.parameter(weights.clone());
+    let x = Tensor::new(
+        [2, 2],
+        (0..4).map(|v| v as f32 * 0.9 - 1.2).collect::<Vec<_>>(),
+    );
+    let x_value = tape.input(x.clone());
+
+    let projected = x_value.matmul(weights_value);
+    let loss = projected.gelu().sum();
+    let adjoints = tape.differentiate(loss, [weights_value]);
+
+    let mut readable: Vec<_> = adjoints.roots().collect();
+    readable.sort_by_key(|&symbol: &crate::Symbol| symbol.id.index());
+    let network = tape.into_network();
+    let plan = network.compile(Entry::roots(readable.clone()));
+    let run = plan.forward(&network.parameters(), []);
+    Case {
+        name: "gelu",
+        tolerance: 1e-4,
+        module: plan.emit_stablehlo().expect("the plan emits"),
+        arguments: vec![weights, x],
+        expected: readable
+            .iter()
+            .map(|&symbol| run.of(symbol).to_vec())
+            .collect(),
+    }
+}
+
 /// Builds a miniature of the transformer's sampling plan: embedding
 /// gather, masked softmax over scaled scores, two heads joined by
 /// concat.
@@ -824,6 +861,7 @@ fn emitted_modules_parse_through_the_toolchain() {
         gradient_case(),
         sinusoid_case(),
         softplus_case(),
+        gelu_case(),
         batched_case(),
         unfold_case(),
         convolution_case(),
@@ -890,6 +928,7 @@ fn emitted_modules_execute_within_the_oracle_envelope() {
         gradient_case(),
         sinusoid_case(),
         softplus_case(),
+        gelu_case(),
         batched_case(),
         unfold_case(),
         convolution_case(),

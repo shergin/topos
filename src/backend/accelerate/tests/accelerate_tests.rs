@@ -254,6 +254,17 @@ fn vforce_maps_match_libm_within_ulps() {
 }
 
 #[test]
+fn the_erf_pair_declines_at_any_size() {
+    // vForce has no erf family; the reference path computes it.
+    let elements = vec![0.5_f32; 4096];
+    assert_eq!(map_f32(MapOperation::Erf, &elements), None);
+    assert_eq!(map_f32(MapOperation::ErfDerivative, &elements), None);
+    let elements = vec![0.5_f64; 4096];
+    assert_eq!(map_f64(MapOperation::Erf, &elements), None);
+    assert_eq!(map_f64(MapOperation::ErfDerivative, &elements), None);
+}
+
+#[test]
 fn small_maps_decline_to_the_scalar_path() {
     let elements = [1.0_f32; 16];
     assert_eq!(map_f32(MapOperation::Tanh, &elements), None);

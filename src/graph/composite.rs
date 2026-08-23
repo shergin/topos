@@ -68,6 +68,23 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.relu() + (-self.abs()).exp().log1p()
     }
 
+    /// Records the exact Gaussian error linear unit of this value,
+    /// `x * (1 + erf(x / sqrt(2))) / 2`, and returns a proxy to it:
+    /// the consumer that earned the `Erf` opcode.
+    ///
+    /// Every constant is formula-pure: the 1 and 2 enter as
+    /// [`counted`](crate::Tensor::counted) leaves and `sqrt(2)` is
+    /// computed from the counted 2, so each element type rounds the
+    /// formula at its own precision and the spec stores no decimal.
+    /// The tanh approximation many models use instead is a caller
+    /// composition over `tanh` (the gpt2 example records it); this is
+    /// the exact form.
+    pub fn gelu(self) -> Self {
+        let one = self.literal(Tensor::counted(self.shape(), 1));
+        let two = self.literal(Tensor::counted(self.shape(), 2));
+        self * (one + (self / two.sqrt()).erf()) / two
+    }
+
     /// Records the softmax probabilities of this value along `axis` as
     /// the composition `self.log_softmax(axis).exp()` and returns a proxy
     /// to it.

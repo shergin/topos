@@ -273,6 +273,24 @@ fn expm1_closes() {
 }
 
 #[test]
+fn erf_closes() {
+    let tape = Tape::new();
+    let a = tape.parameter(varied([2, 3], 1));
+    let loss = a.erf().sum();
+    assert_closure(loss.symbol(), &[a.symbol()], tape);
+}
+
+#[test]
+fn erf_derivative_closes() {
+    // The scaled Gaussian's own rule closes too, so second
+    // derivatives of erf networks stay recordable.
+    let tape = Tape::new();
+    let a = tape.parameter(varied([2, 3], 1));
+    let loss = a.erf_derivative().sum();
+    assert_closure(loss.symbol(), &[a.symbol()], tape);
+}
+
+#[test]
 fn sum_closes() {
     let tape = Tape::new();
     let a = tape.parameter(varied([2, 3], 1));

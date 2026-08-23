@@ -27,9 +27,10 @@ impl Map {
 
     /// Returns the read set of the derivative rules below, per
     /// operation: `Exp`, `Sqrt`, `Tanh`, and `Expm1` reuse their own
-    /// output, while `Ln`, `Sin`, `Cos`, and `Log1p` read their
-    /// operand. The set is deliberately not uniform — a shared one
-    /// would retain buffers liveness does not need.
+    /// output; `Ln`, `Sin`, `Cos`, `Log1p`, and `Erf` read their
+    /// operand; `ErfDerivative` reads both. The set is deliberately
+    /// not uniform — a shared one would retain buffers liveness does
+    /// not need.
     pub(crate) fn reads(&self) -> Reads {
         match self.op {
             MapOperation::Exp | MapOperation::Sqrt | MapOperation::Tanh | MapOperation::Expm1 => {
@@ -38,12 +39,18 @@ impl Map {
                     output: true,
                 }
             }
-            MapOperation::Ln | MapOperation::Sin | MapOperation::Cos | MapOperation::Log1p => {
-                Reads {
-                    operands: [true, false],
-                    output: false,
-                }
-            }
+            MapOperation::Ln
+            | MapOperation::Sin
+            | MapOperation::Cos
+            | MapOperation::Log1p
+            | MapOperation::Erf => Reads {
+                operands: [true, false],
+                output: false,
+            },
+            MapOperation::ErfDerivative => Reads {
+                operands: [true, false],
+                output: true,
+            },
         }
     }
 
@@ -65,6 +72,8 @@ impl Map {
             MapOperation::Cos => operand.cos(),
             MapOperation::Log1p => operand.log1p(),
             MapOperation::Expm1 => operand.expm1(),
+            MapOperation::Erf => operand.erf(),
+            MapOperation::ErfDerivative => operand.erf_derivative(),
         }
     }
 }
@@ -113,6 +122,18 @@ impl<Rule: Tensorial> Operation<Rule> for Map {
             // The derivative of `e^x - 1` is `e^x`: the node's own
             // output plus one, mirroring `Exp`'s output reuse.
             MapOperation::Expm1 => gradient.clone() * (output.clone() + output.one_like()),
+            // The derivative of `erf(x)` is the scaled Gaussian — its
+            // own operation, so the rule mints no constant.
+            MapOperation::Erf => {
+                let &operand = unary(operands);
+                gradient.clone() * operand.erf_derivative()
+            }
+            // The derivative of the scaled Gaussian is `-2x` times
+            // itself: the node's own output, doubled operand, negated.
+            MapOperation::ErfDerivative => {
+                let &operand = unary(operands);
+                -(gradient.clone() * (operand.clone() + operand.clone()) * output.clone())
+            }
         };
         smallvec![Some(cotangent)]
     }

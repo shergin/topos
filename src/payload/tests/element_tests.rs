@@ -104,6 +104,14 @@ impl Elementary for F64 {
         F64(self.0.exp_m1())
     }
 
+    fn erf(&self) -> Self {
+        F64(Elementary::erf(&self.0))
+    }
+
+    fn erf_derivative(&self) -> Self {
+        F64(Elementary::erf_derivative(&self.0))
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         F64(self.0.powf(exponent.0))
     }

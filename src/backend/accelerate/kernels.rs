@@ -415,6 +415,10 @@ pub(super) fn executed_f32(task: &GemmTask<'_, f32>) -> Option<Vec<f32>> {
 /// declining buffers too small to pay the call or too long for the
 /// interface's `i32` count.
 pub(crate) fn map_f32(operation: MapOperation, elements: &[f32]) -> Option<Vec<f32>> {
+    // vForce has no erf family; the reference path computes it.
+    if matches!(operation, MapOperation::Erf | MapOperation::ErfDerivative) {
+        return None;
+    }
     if elements.len() < MAP_THRESHOLD {
         return None;
     }
@@ -433,6 +437,10 @@ pub(crate) fn map_f32(operation: MapOperation, elements: &[f32]) -> Option<Vec<f
             MapOperation::Cos => vvcosf(mapped.as_mut_ptr(), elements.as_ptr(), &count),
             MapOperation::Log1p => vvlog1pf(mapped.as_mut_ptr(), elements.as_ptr(), &count),
             MapOperation::Expm1 => vvexpm1f(mapped.as_mut_ptr(), elements.as_ptr(), &count),
+            // The entry declines the pair before any dispatch.
+            MapOperation::Erf | MapOperation::ErfDerivative => {
+                unreachable!("the erf pair has no vForce kernel")
+            }
         }
     }
     Some(mapped)
@@ -440,6 +448,9 @@ pub(crate) fn map_f32(operation: MapOperation, elements: &[f32]) -> Option<Vec<f
 
 /// The `f64` twin of [`map_f32`].
 pub(crate) fn map_f64(operation: MapOperation, elements: &[f64]) -> Option<Vec<f64>> {
+    if matches!(operation, MapOperation::Erf | MapOperation::ErfDerivative) {
+        return None;
+    }
     if elements.len() < MAP_THRESHOLD {
         return None;
     }
@@ -457,6 +468,10 @@ pub(crate) fn map_f64(operation: MapOperation, elements: &[f64]) -> Option<Vec<f
             MapOperation::Cos => vvcos(mapped.as_mut_ptr(), elements.as_ptr(), &count),
             MapOperation::Log1p => vvlog1p(mapped.as_mut_ptr(), elements.as_ptr(), &count),
             MapOperation::Expm1 => vvexpm1(mapped.as_mut_ptr(), elements.as_ptr(), &count),
+            // The entry declines the pair before any dispatch.
+            MapOperation::Erf | MapOperation::ErfDerivative => {
+                unreachable!("the erf pair has no vForce kernel")
+            }
         }
     }
     Some(mapped)

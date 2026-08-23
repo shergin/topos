@@ -27,6 +27,10 @@ pub(super) fn map_pipeline_index(operation: MapOperation) -> usize {
         MapOperation::Cos => 5,
         MapOperation::Log1p => 6,
         MapOperation::Expm1 => 7,
+        // The entry declines the pair before any dispatch.
+        MapOperation::Erf | MapOperation::ErfDerivative => {
+            unreachable!("the erf pair has no Metal kernel")
+        }
     }
 }
 

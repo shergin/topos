@@ -2,6 +2,7 @@ mod bf16;
 mod differentiable;
 mod element;
 mod elementary;
+mod erf;
 // Reachable for the `reference` facade's re-exports.
 pub(crate) mod gemm;
 mod layout;
