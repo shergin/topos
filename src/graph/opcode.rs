@@ -28,7 +28,9 @@ pub enum Opcode {
     Input,
     /// Elementwise addition.
     Add,
-    /// Elementwise subtraction.
+    /// Elementwise subtraction; kept as one node although `Add` of
+    /// `Neg` is bit-exact — a practical decision for one-line specs
+    /// and a one-pass oracle.
     Sub,
     /// Elementwise multiplication.
     Mul,

@@ -171,7 +171,12 @@ Each computed `Function` variant (`Add`, `Sub`, `Mul`, `Div`,
 [`src/function/`](src/function/)) carries both halves, dispatched
 with a plain `match`. `Leaf`, `Parameter`, and `Input` are supplied
 rather than computed, so the enum's dispatch handles them directly
-instead of through the trait.
+instead of through the trait. Membership follows one test: a variant
+earns its place when a consumer records it or a derivative rule
+speaks it, and no composition of the remaining operations reproduces
+its bits. `Sub` is the one documented exception — `Add` of `Neg` is
+bit-exact (IEEE defines subtraction so), but the variant is kept as
+a practical decision for one-line specs and a one-pass oracle.
 
 **Map.** The unary elementwise transcendentals as one node kind:
 `Function::Map` carries a `MapOperation` (`Exp`, `Ln`, `Sqrt`,

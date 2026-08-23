@@ -14,7 +14,11 @@
 //!
 //! A formula belongs here only while composition expresses it faithfully;
 //! it earns a `Function` variant the moment floating point breaks the
-//! composed form, the way `log_softmax` did.
+//! composed form, the way `log_softmax` did. `Sub` is the one
+//! deliberate exception in the other direction: its composition
+//! (`Add` of `Neg`) is bit-exact, yet the variant stays — a practical
+//! decision for spec legibility and the oracle's one-pass cost,
+//! documented on the operation itself.
 
 use crate::{Element, Shape, Tensor};
 
