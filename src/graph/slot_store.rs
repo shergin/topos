@@ -63,6 +63,26 @@ impl<Data> SlotStore<Data> {
         node
     }
 
+    /// Builds a store from `(node, payload)` rows in slot order.
+    ///
+    /// The node column must be strictly increasing — slots are
+    /// installed in recording order, and `slot_of`'s binary search
+    /// rests on it — so the debug assert guards the invariant at the
+    /// one constructor that takes rows wholesale.
+    pub(crate) fn from_rows(rows: impl IntoIterator<Item = (ValueId, Data)>) -> Self {
+        let mut payloads = Vec::new();
+        let mut nodes: Vec<ValueId> = Vec::new();
+        for (node, payload) in rows {
+            debug_assert!(
+                nodes.last().is_none_or(|last| last.index() < node.index()),
+                "slot rows must arrive in recording order"
+            );
+            nodes.push(node);
+            payloads.push(payload);
+        }
+        Self { payloads, nodes }
+    }
+
     /// Replaces the payload at `slot`.
     ///
     /// Used when a run overlays fed input values onto a clone of the

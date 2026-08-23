@@ -4,7 +4,7 @@ use static_assertions::assert_impl_all;
 
 use crate::{Differentiable, Tensorial};
 
-use super::{Origin, Symbol};
+use super::{Origin, Parameters, Symbol};
 
 // Request-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
@@ -106,6 +106,24 @@ impl<Data: Differentiable> Field<Data> {
     /// value out of it.
     pub(crate) fn payloads(&self) -> &[Data] {
         &self.payloads
+    }
+
+    /// Returns the parameter slots of `parameters`, filled from this
+    /// field: the projection from the node grain to the slot grain.
+    ///
+    /// A complete field is the research and teaching product — every
+    /// cotangent readable — while training speaks parameter alignment;
+    /// this is the bridge, so an engine
+    /// [`backward`](crate::Run::backward) feeds
+    /// [`Parameters::step`](crate::Parameters::step) as
+    /// `run.backward(loss).parameters(&parameters)`.
+    ///
+    /// # Panics
+    /// Panics if `parameters` belongs to a different network or this
+    /// field does not cover every parameter slot (it is stale: the
+    /// recording grew parameters after the field was produced).
+    pub fn parameters(&self, parameters: &Parameters<Data>) -> Parameters<Data> {
+        parameters.filled_from(self)
     }
 
     /// Panics if `other` cannot combine with `self`.

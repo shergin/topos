@@ -1,16 +1,19 @@
+use std::ops::Add;
+
 use static_assertions::assert_impl_all;
 
-use crate::Differentiable;
+use crate::{Differentiable, Tensorial};
 
 use super::Field;
 
-use super::{Network, Origin, SlotStore, Symbol};
+use super::{Network, Origin, SlotStore, Symbol, ValueId};
 
 // Request-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
 assert_impl_all!(Parameters<f64>: Send, Sync);
 
-/// The live parameter payloads of one network, as a caller-owned value.
+/// A payload per parameter slot of one network family: the live
+/// weights, and every other table aligned to them.
 ///
 /// Where the [`Network`](crate::Network) is the immutable spec, this is
 /// the state: born from the record-site initials
@@ -20,9 +23,16 @@ assert_impl_all!(Parameters<f64>: Send, Sync);
 /// `Clone` is honest and O(parameters), which is the whole cost of a
 /// what-if: one spec, any number of states.
 ///
-/// Optimizer state (moments, velocities) is [`Field`](crate::Field)
-/// algebra held next to a `Parameters` value in the caller's structs;
-/// nothing hides in the graph.
+/// Live weights are one instance of the type; an update direction,
+/// an optimizer moment, or the recorded gradients of a compiled
+/// training run are other instances over the same slots. They share
+/// the type because they share the invariant — alignment to the
+/// parameter slots — and the algebra (`map`, `zip`, `scale`, `+`)
+/// that optimizer state is built from. Nothing hides in the graph;
+/// state lives in the caller's structs. The node-aligned analogue is
+/// [`Field`](crate::Field), the research and teaching grain;
+/// [`Field::parameters`](crate::Field::parameters) projects it onto
+/// these slots.
 #[derive(Debug, Clone)]
 pub struct Parameters<Data> {
     origin: Origin,
@@ -30,9 +40,23 @@ pub struct Parameters<Data> {
 }
 
 impl<Data: Differentiable> Parameters<Data> {
-    /// Wraps `store` as the parameter state of the `origin` family.
-    pub(super) fn new(origin: Origin, store: SlotStore<Data>) -> Self {
+    /// Wraps `store` as a parameter-aligned table of the `origin`
+    /// family.
+    pub(crate) fn new(origin: Origin, store: SlotStore<Data>) -> Self {
         Self { origin, store }
+    }
+
+    /// Builds a table of the `origin` family from `(node, payload)`
+    /// rows in slot order: the engine's constructor for recorded
+    /// gradients.
+    pub(crate) fn from_rows(
+        origin: Origin,
+        rows: impl IntoIterator<Item = (ValueId, Data)>,
+    ) -> Self {
+        Self {
+            origin,
+            store: SlotStore::from_rows(rows),
+        }
     }
 
     /// Returns the origin token of the network family this state
@@ -71,6 +95,78 @@ impl<Data: Differentiable> Parameters<Data> {
             panic!("symbol does not name a parameter these parameters carry");
         };
         &self.store.payloads()[slot.index()]
+    }
+
+    /// Returns a table with every entry passed through `transform`.
+    pub fn map(&self, transform: impl Fn(&Data) -> Data) -> Self {
+        Self {
+            origin: self.origin,
+            store: self
+                .store
+                .with_payloads(self.store.payloads().iter().map(transform).collect()),
+        }
+    }
+
+    /// Combines two tables entry by entry with `combine`.
+    ///
+    /// # Panics
+    /// Panics if the tables belong to different networks or cover
+    /// different parameter slots.
+    pub fn zip(&self, other: &Self, combine: impl Fn(&Data, &Data) -> Data) -> Self {
+        self.assert_compatible(other);
+        Self {
+            origin: self.origin,
+            store: self.store.with_payloads(
+                self.store
+                    .payloads()
+                    .iter()
+                    .zip(other.store.payloads())
+                    .map(|(left, right)| combine(left, right))
+                    .collect(),
+            ),
+        }
+    }
+
+    /// The parameter slots of this table, filled from `field`: the
+    /// projection from the node grain to the slot grain, shared by
+    /// [`Field::parameters`](crate::Field::parameters).
+    ///
+    /// # Panics
+    /// Panics if `field` belongs to a different network or does not
+    /// cover every parameter slot.
+    pub(super) fn filled_from(&self, field: &Field<Data>) -> Self {
+        assert!(
+            field.origin() == self.origin,
+            "field belongs to a different network"
+        );
+        if let Some(last) = self.store.last_node() {
+            assert!(
+                last.index() < field.len(),
+                "field is stale: it does not cover every parameter"
+            );
+        }
+        let payloads = self
+            .store
+            .iter()
+            .map(|(node, _)| field.payloads()[node.index()].clone())
+            .collect();
+        Self {
+            origin: self.origin,
+            store: self.store.with_payloads(payloads),
+        }
+    }
+
+    /// Panics if `other` cannot combine with `self`.
+    fn assert_compatible(&self, other: &Self) {
+        assert!(
+            self.origin == other.origin,
+            "parameter tables belong to different networks"
+        );
+        assert_eq!(
+            self.store.len(),
+            other.store.len(),
+            "parameter tables cover different slots"
+        );
     }
 
     /// Returns the state with every payload replaced by
@@ -203,6 +299,38 @@ impl<Data: Differentiable> Parameters<Data> {
             origin: self.origin,
             store: self.store.with_payloads(payloads),
         }
+    }
+}
+
+impl<Data: Tensorial> Parameters<Data> {
+    /// Returns a table with every entry multiplied by the single-value
+    /// `factor`, spread to each entry's shape.
+    ///
+    /// It is the scalar arithmetic of optimizer state: bias-correction
+    /// and decay factors multiply every parameter's entry regardless of
+    /// its shape. For scalar payloads the spread is the identity.
+    ///
+    /// # Panics
+    /// For tensor payloads, panics if `factor` holds more than one
+    /// value.
+    pub fn scale(&self, factor: &Data) -> Self {
+        self.map(|value| value.clone() * factor.broadcast_like(value))
+    }
+}
+
+impl<Data: Differentiable> Add for &Parameters<Data> {
+    type Output = Parameters<Data>;
+
+    fn add(self, rhs: Self) -> Parameters<Data> {
+        self.zip(rhs, |left, right| left.clone() + right.clone())
+    }
+}
+
+impl<Data: Differentiable> Add for Parameters<Data> {
+    type Output = Parameters<Data>;
+
+    fn add(self, rhs: Self) -> Parameters<Data> {
+        &self + &rhs
     }
 }
 
