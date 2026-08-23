@@ -14,7 +14,7 @@ use std::time::Instant;
 use rayon::prelude::*;
 
 use malevich::{Frame, Line, Plot};
-use topos::{Keep, Tape, Tensor};
+use topos::model::{Keep, Tape, Tensor};
 
 fn main() {
     // The whole recording is one closure; its return value is the

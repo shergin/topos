@@ -6,6 +6,22 @@ maps onto this crate's types. This file is part of the codebase contract:
 when a concept is added, renamed, or changes meaning, update it in the same
 change.
 
+
+## Where to read
+
+One crate, two documented surfaces, both plain re-export modules in
+rustdoc — nothing moves, and flat `use topos::Tape` imports keep
+working:
+
+- **Model surface** (`topos::model`) — write a network, train it,
+  checkpoint it: recording and run types, the neural facades, the
+  optimizers. Terms: Tape, Value, Keep, Network, Entry, Parameters,
+  Run, Plan, Module, Optimizer, the layer entries below.
+- **Compiler surface** (`topos::compiler`) — inspect, lower, emit,
+  extend: Opcode/Node and `describe`, PatternKind/PatternMatch,
+  Trace and the recordable vocabulary, Element and the payload
+  entries, Backend/Formula/Numerics, `reference`.
+
 ## Mathematics
 
 **Automatic differentiation (autodiff, AD).** Computing exact derivatives of
@@ -897,7 +913,9 @@ build confines `unsafe` to the backend's `kernels` submodule under
 a crate-wide `deny` with one scoped allow — the always-compiled
 manifest half sits outside the allow.
 
-**Numerics (Exact / Fast).** The two-valued numerics posture of a
+**Numerics (Exact / Fast).** The two-valued numerics posture — the
+one word "posture" names on the public surface; a run's internal
+producer state is its *provenance* — of a
 plan's runs, chosen on the compile request and carried by the plan
 and its runs (`Entry::numerics`, `Plan::numerics`). `Fast` — the
 default, and the fixed posture of interpreter runs and host-side

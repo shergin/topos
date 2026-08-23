@@ -58,6 +58,11 @@ pub struct Value<'tape, E> {
     id: ValueId,
 }
 
+/// # Names and reads
+///
+/// The proxy's identity: its detached [`Symbol`], its recording
+/// tape, its inferred shape, and its stored payload when it is a
+/// source.
 impl<'tape, E: Element> Value<'tape, E> {
     /// Binds a proxy to the node `id` recorded on `tape`.
     pub(crate) fn bind(tape: &'tape Tape<E>, id: ValueId) -> Self {
@@ -153,6 +158,10 @@ impl<'tape, E: Element> Value<'tape, E> {
     }
 }
 
+/// # Elementary maps
+///
+/// One recorded node per call: the transcendentals and the order
+/// pair. Arithmetic records through the standard operators.
 impl<'tape, E: Element> Value<'tape, E> {
     /// Records the hyperbolic tangent of this value on the same tape
     /// and returns a proxy to it.
@@ -224,6 +233,12 @@ impl<'tape, E: Element> Value<'tape, E> {
     }
 }
 
+/// # Tensor operations, views, windows, and index
+///
+/// One recorded node per call: products and reductions, the
+/// explicit broadcasts, the view movers, the sliding-window pair,
+/// the gather/scatter pair, and the two fused log-domain nodes.
+/// Multi-node formulas are composites and live in `composite.rs`.
 impl<'tape, E: Element> Value<'tape, E> {
     /// Records the matrix product of this value and `rhs` on the same
     /// network and returns a proxy to it.

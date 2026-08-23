@@ -20,6 +20,10 @@ use crate::{Element, Shape, Tensor};
 
 use super::Value;
 
+/// # Composites
+///
+/// Formulas that expand to several primitive nodes, paid by the
+/// chain rule with no dedicated backward rule.
 impl<'tape, E: Element> Value<'tape, E> {
     /// Records the absolute value of this value as the composition
     /// `self.maximum(-self)` and returns a proxy to it; the subgradient

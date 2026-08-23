@@ -79,6 +79,33 @@
 //! target as an emission sibling consuming [`Plan`]. The core stays
 //! closed; the table is how the crate refuses a pass manager and
 //! still says yes to research.
+//!
+//! # Two surfaces, one crate
+//!
+//! Two audiences read this crate, and each has a map — rustdoc
+//! modules that only re-export, so `use topos::Tape` keeps working
+//! and nothing moves:
+//!
+//! - [`model`] — write a network, train it, checkpoint it: the
+//!   recording and run types, the neural facades, the optimizers.
+//! - [`compiler`] — inspect, lower, emit, extend: the printable IR
+//!   ([`Opcode`], [`Node`], `describe`), the catalog as data, the
+//!   recording interpretation ([`Trace`]), the element seam, the
+//!   backend interrogation types, and the [`reference`](mod@reference)
+//!   kernels.
+//!
+//! ```no_run
+//! # use topos::{Keep, Tape};
+//! # let (network, [loss]) = Tape::record(|tape| {
+//! #     let w = tape.parameter(1.0_f64);
+//! #     [w * w].keep()
+//! # });
+//! // The compiler surface in three lines: print the spec, lower an
+//! // entry, emit the schedule.
+//! println!("{}", network.describe());
+//! let plan = network.entry([loss]).lower();
+//! println!("{}", plan.emit_stablehlo().expect("every operation lowers"));
+//! ```
 // The default build forbids `unsafe` outright. A backend feature
 // drops `forbid` but keeps the crate-wide `deny`, so `unsafe`
 // outside a scope-allowed backend module stays a compile error.
@@ -123,3 +150,35 @@ pub use payload::{
     BatchNormTask, Bf16, Differentiable, Element, Elementary, GemmTask, MapOperation, Normalized,
     Shape, Tensor, Tensorial,
 };
+
+/// The model surface: write a network, train it, checkpoint it.
+///
+/// Everything here re-exports the crate root — `use topos::model::*`
+/// is enough to record, run, and train, and flat `use topos::Tape`
+/// imports keep working unchanged.
+pub mod model {
+    pub use crate::{
+        Activation, Adam, AdamW, Adjoints, BatchNorm, BoundEntry, Conv2d, Dropout, Entry, Field,
+        Gradients, Keep, LayerNorm, Linear, Mlp, Module, Network, Normalization, Optimizer,
+        Parameters, Path, Plan, RmsNorm, Run, Segment, Sequential, Sgd, Shape, Symbol, Tape,
+        Tensor, Value, Visitor, checkpoint, concat, conv2d, cross_entropy, init, max_pool,
+        named_parameters, parameters, stack,
+    };
+}
+
+/// The compiler surface: inspect, lower, emit, and extend the stack.
+///
+/// The closed IR view, the catalog as data, the recording
+/// interpretation, the element seam, and the backend interrogation
+/// types — everything a research consumer reads that a training loop
+/// never mentions. All re-exports of the crate root; the reference
+/// kernels live in [`crate::reference`].
+pub mod compiler {
+    pub use crate::{
+        Adjoints, Backend, BackendUnavailable, BatchNormTask, Bf16, BoundEntry, Coverage,
+        Differentiable, Dispatch, Element, Elementary, EmitError, Emittable, Entry, Fidelity,
+        Formula, GemmTask, Keep, MapOperation, MapTask, Network, Node, Normalized, Numerics,
+        Opcode, Parameters, PatternKind, PatternMatch, Plan, Precision, Run, Shape, Symbol, Tape,
+        Tensor, Tensorial, Trace,
+    };
+}

@@ -16,7 +16,7 @@ use super::pattern::{
     BatchNormalization, Candidate, Candidates, Catalog, Pattern, PatternMatch, ReduceWindow, View,
     WindowProduct,
 };
-use super::{Entry, Posture, Run};
+use super::{Entry, Provenance, Run};
 
 // Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
@@ -704,12 +704,12 @@ impl<E: Element> Plan<E> {
             }
         }
 
-        let posture = if self.backward {
-            Posture::Training {
+        let provenance = if self.backward {
+            Provenance::Training {
                 readable: Arc::clone(&self.readable),
             }
         } else {
-            Posture::Observed {
+            Provenance::Observed {
                 readable: Arc::clone(&self.readable),
             }
         };
@@ -717,7 +717,7 @@ impl<E: Element> Plan<E> {
             self.structure.clone(),
             self.origin,
             values,
-            posture,
+            provenance,
             self.numerics,
         )
     }

@@ -29,7 +29,7 @@ assert_impl_all!(Run<f64>: Send, Sync);
 /// never answer with, so `of` and `backward` consult the posture
 /// first.
 #[derive(Debug)]
-pub(crate) enum Posture {
+pub(crate) enum Provenance {
     /// Full interpreter run: every slot is genuine.
     Complete,
     /// Target-sliced interpreter run: the ancestor closure of the
@@ -45,14 +45,16 @@ pub(crate) enum Posture {
     Training { readable: Arc<Vec<bool>> },
 }
 
-impl Posture {
+impl Provenance {
     /// Returns the mask of slots that answer reads, `None` for a
     /// complete run where every slot does.
     fn mask(&self) -> Option<&[bool]> {
         match self {
-            Posture::Complete => None,
-            Posture::Sliced { computed } => Some(computed),
-            Posture::Observed { readable } | Posture::Training { readable, .. } => Some(readable),
+            Provenance::Complete => None,
+            Provenance::Sliced { computed } => Some(computed),
+            Provenance::Observed { readable } | Provenance::Training { readable, .. } => {
+                Some(readable)
+            }
         }
     }
 
@@ -60,7 +62,7 @@ impl Posture {
     /// forward-only plan run refuses, because its liveness pass freed
     /// the forward values the derivative rules read.
     fn differentiable(&self) -> bool {
-        !matches!(self, Posture::Observed { .. })
+        !matches!(self, Provenance::Observed { .. })
     }
 }
 
@@ -79,7 +81,7 @@ pub struct Run<E> {
     /// shapes inferred at record time.
     structure: Structure<Tensor<E>>,
     field: Field<E>,
-    posture: Posture,
+    provenance: Provenance,
     /// The numerics posture the forward producer executed under;
     /// `backward` re-enters it so gradients follow the same paths.
     numerics: Numerics,
@@ -90,17 +92,17 @@ impl<E: Element> Run<E> {
         structure: Structure<Tensor<E>>,
         origin: Origin,
         values: Vec<Tensor<E>>,
-        posture: Posture,
+        provenance: Provenance,
         numerics: Numerics,
     ) -> Self {
         debug_assert_eq!(structure.len(), values.len());
-        if let Some(mask) = posture.mask() {
+        if let Some(mask) = provenance.mask() {
             debug_assert_eq!(structure.len(), mask.len());
         }
         Self {
             structure,
             field: Field::new(origin, values),
-            posture,
+            provenance,
             numerics,
         }
     }
@@ -108,7 +110,7 @@ impl<E: Element> Run<E> {
     /// Returns whether this run computed the slot at `index` as a
     /// readable value, as opposed to leaving a placeholder there.
     fn computed(&self, index: usize) -> bool {
-        match self.posture.mask() {
+        match self.provenance.mask() {
             Some(mask) => mask[index],
             None => true,
         }
@@ -139,7 +141,7 @@ impl<E: Element> Run<E> {
     /// # Panics
     /// Panics if `symbol` belongs to a different network, was
     /// allocated after this run, or was skipped by a target-sliced run
-    /// (see [`Network::forward_for`](crate::Network::forward_for)): a
+    /// (see [`BoundEntry::interpret`](crate::BoundEntry::interpret)): a
     /// placeholder must never read as a result.
     pub fn of(&self, symbol: Symbol) -> &Tensor<E> {
         let index = self.locate(symbol);
@@ -264,7 +266,7 @@ impl<E: Element> Run<E> {
             "value was not computed by this target-sliced run; add it to the targets"
         );
         assert!(
-            self.posture.differentiable(),
+            self.provenance.differentiable(),
             "this run came from a forward-only plan, whose liveness pass freed \
              the buffers backward reads; compile with `Entry::backward` to differentiate"
         );
@@ -505,9 +507,9 @@ impl<E: Element> Network<E> {
             };
             values.push(value);
         }
-        let posture = match computed {
-            Some(computed) => Posture::Sliced { computed },
-            None => Posture::Complete,
+        let provenance = match computed {
+            Some(computed) => Provenance::Sliced { computed },
+            None => Provenance::Complete,
         };
         // Interpreter runs execute under the ambient default posture;
         // a chosen posture is a plan affair, carried by the request.
@@ -515,7 +517,7 @@ impl<E: Element> Network<E> {
             structure.clone(),
             self.origin(),
             values,
-            posture,
+            provenance,
             Numerics::Fast,
         )
     }

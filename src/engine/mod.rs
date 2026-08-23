@@ -14,4 +14,4 @@ pub use plan::Plan;
 pub use run::Run;
 
 pub(crate) use pattern::{BatchNormalization, Catalog, Pattern, ReduceWindow, WindowProduct};
-pub(crate) use run::Posture;
+pub(crate) use run::Provenance;
