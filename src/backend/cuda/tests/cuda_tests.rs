@@ -282,7 +282,7 @@ fn training_runs_through_the_backend_end_to_end() {
     let mut last_loss = f64::INFINITY;
     for _ in 0..30 {
         let run = network.forward(&parameters, []);
-        last_loss = run.of(loss_symbol).to_vec()[0];
+        last_loss = run.of(loss_symbol).scalar();
         first_loss.get_or_insert(last_loss);
         let gradients = run.backward(loss_symbol).parameters(&parameters);
         parameters = parameters.step(&gradients, |weight, gradient| {

@@ -91,7 +91,7 @@ fn logsumexp_stays_finite_for_finite_extreme_logits() {
         let reduced = x.logsumexp(0).symbol();
         let network = tape.into_network();
         let run = network.forward(&network.parameters(), []);
-        let value = run.of(reduced).to_vec()[0];
+        let value = run.of(reduced).scalar();
         assert!(value.is_finite());
         assert!((value - 1.0e308).abs() < 1.0e293);
     }

@@ -61,7 +61,7 @@ fn main() {
     let training = Instant::now();
     for step in 0..STEP_COUNT {
         let run = network.forward(&parameters, []);
-        let batch_loss = run.of(loss).to_vec()[0];
+        let batch_loss = run.of(loss).scalar();
         losses.push(batch_loss);
         if step % (STEP_COUNT / 5) == 0 {
             println!("step {step:4}: loss = {batch_loss:.4}");

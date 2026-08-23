@@ -222,7 +222,7 @@ fn main() {
                 ),
             ],
         );
-        let batch_loss = run.of(loss).to_vec()[0];
+        let batch_loss = run.of(loss).scalar();
         losses.push(batch_loss);
         window_loss += batch_loss;
         if (step + 1) % 1000 == 0 {

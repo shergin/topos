@@ -14,7 +14,7 @@ fn uniform_logits_cost_the_log_of_the_class_count() {
     let loss = loss.symbol();
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    let cost = run.of(loss).to_vec()[0];
+    let cost = run.of(loss).scalar();
     assert!((cost - 3.0_f64.ln()).abs() < 1e-12);
 }
 
@@ -30,7 +30,7 @@ fn confident_correct_logits_cost_nothing() {
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    let cost = run.of(loss).to_vec()[0];
+    let cost = run.of(loss).scalar();
     assert!(cost.is_finite());
     assert!(cost.abs() < 1e-12);
 }
@@ -74,7 +74,7 @@ fn served_batches_vary_per_run() {
         &network.parameters(),
         [(logits_symbol, confident), (targets_symbol, labels)],
     );
-    let cost = run.of(loss).to_vec()[0];
+    let cost = run.of(loss).scalar();
     assert!(cost.abs() < 1e-12);
 }
 
@@ -111,7 +111,7 @@ fn extreme_finite_logits_keep_the_loss_and_gradients_finite() {
         let (loss, logits) = (loss.symbol(), logits.symbol());
         let network = tape.into_network();
         let run = network.forward(&network.parameters(), []);
-        assert_eq!(run.of(loss).to_vec()[0], 0.0);
+        assert_eq!(run.of(loss).scalar(), 0.0);
 
         let gradients = run.backward(loss);
         for gradient in gradients.of(logits).to_vec() {
@@ -129,7 +129,7 @@ fn extreme_finite_logits_keep_the_loss_finite_f32() {
     let loss = cross_entropy(logits, targets).symbol();
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(run.of(loss).to_vec()[0], 0.0);
+    assert_eq!(run.of(loss).scalar(), 0.0);
 }
 
 #[test]
@@ -144,5 +144,5 @@ fn zero_target_lanes_contribute_exact_zero() {
     let loss = cross_entropy(logits, targets).symbol();
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(run.of(loss).to_vec()[0], 0.0);
+    assert_eq!(run.of(loss).scalar(), 0.0);
 }

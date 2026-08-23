@@ -179,7 +179,7 @@ fn main() {
                 ),
             ],
         );
-        let batch_loss = run.of(loss).to_vec()[0];
+        let batch_loss = run.of(loss).scalar();
         losses.push(batch_loss);
         if step == 0 {
             println!(

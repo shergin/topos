@@ -61,13 +61,13 @@ fn a_comparison_loop_runs_over_dynamic_optimizers() {
         let mut first = None;
         for _ in 0..25 {
             let run = network.forward(&parameters, []);
-            let value = run.of(loss).to_vec()[0];
+            let value = run.of(loss).scalar();
             first.get_or_insert(value);
             let gradients = run.backward(loss).parameters(&parameters);
             parameters = strategy.step(&parameters, &gradients, &rate);
         }
         let run = network.forward(&parameters, []);
-        let last = run.of(loss).to_vec()[0];
+        let last = run.of(loss).scalar();
         let first = first.expect("the loop ran");
         assert!(
             last.is_finite() && last < first,

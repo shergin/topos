@@ -229,7 +229,7 @@ fn adam_descends_faster_than_sgd_on_a_skewed_bowl() {
             parameters = strategy.step(&parameters, &gradients, &rate);
         }
         let run = network.forward(&parameters, []);
-        run.of(loss).to_vec()[0]
+        run.of(loss).scalar()
     };
 
     let (beta1, beta2, epsilon) = conventional();

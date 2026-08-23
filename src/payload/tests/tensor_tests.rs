@@ -1327,3 +1327,25 @@ fn max_pooled_direct_walk_matches_the_composed_fold_bitwise() {
         );
     }
 }
+
+#[test]
+fn scalar_reads_a_rank_zero_tensor() {
+    let tensor = Tensor::from(2.5_f64);
+    assert_eq!(tensor.shape(), Shape::scalar());
+    assert_eq!(tensor.scalar(), 2.5);
+}
+
+#[test]
+#[should_panic(expected = "scalar reads a rank-0 tensor")]
+fn scalar_rejects_a_ranked_tensor() {
+    Tensor::new([1], [1.0_f64]).scalar();
+}
+
+#[test]
+fn display_prints_the_bare_element_at_rank_zero() {
+    assert_eq!(Tensor::from(2.5_f64).to_string(), "2.5");
+    assert_eq!(
+        Tensor::new([2, 2], [1.0_f64, 2.0, 3.0, 4.0]).to_string(),
+        "[[1, 2], [3, 4]]"
+    );
+}

@@ -234,7 +234,7 @@ fn recorded(
         module: plan.emit_stablehlo().expect("the joint step emits"),
         forward_nodes,
         total_nodes: network.len(),
-        oracle_loss: run.of(loss).to_vec()[0],
+        oracle_loss: run.of(loss).scalar(),
     }
 }
 

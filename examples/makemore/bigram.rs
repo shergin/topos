@@ -89,7 +89,7 @@ fn main() {
                 ),
             ],
         );
-        let batch_loss = run.of(loss_symbol).to_vec()[0];
+        let batch_loss = run.of(loss_symbol).scalar();
         losses.push(batch_loss);
         if step % 100 == 0 {
             println!("step {step:4}: minibatch loss = {batch_loss:.4}");

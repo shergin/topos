@@ -107,7 +107,7 @@ fn dense_layer_gradients_match_finite_differences() {
         let error = activated - y;
         let loss = (error * error).sum().symbol();
         let network = tape.into_network();
-        network.forward(&network.parameters(), []).of(loss).to_vec()[0]
+        network.forward(&network.parameters(), []).of(loss).scalar()
     };
 
     let tape = Tape::new();
@@ -176,7 +176,7 @@ fn tensor_gradients_match_finite_differences() {
         let error = shifted - y;
         let loss = (error * error).sum().symbol();
         let network = tape.into_network();
-        network.forward(&network.parameters(), []).of(loss).to_vec()[0]
+        network.forward(&network.parameters(), []).of(loss).scalar()
     };
 
     let tape = Tape::new();

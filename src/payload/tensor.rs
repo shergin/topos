@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::sync::Arc;
 
@@ -207,6 +208,26 @@ impl<Element: Clone> Tensor<Element> {
                 },
             },
         }
+    }
+
+    /// Returns the rank-0 tensor's single element: the scalar
+    /// projection, and the read-back the teaching examples end on.
+    ///
+    /// It is deliberately loud — one call, rank-checked — rather than
+    /// a `Deref` to the element: a silent projection is the kind of
+    /// magic the explicitness rule forbids. A rank-1 tensor of one
+    /// element does not qualify; reshape it first.
+    ///
+    /// # Panics
+    /// Panics if this tensor is not rank 0.
+    pub fn scalar(&self) -> Element {
+        assert_eq!(
+            self.logical_shape().rank(),
+            0,
+            "scalar reads a rank-0 tensor, got {}",
+            self.logical_shape()
+        );
+        self.get(0)
     }
 
     /// Returns the element at logical row-major `position`.
@@ -620,6 +641,51 @@ impl<'tensor, Element: Clone> Iterator for ElementIter<'tensor, Element> {
             }
         }
     }
+}
+
+/// The rank-0 conversion: one element becomes the tensor of shape
+/// `[]`. It is what lets `tape.parameter(0.0_f64)` and payload
+/// literals in operator position stay scalar-looking while the graph
+/// is always tensors.
+impl<Element: Differentiable> From<Element> for Tensor<Element> {
+    fn from(element: Element) -> Self {
+        Self::constant(Shape::scalar(), element)
+    }
+}
+
+/// Renders rank 0 as the bare element and higher ranks as nested
+/// row-major bracket lists, so a scalar read prints as the number it
+/// is.
+impl<Element: Clone + fmt::Display> fmt::Display for Tensor<Element> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let elements = self.to_vec();
+        display_level(formatter, self.logical_shape().axes(), &elements)
+    }
+}
+
+/// Writes one nesting level of a tensor display: the bare element at
+/// rank 0, a bracketed list of the sub-levels otherwise.
+fn display_level<Element: fmt::Display>(
+    formatter: &mut fmt::Formatter<'_>,
+    axes: &[usize],
+    elements: &[Element],
+) -> fmt::Result {
+    let Some((&extent, rest)) = axes.split_first() else {
+        return write!(formatter, "{}", elements[0]);
+    };
+    let stride = elements.len() / extent;
+    write!(formatter, "[")?;
+    for index in 0..extent {
+        if index > 0 {
+            write!(formatter, ", ")?;
+        }
+        display_level(
+            formatter,
+            rest,
+            &elements[index * stride..(index + 1) * stride],
+        )?;
+    }
+    write!(formatter, "]")
 }
 
 impl<Element: PartialEq + Clone> PartialEq for Tensor<Element> {

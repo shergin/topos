@@ -195,7 +195,7 @@ fn main() {
             &parameters,
             [(images, batch_images), (targets, batch_targets)],
         );
-        let batch_loss = run.of(loss).to_vec()[0];
+        let batch_loss = run.of(loss).scalar();
         if step == 0 {
             first_loss = batch_loss;
         }

@@ -25,7 +25,7 @@ fn forward_stays_finite_where_the_difference_overflows() {
     // poisoning the result — in either lane order.
     for logits in [[-1.0e308_f64, 1.0e308], [1.0e308, -1.0e308]] {
         let result = rule.forward(&[&Tensor::new([2], logits)]);
-        let value = result.to_vec()[0];
+        let value = result.scalar();
         assert!(value.is_finite());
         assert!((value - 1.0e308).abs() < 1.0e293);
     }
@@ -37,7 +37,7 @@ fn forward_stays_finite_where_the_difference_overflows_f32() {
 
     for logits in [[-3.0e38_f32, 3.0e38], [3.0e38, -3.0e38]] {
         let result = rule.forward(&[&Tensor::new([2], logits)]);
-        let value = result.to_vec()[0];
+        let value = result.scalar();
         assert!(value.is_finite());
         assert!((value - 3.0e38).abs() < 3.0e31);
     }

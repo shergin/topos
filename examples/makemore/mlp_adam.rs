@@ -176,11 +176,11 @@ fn train(
         let (batch_loss, gradients) = if let (Some(plan), Some(adjoints)) = (&plan, &adjoints) {
             let run = plan.forward(&parameters, feeds);
             let gradients = run.recorded_gradients(adjoints);
-            (run.of(loss).to_vec()[0], gradients)
+            (run.of(loss).scalar(), gradients)
         } else {
             let run = network.forward(&parameters, feeds);
             (
-                run.of(loss).to_vec()[0],
+                run.of(loss).scalar(),
                 run.backward(loss).parameters(&parameters),
             )
         };

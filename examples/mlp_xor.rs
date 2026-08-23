@@ -59,7 +59,7 @@ fn main() {
     for step in 0..4000 {
         let (batch_x, batch_y) = &minibatches[step % minibatches.len()];
         let run = network.forward(&parameters, [(x, batch_x.clone()), (y, batch_y.clone())]);
-        let batch_loss = run.of(loss).to_vec()[0];
+        let batch_loss = run.of(loss).scalar();
         losses.push(batch_loss);
         if step % 800 == 0 {
             println!("step {step:4}: minibatch loss = {batch_loss:.6}");

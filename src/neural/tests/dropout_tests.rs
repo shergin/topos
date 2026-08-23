@@ -83,7 +83,7 @@ fn training_replays_bitwise_under_matched_seeds() {
         let mut last = 0.0;
         for _ in 0..8 {
             let run = network.forward(&parameters, [(dropout.mask(), masks(&Shape::new([2, 2])))]);
-            last = run.of(loss).to_vec()[0];
+            last = run.of(loss).scalar();
             let gradients = run.backward(loss).parameters(&parameters);
             parameters = parameters.step(&gradients, |parameter, gradient| {
                 parameter.clone() - gradient.clone() * rate.broadcast_like(gradient)

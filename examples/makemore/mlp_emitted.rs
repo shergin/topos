@@ -242,7 +242,7 @@ fn main() {
             &oracle_parameters,
             [(contexts, batch_contexts), (targets, batch_targets)],
         );
-        oracle_losses.push(run.of(loss).to_vec()[0]);
+        oracle_losses.push(run.of(loss).scalar());
         // The aliases are the readable set; they carry the gradient
         // payloads bit for bit (a same-shape reshape is the identity).
         let gradients = run.recorded_gradients(&adjoints);

@@ -161,7 +161,7 @@ fn main() {
                         ),
                     ],
                 );
-                let shard_loss = run.of(loss_symbol).to_vec()[0];
+                let shard_loss = run.of(loss_symbol).scalar();
                 (
                     shard_loss,
                     run.backward(loss_symbol).parameters(&parameters),
