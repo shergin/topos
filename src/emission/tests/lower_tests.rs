@@ -242,11 +242,11 @@ fn a_small_plan_emits_the_golden_module() {
 module @topos {
   func.func @main(%arg0: tensor<2x2xf32>, %arg1: tensor<2x2xf32>) -> (tensor<f32>) {
     %v2 = stablehlo.dot_general %arg1, %arg0, contracting_dims = [1] x [0] : (tensor<2x2xf32>, tensor<2x2xf32>) -> tensor<2x2xf32>
-    %v3_zero = stablehlo.constant dense<0.0> : tensor<2x2xf32>
-    %v3 = stablehlo.maximum %v2, %v3_zero : tensor<2x2xf32>
-    %v4_seed = stablehlo.constant dense<0.0> : tensor<f32>
-    %v4 = stablehlo.reduce(%v3 init: %v4_seed) applies stablehlo.add across dimensions = [0, 1] : (tensor<2x2xf32>, tensor<f32>) -> tensor<f32>
-    return %v4 : tensor<f32>
+    %v3 = stablehlo.constant dense<0.0> : tensor<2x2xf32>
+    %v4 = stablehlo.maximum %v2, %v3 : tensor<2x2xf32>
+    %v5_seed = stablehlo.constant dense<0.0> : tensor<f32>
+    %v5 = stablehlo.reduce(%v4 init: %v5_seed) applies stablehlo.add across dimensions = [0, 1] : (tensor<2x2xf32>, tensor<f32>) -> tensor<f32>
+    return %v5 : tensor<f32>
   }
 }
 ";

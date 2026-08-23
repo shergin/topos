@@ -27,6 +27,21 @@ impl<'tape, Data: Elementary> Value<'tape, Data> {
     pub fn abs(self) -> Self {
         self.maximum(-self)
     }
+
+    /// Records the rectified linear unit of this value as the
+    /// composition `self.maximum(zero)`, where the zero enters the
+    /// graph as a [`counted`](crate::Differentiable::counted) leaf of
+    /// this value's shape — the same leaf a payload literal would
+    /// record; the subgradient at zero is one, by `maximum`'s
+    /// left-biased tie rule.
+    ///
+    /// The once-dedicated opcode was retired when the leaf failed to
+    /// show up in a consumer-scale training step: the extra cost is
+    /// one activation-sized zero buffer per occurrence, and the fused
+    /// form never measured past it.
+    pub fn relu(self) -> Self {
+        self.maximum(self.literal(Data::counted(self.shape(), 0)))
+    }
 }
 
 impl<'tape, Data: Tensorial> Value<'tape, Data> {

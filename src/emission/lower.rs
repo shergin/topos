@@ -253,17 +253,6 @@ impl<Element: Emittable> Plan<Tensor<Element>> {
                 };
                 unary(name, emitter)
             }
-            Function::Relu(_) => {
-                let zero = format!("%v{index}_zero");
-                emitter.line(format!(
-                    "{zero} = stablehlo.constant dense<{}> : {result_type}",
-                    Element::ZERO
-                ));
-                let source = emitter.name(operand(0)).to_string();
-                emitter.line(format!(
-                    "{result} = stablehlo.maximum {source}, {zero} : {result_type}"
-                ));
-            }
             Function::MatMul(_) => {
                 let left = operand(0);
                 let right = operand(1);

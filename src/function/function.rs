@@ -6,7 +6,7 @@ use static_assertions::assert_impl_all;
 use super::{
     Add, Broadcast, BroadcastAlong, Cotangents, Div, Fold, Gather, Input, Leaf, LogSoftmax,
     LogSumExp, Map, MatMul, Maximum, Mul, Narrow, Neg, Operation, Pad, Parameter, Permute, Powf,
-    Reads, Relu, Reshape, Scatter, Step, Sub, Sum, SumAlong, Transpose, Unfold,
+    Reads, Reshape, Scatter, Step, Sub, Sum, SumAlong, Transpose, Unfold,
 };
 
 // Request-time thread-safety contract; the anchor rationale is documented
@@ -51,7 +51,6 @@ pub(crate) enum Function<Data> {
     LogSumExp(LogSumExp),
     Powf(Powf),
     Maximum(Maximum),
-    Relu(Relu),
     Step(Step),
 }
 
@@ -229,11 +228,6 @@ impl<Data> Function<Data> {
         Function::Maximum(Maximum)
     }
 
-    /// Creates the rectified linear unit of the single operand.
-    pub(crate) fn relu() -> Self {
-        Function::Relu(Relu)
-    }
-
     /// Returns the operation's display name, for plan introspection.
     pub(crate) fn name(&self) -> &'static str {
         match self {
@@ -265,7 +259,6 @@ impl<Data> Function<Data> {
             Function::Scatter(_) => "Scatter",
             Function::Powf(_) => "Powf",
             Function::Maximum(_) => "Maximum",
-            Function::Relu(_) => "Relu",
         }
     }
 
@@ -300,7 +293,6 @@ impl<Data> Function<Data> {
             Function::Scatter(scatter) => scatter.reads(),
             Function::Powf(powf) => powf.reads(),
             Function::Maximum(maximum) => maximum.reads(),
-            Function::Relu(relu) => relu.reads(),
         }
     }
 
@@ -336,7 +328,6 @@ impl<Data> Function<Data> {
             Function::Scatter(scatter) => scatter.arity(),
             Function::Powf(powf) => powf.arity(),
             Function::Maximum(maximum) => maximum.arity(),
-            Function::Relu(relu) => relu.arity(),
         }
     }
 
@@ -382,7 +373,6 @@ impl<Data> Function<Data> {
             Function::Scatter(scatter) => scatter.infer_shape(operands),
             Function::Powf(powf) => powf.infer_shape(operands),
             Function::Maximum(maximum) => maximum.infer_shape(operands),
-            Function::Relu(relu) => relu.infer_shape(operands),
         }
     }
 }
@@ -430,7 +420,6 @@ impl<Data: Tensorial> Function<Data> {
             Function::Scatter(scatter) => scatter.forward(operands),
             Function::Powf(powf) => powf.forward(operands),
             Function::Maximum(maximum) => maximum.forward(operands),
-            Function::Relu(relu) => relu.forward(operands),
         }
     }
 
@@ -480,7 +469,6 @@ impl<Data: Tensorial> Function<Data> {
             Function::Scatter(scatter) => scatter.backward(operands, output, gradient),
             Function::Powf(powf) => powf.backward(operands, output, gradient),
             Function::Maximum(maximum) => maximum.backward(operands, output, gradient),
-            Function::Relu(relu) => relu.backward(operands, output, gradient),
         }
     }
 }

@@ -124,7 +124,7 @@ engine to accumulate. No rule ever sees the tape, a `ValueId`, or a run
 buffer, so every rule is plain math, testable without a network. In
 topos: the [`Operation`](src/function/operation.rs) trait,
 implemented by each computed `Function` variant (`Add`, `Sub`, `Mul`,
-`Div`, `Neg`, `Map`, `Powf`, `Maximum`, `Relu`,
+`Div`, `Neg`, `Map`, `Powf`, `Maximum`,
 `MatMul`, `Transpose`, `Sum`, `SumAlong`, `Broadcast`, `BroadcastAlong`,
 `Reshape`, `Permute`, `Narrow`, `Gather`, `LogSoftmax` under
 [`src/function/`](src/function/)) and dispatched with a
@@ -227,7 +227,8 @@ files rather than by types: [`value.rs`](src/graph/value.rs) holds the
 opcode mnemonics, each recording exactly one computed node (payload
 literals additionally record a leaf — data injection, not computation);
 [`composite.rs`](src/graph/composite.rs) holds the composites (`abs` as
-`maximum(-self)`, `softmax` as `exp(log_softmax)` — stable by inheritance,
+`maximum(-self)`, `relu` as `maximum` against a `counted` zero leaf,
+`softmax` as `exp(log_softmax)` — stable by inheritance,
 since log-probabilities cannot make `exp` overflow — `mean_along`,
 `sum_along` divided by the reduced axis's
 extent minted as a `counted` literal, and the `reshape`-based `squeeze`
@@ -923,15 +924,15 @@ topos: the [`Optimizer`](src/neural/optimizer.rs) trait and
 which is what gives stacked affine maps expressive power. It is a
 graph operation like any other, so it participates in differentiation
 (the `Tanh` map, recorded by `Value::tanh`, whose derivative
-`1 - tanh(x)^2` reuses the node's own output; `Function::Relu`, recorded
-by `Value::relu`, whose gradient is masked by the 0/1 `step` indicator —
-a dedicated unary variant so the mask costs one node and no zero leaf
-per occurrence, while the rule reaches its zero at run time through
-`zero_like`). The enum carries exactly that dedicated pair; every
-other activation is a short caller-side composition over the public
-surface whose gradient is the chain rule, the way GPT-2's example
-composes its GELU — the once-shipped `Sigmoid`, `LeakyRelu`, and
-`Elu` variants were retired when no consumer materialized. Each
+`1 - tanh(x)^2` reuses the node's own output; the `relu` composite,
+`maximum` against a `counted` zero leaf, whose gradient the 0/1
+`step` indicator masks through `maximum`'s rule — its once-dedicated
+opcode was retired when the zero leaf failed to measure in a
+consumer-scale training step). The enum carries exactly that pair;
+every other activation is a short caller-side composition over the
+public surface whose gradient is the chain rule, the way GPT-2's
+example composes its GELU — the once-shipped `Sigmoid`, `LeakyRelu`,
+and `Elu` variants were retired when no consumer materialized. Each
 variant also states its initialization `gain`, the factor
 [`init::scaled`](src/neural/init.rs) compensates at initialization.
 In topos: the [`Activation`](src/neural/activation.rs) enum and its

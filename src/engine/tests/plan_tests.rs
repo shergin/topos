@@ -417,23 +417,24 @@ fn describe_snapshots_the_fused_forward_plan() {
     12  BroadcastAlong [32, 2]          freed after 13
     13  Add            [32, 2]          freed after 14
     14  Reshape        [2, 4, 4, 2]     freed after 15
-    15  Permute        [2, 2, 4, 4]     freed after 16
-    16  Relu           [2, 2, 4, 4]     freed after 28
-    17  Unfold         [2, 2, 2, 2, 4]  fused
-    18  Unfold         [2, 2, 2, 2, 2, 2] fused
-    19  Permute        [2, 2, 2, 2, 2, 2] fused
-    20  Reshape        [2, 2, 2, 2, 4]  fused
-    21  Narrow         [2, 2, 2, 2, 1]  fused
+    15  Permute        [2, 2, 4, 4]     freed after 17
+    16  Leaf           [2, 2, 4, 4]     freed after 17
+    17  Maximum        [2, 2, 4, 4]     freed after 29
+    18  Unfold         [2, 2, 2, 2, 4]  fused
+    19  Unfold         [2, 2, 2, 2, 2, 2] fused
+    20  Permute        [2, 2, 2, 2, 2, 2] fused
+    21  Reshape        [2, 2, 2, 2, 4]  fused
     22  Narrow         [2, 2, 2, 2, 1]  fused
-    23  Maximum        [2, 2, 2, 2, 1]  fused
-    24  Narrow         [2, 2, 2, 2, 1]  fused
-    25  Maximum        [2, 2, 2, 2, 1]  fused
-    26  Narrow         [2, 2, 2, 2, 1]  fused
-    27  Maximum        [2, 2, 2, 2, 1]  fused
-    28  Reshape        [2, 2, 2, 2]     kept
-plan: forward; 29 of 29 nodes evaluated, 1 readable
+    23  Narrow         [2, 2, 2, 2, 1]  fused
+    24  Maximum        [2, 2, 2, 2, 1]  fused
+    25  Narrow         [2, 2, 2, 2, 1]  fused
+    26  Maximum        [2, 2, 2, 2, 1]  fused
+    27  Narrow         [2, 2, 2, 2, 1]  fused
+    28  Maximum        [2, 2, 2, 2, 1]  fused
+    29  Reshape        [2, 2, 2, 2]     kept
+plan: forward; 30 of 30 nodes evaluated, 1 readable
 fused 2 groups, 17 nodes replaced
-live volume: peak 192 elements at node 13, retain-all 488
+live volume: peak 192 elements at node 13, retain-all 552
 ";
     assert_eq!(forward.describe(), expected);
 

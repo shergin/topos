@@ -197,13 +197,6 @@ impl<'tape, Data: Elementary> Value<'tape, Data> {
         self.apply(Function::maximum(), &[self.id, rhs.id])
     }
 
-    /// Records the rectified linear unit of this value — its elementwise
-    /// maximum with zero — on the same tape and returns a proxy to it;
-    /// the subgradient at zero is one.
-    pub fn relu(self) -> Self {
-        self.apply(Function::relu(), &[self.id])
-    }
-
     /// Records the elementwise 0/1 indicator of `self >= threshold` on
     /// the same network and returns a proxy to it: the Heaviside step,
     /// ties answering one.

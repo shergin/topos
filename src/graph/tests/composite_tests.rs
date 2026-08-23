@@ -17,6 +17,25 @@ fn abs_composes_from_maximum() {
 }
 
 #[test]
+fn relu_composes_from_maximum_with_a_counted_zero() {
+    let tape = Tape::new();
+    let x = tape.parameter(Tensor::new([4], [-2.0_f64, -0.0, 0.0, 3.0]));
+    let rectified = x.relu();
+    let loss = rectified.sum();
+    let (x, rectified, loss) = (x.symbol(), rectified.symbol(), loss.symbol());
+    let network = tape.into_network();
+
+    // The contract the retired `Relu` opcode guaranteed: bitwise
+    // `maximum` against zero, and the whole gradient at a tie — the
+    // subgradient at zero is one, by `maximum`'s left-biased rule.
+    let run = network.forward(&network.parameters(), []);
+    assert_eq!(run.of(rectified).to_vec(), &[0.0, 0.0, 0.0, 3.0]);
+
+    let gradients = run.backward(loss);
+    assert_eq!(gradients.of(x).to_vec(), &[0.0, 1.0, 1.0, 1.0]);
+}
+
+#[test]
 fn softmax_matches_the_probabilities() {
     let tape = Tape::new();
     let logits = tape.leaf(Tensor::new([1, 2], [0.0_f64, 3.0_f64.ln()]));
