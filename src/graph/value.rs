@@ -199,6 +199,28 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.apply(Function::map(MapOperation::Cos), &[self.id])
     }
 
+    /// Records the natural logarithm of one plus this value on the
+    /// same tape and returns a proxy to it.
+    ///
+    /// It is a distinct opcode, not sugar for `(one + x).ln()`: the
+    /// composed form rounds `1 + x` first and destroys every
+    /// significant digit of an `x` near zero, while this one stays
+    /// accurate there. The two spellings are different specs with
+    /// different bits, and both remain valid.
+    pub fn log1p(self) -> Self {
+        self.apply(Function::map(MapOperation::Log1p), &[self.id])
+    }
+
+    /// Records `e` raised to this value, minus one, on the same tape
+    /// and returns a proxy to it.
+    ///
+    /// Like [`log1p`](Self::log1p), it is a distinct opcode: the
+    /// composed `x.exp() - one` cancels catastrophically near zero,
+    /// and this one does not.
+    pub fn expm1(self) -> Self {
+        self.apply(Function::map(MapOperation::Expm1), &[self.id])
+    }
+
     /// Records this value raised elementwise to the power of `exponent`
     /// on the same tape and returns a proxy to it.
     ///

@@ -64,6 +64,14 @@ pub trait Tensorial:
     /// Returns the elementwise cosine of `self`.
     fn cos(&self) -> Self;
 
+    /// Returns the elementwise natural logarithm of one plus `self`,
+    /// accurate near zero.
+    fn log1p(&self) -> Self;
+
+    /// Returns `e` raised elementwise to `self`, minus one, accurate
+    /// near zero.
+    fn expm1(&self) -> Self;
+
     /// Returns `self` raised elementwise to the power of `exponent`.
     fn powf(&self, exponent: Self) -> Self;
 

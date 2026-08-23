@@ -25,6 +25,8 @@ pub(super) fn map_pipeline_index(operation: MapOperation) -> usize {
         MapOperation::Tanh => 3,
         MapOperation::Sin => 4,
         MapOperation::Cos => 5,
+        MapOperation::Log1p => 6,
+        MapOperation::Expm1 => 7,
     }
 }
 

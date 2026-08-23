@@ -96,6 +96,14 @@ impl Elementary for F64 {
         F64(self.0.cos())
     }
 
+    fn log1p(&self) -> Self {
+        F64(self.0.ln_1p())
+    }
+
+    fn expm1(&self) -> Self {
+        F64(self.0.exp_m1())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         F64(self.0.powf(exponent.0))
     }

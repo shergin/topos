@@ -84,12 +84,16 @@ unsafe extern "C" {
     fn vvtanhf(mapped: *mut f32, elements: *const f32, count: *const i32);
     fn vvsinf(mapped: *mut f32, elements: *const f32, count: *const i32);
     fn vvcosf(mapped: *mut f32, elements: *const f32, count: *const i32);
+    fn vvlog1pf(mapped: *mut f32, elements: *const f32, count: *const i32);
+    fn vvexpm1f(mapped: *mut f32, elements: *const f32, count: *const i32);
     fn vvexp(mapped: *mut f64, elements: *const f64, count: *const i32);
     fn vvlog(mapped: *mut f64, elements: *const f64, count: *const i32);
     fn vvsqrt(mapped: *mut f64, elements: *const f64, count: *const i32);
     fn vvtanh(mapped: *mut f64, elements: *const f64, count: *const i32);
     fn vvsin(mapped: *mut f64, elements: *const f64, count: *const i32);
     fn vvcos(mapped: *mut f64, elements: *const f64, count: *const i32);
+    fn vvlog1p(mapped: *mut f64, elements: *const f64, count: *const i32);
+    fn vvexpm1(mapped: *mut f64, elements: *const f64, count: *const i32);
     // vDSP: the contiguous row passes behind the batch-normalization
     // kernel. Strides are in elements; counts are element counts.
     // Note the argument order of `vsub`: it computes `C = B - A`.
@@ -427,6 +431,8 @@ pub(crate) fn map_f32(operation: MapOperation, elements: &[f32]) -> Option<Vec<f
             MapOperation::Tanh => vvtanhf(mapped.as_mut_ptr(), elements.as_ptr(), &count),
             MapOperation::Sin => vvsinf(mapped.as_mut_ptr(), elements.as_ptr(), &count),
             MapOperation::Cos => vvcosf(mapped.as_mut_ptr(), elements.as_ptr(), &count),
+            MapOperation::Log1p => vvlog1pf(mapped.as_mut_ptr(), elements.as_ptr(), &count),
+            MapOperation::Expm1 => vvexpm1f(mapped.as_mut_ptr(), elements.as_ptr(), &count),
         }
     }
     Some(mapped)
@@ -449,6 +455,8 @@ pub(crate) fn map_f64(operation: MapOperation, elements: &[f64]) -> Option<Vec<f
             MapOperation::Tanh => vvtanh(mapped.as_mut_ptr(), elements.as_ptr(), &count),
             MapOperation::Sin => vvsin(mapped.as_mut_ptr(), elements.as_ptr(), &count),
             MapOperation::Cos => vvcos(mapped.as_mut_ptr(), elements.as_ptr(), &count),
+            MapOperation::Log1p => vvlog1p(mapped.as_mut_ptr(), elements.as_ptr(), &count),
+            MapOperation::Expm1 => vvexpm1(mapped.as_mut_ptr(), elements.as_ptr(), &count),
         }
     }
     Some(mapped)

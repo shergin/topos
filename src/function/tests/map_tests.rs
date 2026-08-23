@@ -112,16 +112,56 @@ fn cos_backward_negates_the_sine_of_the_operand() {
 }
 
 #[test]
+fn log1p_backward_divides_by_one_plus_the_operand() {
+    // `d ln(1 + x) / dx` at 3 is `1 / 4`.
+    let log1p = Map {
+        op: MapOperation::Log1p,
+    };
+    let cotangents = log1p.backward(
+        &[&Tensor::from(3.0_f64)],
+        &Tensor::from(4.0_f64.ln()),
+        &Tensor::from(2.0),
+    );
+    let expected: Cotangents<Tensor<f64>> = smallvec![Some(Tensor::from(0.5))];
+    assert_eq!(cotangents, expected);
+}
+
+#[test]
+fn expm1_backward_adds_one_to_the_output() {
+    // `d (e^x - 1) / dx` is `e^x`: the output plus one.
+    let expm1 = Map {
+        op: MapOperation::Expm1,
+    };
+    let cotangents = expm1.backward(
+        &[&Tensor::from(0.0_f64)],
+        &Tensor::from(2.0),
+        &Tensor::from(5.0),
+    );
+    let expected: Cotangents<Tensor<f64>> = smallvec![Some(Tensor::from(15.0))];
+    assert_eq!(cotangents, expected);
+}
+
+#[test]
 fn reads_follow_the_operation() {
-    // Output-reusing rules must not retain their operand; `Ln`,
-    // `Sin`, and `Cos` must retain exactly their operand; liveness
-    // depends on this.
-    for op in [MapOperation::Exp, MapOperation::Sqrt, MapOperation::Tanh] {
+    // Output-reusing rules must not retain their operand; the
+    // operand-reading rules must retain exactly their operand;
+    // liveness depends on this.
+    for op in [
+        MapOperation::Exp,
+        MapOperation::Sqrt,
+        MapOperation::Tanh,
+        MapOperation::Expm1,
+    ] {
         let reads = Map { op }.reads();
         assert!(reads.output);
         assert!(!reads.operands[0]);
     }
-    for op in [MapOperation::Ln, MapOperation::Sin, MapOperation::Cos] {
+    for op in [
+        MapOperation::Ln,
+        MapOperation::Sin,
+        MapOperation::Cos,
+        MapOperation::Log1p,
+    ] {
         let reads = Map { op }.reads();
         assert!(!reads.output);
         assert!(reads.operands[0]);
@@ -137,9 +177,14 @@ fn names_print_the_operation_not_the_kind() {
         MapOperation::Tanh,
         MapOperation::Sin,
         MapOperation::Cos,
+        MapOperation::Log1p,
+        MapOperation::Expm1,
     ]
     .into_iter()
     .map(|operation| crate::Opcode::Map { operation }.name())
     .collect();
-    assert_eq!(names, ["Exp", "Ln", "Sqrt", "Tanh", "Sin", "Cos"]);
+    assert_eq!(
+        names,
+        ["Exp", "Ln", "Sqrt", "Tanh", "Sin", "Cos", "Log1p", "Expm1"]
+    );
 }

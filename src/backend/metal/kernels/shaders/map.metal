@@ -72,3 +72,43 @@ kernel void map_cos_f32(
         destination[index] = cos(source[index]);
     }
 }
+
+// MSL has no log1p/expm1 built-ins, so both kernels use Kahan's
+// compensated forms: `u` absorbs the rounding of the naive step, and
+// the exact argument is rescaled back through the `x / (u - 1)` (or
+// `x / log(u)`) ratio, which cancels the rounding error analytically.
+// At `u == 1` the limit is `x` itself.
+
+kernel void map_log1p_f32(
+    device const float *source [[buffer(0)]],
+    device float *destination [[buffer(1)]],
+    constant uint &count [[buffer(2)]],
+    uint index [[thread_position_in_grid]]
+) {
+    if (index < count) {
+        float x = source[index];
+        float u = 1.0f + x;
+        destination[index] = (u == 1.0f) ? x : log(u) * (x / (u - 1.0f));
+    }
+}
+
+kernel void map_expm1_f32(
+    device const float *source [[buffer(0)]],
+    device float *destination [[buffer(1)]],
+    constant uint &count [[buffer(2)]],
+    uint index [[thread_position_in_grid]]
+) {
+    if (index < count) {
+        float x = source[index];
+        float u = exp(x);
+        if (u == 1.0f) {
+            destination[index] = x;
+        } else if (fabs(x) > 0.693147f) {
+            // Beyond `ln 2` the direct subtraction cancels less than
+            // one bit, and it also covers the saturated extremes.
+            destination[index] = u - 1.0f;
+        } else {
+            destination[index] = (u - 1.0f) * (x / log(u));
+        }
+    }
+}

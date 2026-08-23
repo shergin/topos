@@ -180,8 +180,8 @@ a practical decision for one-line specs and a one-pass oracle.
 
 **Map.** The unary elementwise transcendentals as one node kind:
 `Function::Map` carries a `MapOperation` (`Exp`, `Ln`, `Sqrt`,
-`Tanh`, `Sin`, `Cos`) — the same vocabulary the acceleration seam's
-whole-buffer
+`Tanh`, `Sin`, `Cos`, `Log1p`, `Expm1`) — the same vocabulary the
+acceleration seam's whole-buffer
 map task speaks, so the IR and the backend chain name these
 instructions once. Everything operation-specific — the printed
 mnemonic (`Tanh`, never `Map`), the read set, the derivative —
@@ -277,7 +277,9 @@ literals additionally record a leaf — data injection, not computation);
 [`composite.rs`](src/graph/composite.rs) holds the composites (`abs` as
 `maximum(-self)`, `relu` as `maximum` against a `counted` zero leaf,
 `softmax` as `exp(log_softmax)` — stable by inheritance,
-since log-probabilities cannot make `exp` overflow — `mean_along`,
+since log-probabilities cannot make `exp` overflow — `softplus` as the
+stable split `relu(x) + log1p(exp(-|x|))` riding the fused `Log1p`,
+`mean_along`,
 `sum_along` divided by the reduced axis's
 extent minted as a `counted` literal, and the `reshape`-based `squeeze`
 and `unsqueeze`); and named formulas whose operands play distinct roles (a

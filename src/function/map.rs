@@ -20,29 +20,30 @@ pub(crate) struct Map {
 }
 
 impl Map {
-    /// Returns the operation's display name — `"Tanh"`, not `"Map"`:
-    /// the node kind is an internal grouping, and dumps stay in the
-    /// mnemonics the user recorded.
     /// Returns the arity: one operand.
     pub(crate) fn arity(&self) -> usize {
         1
     }
 
     /// Returns the read set of the derivative rules below, per
-    /// operation: `Exp`, `Sqrt`, and `Tanh` reuse their own output,
-    /// while `Ln`, `Sin`, and `Cos` read their operand. The set is
-    /// deliberately not uniform — a shared one would retain buffers
-    /// liveness does not need.
+    /// operation: `Exp`, `Sqrt`, `Tanh`, and `Expm1` reuse their own
+    /// output, while `Ln`, `Sin`, `Cos`, and `Log1p` read their
+    /// operand. The set is deliberately not uniform — a shared one
+    /// would retain buffers liveness does not need.
     pub(crate) fn reads(&self) -> Reads {
         match self.op {
-            MapOperation::Exp | MapOperation::Sqrt | MapOperation::Tanh => Reads {
-                operands: [false, false],
-                output: true,
-            },
-            MapOperation::Ln | MapOperation::Sin | MapOperation::Cos => Reads {
-                operands: [true, false],
-                output: false,
-            },
+            MapOperation::Exp | MapOperation::Sqrt | MapOperation::Tanh | MapOperation::Expm1 => {
+                Reads {
+                    operands: [false, false],
+                    output: true,
+                }
+            }
+            MapOperation::Ln | MapOperation::Sin | MapOperation::Cos | MapOperation::Log1p => {
+                Reads {
+                    operands: [true, false],
+                    output: false,
+                }
+            }
         }
     }
 
@@ -62,6 +63,8 @@ impl Map {
             MapOperation::Tanh => operand.tanh(),
             MapOperation::Sin => operand.sin(),
             MapOperation::Cos => operand.cos(),
+            MapOperation::Log1p => operand.log1p(),
+            MapOperation::Expm1 => operand.expm1(),
         }
     }
 }
@@ -99,6 +102,17 @@ impl<Rule: Tensorial> Operation<Rule> for Map {
                 let &operand = unary(operands);
                 -(gradient.clone() * operand.sin())
             }
+            // The derivative of `ln(1 + x)` is `1 / (1 + x)`; the
+            // fused accuracy is a forward property, and the rule's
+            // own `1 + x` is safe — no cancellation hides in an
+            // addition this side of the logarithm.
+            MapOperation::Log1p => {
+                let &operand = unary(operands);
+                gradient.clone() / (operand.one_like() + operand.clone())
+            }
+            // The derivative of `e^x - 1` is `e^x`: the node's own
+            // output plus one, mirroring `Exp`'s output reuse.
+            MapOperation::Expm1 => gradient.clone() * (output.clone() + output.one_like()),
         };
         smallvec![Some(cotangent)]
     }

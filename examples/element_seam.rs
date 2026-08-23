@@ -113,6 +113,14 @@ impl Elementary for Audited {
         Audited(self.0.cos())
     }
 
+    fn log1p(&self) -> Self {
+        Audited(self.0.ln_1p())
+    }
+
+    fn expm1(&self) -> Self {
+        Audited(self.0.exp_m1())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Audited(self.0.powf(exponent.0))
     }

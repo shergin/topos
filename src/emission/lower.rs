@@ -257,6 +257,8 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     MapOperation::Tanh => "tanh",
                     MapOperation::Sin => "sine",
                     MapOperation::Cos => "cosine",
+                    MapOperation::Log1p => "log_plus_one",
+                    MapOperation::Expm1 => "exponential_minus_one",
                 };
                 unary(name, emitter)
             }

@@ -257,6 +257,22 @@ fn cos_closes() {
 }
 
 #[test]
+fn log1p_closes() {
+    let tape = Tape::new();
+    let a = tape.parameter(varied([2, 3], 1));
+    let loss = a.log1p().sum();
+    assert_closure(loss.symbol(), &[a.symbol()], tape);
+}
+
+#[test]
+fn expm1_closes() {
+    let tape = Tape::new();
+    let a = tape.parameter(varied([2, 3], 1));
+    let loss = a.expm1().sum();
+    assert_closure(loss.symbol(), &[a.symbol()], tape);
+}
+
+#[test]
 fn sum_closes() {
     let tape = Tape::new();
     let a = tape.parameter(varied([2, 3], 1));

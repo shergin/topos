@@ -244,6 +244,12 @@ impl Elementary for Probe {
     fn cos(&self) -> Self {
         Probe(self.0.cos())
     }
+    fn log1p(&self) -> Self {
+        Probe(self.0.ln_1p())
+    }
+    fn expm1(&self) -> Self {
+        Probe(self.0.exp_m1())
+    }
     fn powf(&self, exponent: Self) -> Self {
         Probe(self.0.powf(exponent.0))
     }
@@ -346,6 +352,12 @@ impl Elementary for LyingProbe {
     }
     fn cos(&self) -> Self {
         LyingProbe(self.0.cos())
+    }
+    fn log1p(&self) -> Self {
+        LyingProbe(self.0.ln_1p())
+    }
+    fn expm1(&self) -> Self {
+        LyingProbe(self.0.exp_m1())
     }
     fn powf(&self, exponent: Self) -> Self {
         LyingProbe(self.0.powf(exponent.0))

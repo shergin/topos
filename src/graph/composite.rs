@@ -53,6 +53,21 @@ impl<'tape, E: Element> Value<'tape, E> {
 }
 
 impl<'tape, E: Element> Value<'tape, E> {
+    /// Records the softplus of this value, `ln(1 + e^x)`, as the
+    /// stable split `self.relu() + log1p(exp(-|x|))` and returns a
+    /// proxy to it.
+    ///
+    /// The naive composition overflows to infinity for large positive
+    /// operands and answers zero long before the true value underflows
+    /// for large negative ones; the split is finite and accurate over
+    /// the whole line, riding the fused [`log1p`](Self::log1p) — the
+    /// consumer that earned that opcode. The gradient is the chain
+    /// rule over the parts, which analytically is the logistic
+    /// sigmoid.
+    pub fn softplus(self) -> Self {
+        self.relu() + (-self.abs()).exp().log1p()
+    }
+
     /// Records the softmax probabilities of this value along `axis` as
     /// the composition `self.log_softmax(axis).exp()` and returns a proxy
     /// to it.

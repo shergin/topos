@@ -852,6 +852,18 @@ impl<Element: Elementary> Tensor<Element> {
         self.mapped(MapOperation::Cos, |element| element.cos())
     }
 
+    /// Returns the natural logarithm of one plus each element,
+    /// accurate near zero.
+    pub fn log1p(&self) -> Self {
+        self.mapped(MapOperation::Log1p, |element| element.log1p())
+    }
+
+    /// Returns `e` raised to each element, minus one, accurate near
+    /// zero.
+    pub fn expm1(&self) -> Self {
+        self.mapped(MapOperation::Expm1, |element| element.expm1())
+    }
+
     /// Returns each element raised to the matching element of
     /// `exponent`.
     ///
@@ -1805,6 +1817,14 @@ impl<E: Element> Tensorial for Tensor<E> {
 
     fn cos(&self) -> Self {
         Tensor::cos(self)
+    }
+
+    fn log1p(&self) -> Self {
+        Tensor::log1p(self)
+    }
+
+    fn expm1(&self) -> Self {
+        Tensor::expm1(self)
     }
 
     fn powf(&self, exponent: Self) -> Self {

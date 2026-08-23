@@ -17,6 +17,48 @@ fn abs_composes_from_maximum() {
 }
 
 #[test]
+fn softplus_is_stable_across_the_whole_line() {
+    let tape: Tape<f64> = Tape::new();
+    let x = tape.parameter(Tensor::new([4], [-1000.0_f64, -0.5, 0.5, 1000.0]));
+    let smooth = x.softplus();
+    let loss = smooth.sum();
+    let (x, smooth, loss) = (x.symbol(), smooth.symbol(), loss.symbol());
+    let network = tape.into_network();
+
+    let run = network.forward(&network.parameters(), []);
+    let values = run.of(smooth).to_vec();
+    // The naive `ln(1 + e^x)` overflows to infinity at 1000 and the
+    // stable split answers the argument itself; at -1000 the true
+    // value underflows past every representable positive, so zero is
+    // the correctly rounded answer.
+    assert_eq!(values[3], 1000.0);
+    assert_eq!(values[0], 0.0);
+    // Midrange the split agrees with the naive form to a few ulps.
+    for (index, probe) in [(1, -0.5_f64), (2, 0.5)] {
+        let naive = (1.0 + probe.exp()).ln();
+        assert!(
+            (values[index] - naive).abs() <= 4.0 * f64::EPSILON * naive,
+            "softplus({probe}) = {}, naive answers {naive}",
+            values[index]
+        );
+    }
+
+    // The gradient is the logistic sigmoid, paid by the chain rule.
+    let gradients = run.backward(loss);
+    let slopes = gradients.of(x).to_vec();
+    assert_eq!(slopes[0], 0.0);
+    assert_eq!(slopes[3], 1.0);
+    for (index, probe) in [(1, -0.5_f64), (2, 0.5)] {
+        let sigmoid = 1.0 / (1.0 + (-probe).exp());
+        assert!(
+            (slopes[index] - sigmoid).abs() <= 4.0 * f64::EPSILON,
+            "softplus'({probe}) = {}, the sigmoid answers {sigmoid}",
+            slopes[index]
+        );
+    }
+}
+
+#[test]
 fn relu_composes_from_maximum_with_a_counted_zero() {
     let tape: Tape<f64> = Tape::new();
     let x = tape.parameter(Tensor::new([4], [-2.0_f64, -0.0, 0.0, 3.0]));

@@ -229,6 +229,14 @@ impl Elementary for Bf16 {
         Self::from_f32(self.to_f32().cos())
     }
 
+    fn log1p(&self) -> Self {
+        Self::from_f32(self.to_f32().ln_1p())
+    }
+
+    fn expm1(&self) -> Self {
+        Self::from_f32(self.to_f32().exp_m1())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Self::from_f32(self.to_f32().powf(exponent.to_f32()))
     }

@@ -59,7 +59,7 @@ pub(super) struct Context {
     pub(super) tiled: Retained<ProtocolObject<dyn MTLComputePipelineState>>,
     /// The elementwise map pipelines, indexed by
     /// [`map_pipeline_index`](super::map::map_pipeline_index).
-    pub(super) maps: [Retained<ProtocolObject<dyn MTLComputePipelineState>>; 6],
+    pub(super) maps: [Retained<ProtocolObject<dyn MTLComputePipelineState>>; 8],
     library: Retained<ProtocolObject<dyn MTLLibrary>>,
     specialized: Mutex<HashMap<ShapeKey, Retained<ProtocolObject<dyn MTLComputePipelineState>>>>,
     pub(super) pool: Pool,
@@ -105,6 +105,8 @@ impl Context {
             pipeline(&device, &library, "map_tanh_f32").map_err(SetupError::Failed)?,
             pipeline(&device, &library, "map_sin_f32").map_err(SetupError::Failed)?,
             pipeline(&device, &library, "map_cos_f32").map_err(SetupError::Failed)?,
+            pipeline(&device, &library, "map_log1p_f32").map_err(SetupError::Failed)?,
+            pipeline(&device, &library, "map_expm1_f32").map_err(SetupError::Failed)?,
         ];
         if tiled.maxTotalThreadsPerThreadgroup() < 128 {
             return Err(SetupError::Failed(

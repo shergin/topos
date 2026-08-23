@@ -160,6 +160,8 @@ impl Opcode {
                 MapOperation::Tanh => "Tanh",
                 MapOperation::Sin => "Sin",
                 MapOperation::Cos => "Cos",
+                MapOperation::Log1p => "Log1p",
+                MapOperation::Expm1 => "Expm1",
             },
             Opcode::Powf => "Powf",
             Opcode::Maximum => "Maximum",

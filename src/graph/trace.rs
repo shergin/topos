@@ -152,6 +152,14 @@ impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
         Self::of(self.value.cos())
     }
 
+    fn log1p(&self) -> Self {
+        Self::of(self.value.log1p())
+    }
+
+    fn expm1(&self) -> Self {
+        Self::of(self.value.expm1())
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         Self::of(self.value.powf(exponent.value))
     }

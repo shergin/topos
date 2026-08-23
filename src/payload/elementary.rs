@@ -26,6 +26,11 @@ pub enum MapOperation {
     Sin,
     /// The cosine of each element.
     Cos,
+    /// The natural logarithm of one plus each element, accurate near
+    /// zero.
+    Log1p,
+    /// `e` raised to each element, minus one, accurate near zero.
+    Expm1,
 }
 
 /// Elementary numeric functions of an element, plus its backend
@@ -62,6 +67,21 @@ pub trait Elementary: Differentiable {
 
     /// Returns the cosine of `self`.
     fn cos(&self) -> Self;
+
+    /// Returns the natural logarithm of one plus `self`.
+    ///
+    /// It is a distinct operation rather than `ln` of an addition
+    /// because the composed form rounds `1 + self` first, destroying
+    /// every significant digit of a `self` near zero; the fused form
+    /// stays accurate there.
+    fn log1p(&self) -> Self;
+
+    /// Returns `e` raised to the power of `self`, minus one.
+    ///
+    /// It is a distinct operation for the same reason as
+    /// [`log1p`](Elementary::log1p): the composed subtraction cancels
+    /// catastrophically near zero, and the fused form does not.
+    fn expm1(&self) -> Self;
 
     /// Returns `self` raised to the power of `exponent`.
     fn powf(&self, exponent: Self) -> Self;
@@ -156,6 +176,14 @@ impl Elementary for f32 {
         f32::cos(*self)
     }
 
+    fn log1p(&self) -> Self {
+        f32::ln_1p(*self)
+    }
+
+    fn expm1(&self) -> Self {
+        f32::exp_m1(*self)
+    }
+
     fn powf(&self, exponent: Self) -> Self {
         f32::powf(*self, exponent)
     }
@@ -204,6 +232,14 @@ impl Elementary for f64 {
 
     fn cos(&self) -> Self {
         f64::cos(*self)
+    }
+
+    fn log1p(&self) -> Self {
+        f64::ln_1p(*self)
+    }
+
+    fn expm1(&self) -> Self {
+        f64::exp_m1(*self)
     }
 
     fn powf(&self, exponent: Self) -> Self {
