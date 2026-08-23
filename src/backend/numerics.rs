@@ -39,6 +39,20 @@ impl Numerics {
             Numerics::Fast => Fidelity::Envelope,
         }
     }
+
+    /// Runs `body` with the `Exact` posture installed for the current
+    /// thread, restoring the previous posture on return or panic.
+    ///
+    /// It is the direct-call road to the reference bits: a payload
+    /// operation outside any run consults the ambient posture, so
+    /// `Numerics::exactly(|| a.matmul(&b))` compares a direct call
+    /// against the reference without compiling a plan. Runs keep
+    /// their own posture regardless: a request's numerics override
+    /// the ambient one for the whole run.
+    pub fn exactly<Output>(body: impl FnOnce() -> Output) -> Output {
+        let _scope = NumericsScope::enter(Numerics::Exact);
+        body()
+    }
 }
 
 thread_local! {

@@ -39,18 +39,33 @@ pub(crate) trait Task: Sized {
 /// One whole-buffer elementwise transcendental as an offerable
 /// task: a [`MapOperation`] paired with its elements, the map
 /// chains' twin of [`GemmTask`].
-pub(crate) struct MapTask<'buffers, Element> {
+///
+/// It is public so the three [`Elementary`](crate::Elementary) hooks
+/// agree on a task struct: `gemm` takes a [`GemmTask`], `batch_norm`
+/// a [`BatchNormTask`], and `map` takes this.
+#[derive(Debug)]
+pub struct MapTask<'buffers, Element> {
     operation: MapOperation,
     elements: &'buffers [Element],
 }
 
 impl<'buffers, Element> MapTask<'buffers, Element> {
     /// Creates the task over a whole buffer.
-    pub(crate) fn new(operation: MapOperation, elements: &'buffers [Element]) -> Self {
+    pub fn new(operation: MapOperation, elements: &'buffers [Element]) -> Self {
         Self {
             operation,
             elements,
         }
+    }
+
+    /// Returns the transcendental this task applies.
+    pub fn operation(&self) -> MapOperation {
+        self.operation
+    }
+
+    /// Returns the whole buffer the task maps over.
+    pub fn elements(&self) -> &'buffers [Element] {
+        self.elements
     }
 }
 

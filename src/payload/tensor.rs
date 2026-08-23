@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use static_assertions::assert_impl_all;
 
+use crate::backend::MapTask;
+
 use super::elementary::MapOperation;
 use super::gemm;
 use super::layout::{Layout, Strides};
@@ -728,7 +730,7 @@ impl<Element: Elementary> Tensor<Element> {
     /// everywhere else (constants, declined maps).
     fn mapped(&self, operation: MapOperation, fallback: impl Fn(&Element) -> Element) -> Self {
         if let Some(elements) = self.as_slice()
-            && let Some(mapped) = Element::map(operation, elements)
+            && let Some(mapped) = Element::map(&MapTask::new(operation, elements))
         {
             assert_eq!(
                 mapped.len(),
@@ -738,7 +740,7 @@ impl<Element: Elementary> Tensor<Element> {
             return Self::dense(self.logical_shape().clone(), mapped);
         }
         if let Some((window, layout)) = self.strided_window()
-            && let Some(mapped) = Element::map(operation, window)
+            && let Some(mapped) = Element::map(&MapTask::new(operation, window))
         {
             assert_eq!(
                 mapped.len(),

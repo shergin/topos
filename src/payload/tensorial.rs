@@ -204,7 +204,7 @@ pub trait Tensorial: Elementary {
 /// and the patch reshape — over any tensorial payload: the bitwise
 /// reference the fused fast paths are tested against, and the fallback
 /// for representations without one.
-pub(crate) fn composed_windowed_patches<Data: Tensorial>(
+pub fn composed_windowed_patches<Data: Tensorial>(
     input: &Data,
     kernel_height: usize,
     kernel_width: usize,
@@ -237,7 +237,7 @@ pub(crate) fn composed_windowed_patches<Data: Tensorial>(
 /// any tensorial payload, in the exact operation order the tape
 /// records: the bitwise reference the fused fast paths are graded
 /// against, and the fallback for representations without one.
-pub(crate) fn composed_batch_norm<Data: Tensorial>(
+pub fn composed_batch_norm<Data: Tensorial>(
     input: &Data,
     scale: &Data,
     shift: &Data,
@@ -263,7 +263,7 @@ pub(crate) fn composed_batch_norm<Data: Tensorial>(
 /// tensorial payload, in the exact operation order the tape records:
 /// the bitwise reference the fused direct walk is graded against,
 /// and the fallback for representations without one.
-pub(crate) fn composed_max_pool<Data: Tensorial>(input: &Data, size: usize, stride: usize) -> Data {
+pub fn composed_max_pool<Data: Tensorial>(input: &Data, size: usize, stride: usize) -> Data {
     let shape = input.shape();
     let axes = shape.axes();
     let (batch, channels, height, width) = (axes[0], axes[1], axes[2], axes[3]);

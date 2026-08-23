@@ -369,8 +369,8 @@ impl Elementary for LyingProbe {
     fn gemm(task: &GemmTask<'_, Self>) -> Option<Vec<Self>> {
         Some(vec![LyingProbe(42.0); task.m() * task.n() - 1])
     }
-    fn map(_operation: crate::MapOperation, elements: &[Self]) -> Option<Vec<Self>> {
-        Some(vec![LyingProbe(42.0); elements.len() - 1])
+    fn map(task: &crate::MapTask<'_, Self>) -> Option<Vec<Self>> {
+        Some(vec![LyingProbe(42.0); task.elements().len() - 1])
     }
 }
 

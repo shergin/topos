@@ -42,9 +42,9 @@ pub use backend::{Backend, BackendUnavailable};
 pub use coverage::{Coverage, Dispatch, Fidelity};
 pub use formula::{Formula, Precision};
 pub use numerics::Numerics;
+pub use task::MapTask;
 
 pub(crate) use numerics::NumericsScope;
-pub(crate) use task::MapTask;
 
 use task::Task;
 

@@ -72,9 +72,11 @@ mod neural;
 #[cfg(feature = "evcxr")]
 mod notebook;
 mod payload;
+pub mod reference;
 
 pub use backend::{
-    Backend, BackendUnavailable, Coverage, Dispatch, Fidelity, Formula, Numerics, Precision,
+    Backend, BackendUnavailable, Coverage, Dispatch, Fidelity, Formula, MapTask, Numerics,
+    Precision,
 };
 pub use emission::{EmitError, Emittable};
 pub use engine::{Plan, Request, Run};

@@ -35,7 +35,9 @@ use super::Differentiable;
 /// Tasks are built by `Tensor`'s `matmul` (the constructor validates
 /// that each slice spans its matrix under its strides) and read by
 /// backend code and by [`Elementary::gemm`](super::Elementary::gemm)
-/// implementations.
+/// implementations. The constructor is public so an out-of-tree
+/// element can build the same validated tasks its differential tests
+/// need.
 #[derive(Debug)]
 pub struct GemmTask<'buffers, Element> {
     a: &'buffers [Element],
@@ -54,7 +56,7 @@ impl<'buffers, Element> GemmTask<'buffers, Element> {
     /// # Panics
     /// Panics if any extent is zero or a slice does not span its
     /// matrix under its strides.
-    pub(crate) fn new(
+    pub fn new(
         a: &'buffers [Element],
         a_strides: [usize; 2],
         b: &'buffers [Element],
@@ -137,7 +139,11 @@ impl<'buffers, Element> GemmTask<'buffers, Element> {
 /// is a serial dependency chain the compiler can neither vectorize
 /// nor pipeline, while per-column accumulators keep every update
 /// independent.
-pub(crate) fn multiply<Element: Differentiable>(task: &GemmTask<'_, Element>) -> Vec<Element> {
+///
+/// It is published through [`reference`](crate::reference) as the
+/// bitwise oracle an out-of-tree element's `gemm` hook is
+/// differentially tested against.
+pub fn multiply<Element: Differentiable>(task: &GemmTask<'_, Element>) -> Vec<Element> {
     let mut accumulators = Vec::with_capacity(task.m * task.n);
     for row in 0..task.m {
         let a_row_start = row * task.a_strides[0];

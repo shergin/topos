@@ -88,12 +88,12 @@ pub trait Elementary: Differentiable {
     /// It answers `None` — compute element by element — unless the
     /// element type has a backend entry point; `f32` and `f64`
     /// forward to the chain in `backend`. Answering `Some` asserts
-    /// `operation` applied to every element in order.
-    fn map(operation: MapOperation, elements: &[Self]) -> Option<Vec<Self>>
+    /// the task's operation applied to every element in order.
+    fn map(task: &MapTask<'_, Self>) -> Option<Vec<Self>>
     where
         Self: Sized,
     {
-        let _ = (operation, elements);
+        let _ = task;
         None
     }
 
@@ -149,8 +149,8 @@ impl Elementary for f32 {
         offered(task)
     }
 
-    fn map(operation: MapOperation, elements: &[Self]) -> Option<Vec<Self>> {
-        offered(&MapTask::new(operation, elements))
+    fn map(task: &MapTask<'_, Self>) -> Option<Vec<Self>> {
+        offered(task)
     }
 
     fn batch_norm(task: &BatchNormTask<'_, Self>) -> Option<Normalized<Self>> {
@@ -191,8 +191,8 @@ impl Elementary for f64 {
         offered(task)
     }
 
-    fn map(operation: MapOperation, elements: &[Self]) -> Option<Vec<Self>> {
-        offered(&MapTask::new(operation, elements))
+    fn map(task: &MapTask<'_, Self>) -> Option<Vec<Self>> {
+        offered(task)
     }
 
     fn batch_norm(task: &BatchNormTask<'_, Self>) -> Option<Normalized<Self>> {
