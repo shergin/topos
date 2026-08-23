@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use smallvec::SmallVec;
@@ -154,28 +155,27 @@ impl<Data: Differentiable> Run<Data> {
         &self.field
     }
 
-    /// Assembles a [`Gradients`] field from recorded gradient values:
-    /// each of the adjoints' `(wrt, gradient)` pairs copies the
-    /// gradient node's payload from this run into the `wrt`
-    /// parameter's slot, with zeros everywhere else — the field
-    /// [`Run::backward`] would produce for those parameters, when the
-    /// gradients were recorded by
+    /// Assembles the parameter-aligned gradients of this run: each of
+    /// the adjoints' `(wrt, gradient)` pairs copies the gradient
+    /// node's payload into the `wrt` parameter's slot, with a zero of
+    /// the parameter's shape in every slot the adjoints do not name —
+    /// exactly the entries [`Run::backward`] would produce for those
+    /// parameters, when the gradients were recorded by
     /// [`Tape::differentiate`](crate::Tape::differentiate) instead of
     /// computed by the engine.
     ///
-    /// It is the bridge from recorded gradients to
-    /// [`Parameters::step`](crate::Parameters::step): one forward run
-    /// of a plan compiled over the adjoints' roots yields the update
-    /// direction with no backward pass at all, and the closure suite
-    /// pins the two routes bitwise.
+    /// The result feeds [`Parameters::step`](crate::Parameters::step)
+    /// directly: one forward run of a plan compiled over the adjoints'
+    /// roots yields the update direction with no backward pass and no
+    /// node-aligned buffer at all, and the closure suite pins the two
+    /// routes bitwise.
     ///
     /// # Panics
     /// Panics as [`Run::of`] panics for either half of a pair,
     /// if a `wrt` entry is not a parameter, or if a gradient's
     /// payload shape differs from its parameter's recorded shape.
-    pub fn recorded_gradients(&self, adjoints: &Adjoints) -> Gradients<Data> {
-        let values = self.field.payloads();
-        let mut gradients: Vec<Data> = values.iter().map(|value| value.zero_like()).collect();
+    pub fn recorded_gradients(&self, adjoints: &Adjoints) -> Parameters<Data> {
+        let mut recorded: HashMap<usize, Data> = HashMap::new();
         for &(parameter, gradient) in adjoints.pairs() {
             let index = self.locate(parameter);
             assert!(
@@ -183,7 +183,7 @@ impl<Data: Differentiable> Run<Data> {
                     self.structure.functions.get(index),
                     Some(Function::Parameter(_))
                 ),
-                "recorded gradients scatter into parameter slots; a `wrt` entry of \
+                "recorded gradients fill parameter slots; a `wrt` entry of \
                  these adjoints is not a parameter"
             );
             let payload = self.of(gradient).clone();
@@ -196,9 +196,25 @@ impl<Data: Differentiable> Run<Data> {
                     .clone(),
                 "recorded gradient shape does not match its parameter's"
             );
-            gradients[index] = payload;
+            recorded.insert(index, payload);
         }
-        Field::new(self.field.origin(), gradients)
+        // Parameter nodes appear in recording order, which is slot
+        // order; unnamed slots answer a zero of the parameter's shape,
+        // like the non-ancestor entries of an engine backward.
+        let values = self.field.payloads();
+        let rows = self
+            .structure
+            .functions
+            .iter()
+            .enumerate()
+            .filter(|(_, function)| matches!(function, Function::Parameter(_)))
+            .map(|(index, _)| {
+                let payload = recorded
+                    .remove(&index)
+                    .unwrap_or_else(|| values[index].zero_like());
+                (ValueId(index), payload)
+            });
+        Parameters::from_rows(self.field.origin(), rows)
     }
 }
 

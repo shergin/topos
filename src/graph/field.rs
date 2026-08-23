@@ -12,17 +12,20 @@ assert_impl_all!(Field<f64>: Send, Sync);
 
 /// A value-aligned buffer over the nodes of one network's recording.
 ///
-/// The [`Gradients`] of a backward run are one kind of field. Other fields can
-/// hold optimizer state such as momentum or moments, or combine gradients from
-/// several runs; a [`Run`](crate::Run) holds its forward payloads in one too.
-/// Fields carry their network family's origin rather than borrowing anything,
-/// so a field outlives every phase and steps any number of
-/// [`Parameters`](crate::Parameters) states.
+/// The [`Gradients`] of a backward run are one kind of field, and a
+/// [`Run`](crate::Run) holds its forward payloads in one too. The node
+/// grain is the research and teaching product — `gradients.of(hidden)`
+/// answers for every value, not only parameters — while training
+/// speaks the parameter grain: [`Field::parameters`] projects a field
+/// onto a [`Parameters`](crate::Parameters) table, whose slot-aligned
+/// algebra carries optimizer state. Fields carry their network
+/// family's origin rather than borrowing anything, so a field
+/// outlives every phase.
 ///
 /// Field operations require both operands to cover the same number of nodes
 /// of the same network. A field produced before a reopen extends the
 /// recording still covers its original prefix; accessing a newer node or
-/// stepping parameters it does not cover is rejected.
+/// projecting onto parameters it does not cover is rejected.
 #[derive(Debug, Clone)]
 pub struct Field<Data> {
     origin: Origin,
@@ -34,9 +37,9 @@ pub struct Field<Data> {
 ///
 /// It is an alias rather than a distinct type because gradients *are* a field,
 /// the one that differentiation produces, so every field operation applies to
-/// them unchanged. Read a single gradient with [`Field::of`], and combine runs
-/// or carry optimizer state with the rest of the field algebra. The alias names
-/// the role at the API boundary, most visibly on
+/// them unchanged. Read a single gradient with [`Field::of`], and project the
+/// parameter entries out for training with [`Field::parameters`]. The alias
+/// names the role at the API boundary, most visibly on
 /// [`Run::backward`](crate::Run::backward), while the type keeps
 /// the one invariant it actually enforces: alignment to a graph, not
 /// differentiation.
@@ -144,10 +147,10 @@ impl<Data: Tensorial> Field<Data> {
     /// Returns a field with every entry multiplied by the single-value
     /// `factor`, spread to each entry's shape.
     ///
-    /// It is the scalar arithmetic of optimizer state: bias-correction
-    /// and decay factors multiply every parameter's entry regardless of
-    /// its shape. For scalar payloads the spread is the identity, so
-    /// scalar fields scale exactly as they always did.
+    /// It is the scalar arithmetic of whole-graph analysis — weighting
+    /// a run's cotangents before combining them with another run's.
+    /// For scalar payloads the spread is the identity, so scalar
+    /// fields scale exactly as they always did.
     ///
     /// # Panics
     /// For tensor payloads, panics if `factor` holds more than one

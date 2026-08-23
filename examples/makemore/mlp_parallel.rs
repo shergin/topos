@@ -4,9 +4,11 @@
 //! network, and averages the shard gradients into a single update.
 //!
 //! This leans on the engine's concurrency contract: the sealed network
-//! is immutable, feeds are run state rather than graph state, and
-//! `Gradients` is a `Field`, so gradients from concurrent runs over one
-//! parameter state combine with the field algebra. Because `cross_entropy`
+//! is immutable, feeds are run state rather than graph state, and each
+//! shard's backward projects onto the shared parameter slots
+//! (`Field::parameters`), so gradients from concurrent runs over one
+//! parameter state combine with the `Parameters` algebra — summing
+//! slot-sized tables, never graph-sized buffers. Because `cross_entropy`
 //! normalizes each shard by its own mass, the average of equal-sized
 //! shard gradients equals the full-batch gradient exactly, and summing
 //! the shards in a fixed pairwise tree keeps the run deterministic
@@ -21,7 +23,7 @@ use std::time::Instant;
 
 use rayon::prelude::*;
 
-use topos::{Gradients, Mlp, Shape, Tape, Tensor, Tensorial, cross_entropy, init};
+use topos::{Mlp, Parameters, Shape, Tape, Tensor, Tensorial, cross_entropy, init};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};
@@ -56,14 +58,14 @@ const SHARD_LEN: usize = 8;
 /// the shard count: the reduction runs its pairs concurrently and
 /// finishes in logarithmic depth, while the tree — not the scheduler —
 /// decides the order of additions, keeping the result deterministic.
-fn tree_sum(mut layer: Vec<Gradients<Tensor<f32>>>) -> Gradients<Tensor<f32>> {
+fn tree_sum(mut layer: Vec<Parameters<Tensor<f32>>>) -> Parameters<Tensor<f32>> {
     while layer.len() > 1 {
         layer = layer
             .par_chunks(2)
             .map(|pair| match pair {
                 [left, right] => left + right,
                 [single] => single.clone(),
-                _ => unreachable!("chunks of two hold one or two fields"),
+                _ => unreachable!("chunks of two hold one or two tables"),
             })
             .collect();
     }
@@ -133,7 +135,7 @@ fn main() {
 
         // Fan out: one immutable forward and backward run per shard,
         // all reading the same network and parameter state.
-        let shard_results: Vec<(f32, Gradients<Tensor<f32>>)> = (0..SHARD_COUNT)
+        let shard_results: Vec<(f32, Parameters<Tensor<f32>>)> = (0..SHARD_COUNT)
             .into_par_iter()
             .map(|shard| {
                 let rows = &batch[shard * SHARD_LEN..(shard + 1) * SHARD_LEN];
@@ -160,11 +162,14 @@ fn main() {
                     ],
                 );
                 let shard_loss = run.of(loss_symbol).to_vec()[0];
-                (shard_loss, run.backward(loss_symbol))
+                (
+                    shard_loss,
+                    run.backward(loss_symbol).parameters(&parameters),
+                )
             })
             .collect();
 
-        let (shard_losses, shard_gradients): (Vec<f32>, Vec<Gradients<Tensor<f32>>>) =
+        let (shard_losses, shard_gradients): (Vec<f32>, Vec<Parameters<Tensor<f32>>>) =
             shard_results.into_iter().unzip();
         let batch_loss = shard_losses.iter().sum::<f32>() / SHARD_COUNT as f32;
         let gradients = tree_sum(shard_gradients)

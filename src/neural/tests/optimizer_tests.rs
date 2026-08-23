@@ -19,7 +19,7 @@ fn sgd_matches_the_hand_written_rule_bitwise() {
     let network = tape.into_network();
     let parameters = network.parameters();
     let run = network.forward(&parameters, []);
-    let gradients = run.backward(loss);
+    let gradients = run.backward(loss).parameters(&parameters);
     let rate = Tensor::new([], [0.05_f64]);
 
     let by_hand = parameters.step(&gradients, |parameter, gradient| {
@@ -63,7 +63,7 @@ fn a_comparison_loop_runs_over_dynamic_optimizers() {
             let run = network.forward(&parameters, []);
             let value = run.of(loss).to_vec()[0];
             first.get_or_insert(value);
-            let gradients = run.backward(loss);
+            let gradients = run.backward(loss).parameters(&parameters);
             parameters = strategy.step(&parameters, &gradients, &rate);
         }
         let run = network.forward(&parameters, []);
@@ -83,7 +83,7 @@ fn step_each_sees_every_parameter_with_its_identity() {
     let network = tape.into_network();
     let parameters = network.parameters();
     let run = network.forward(&parameters, []);
-    let gradients = run.backward(loss);
+    let gradients = run.backward(loss).parameters(&parameters);
 
     let mut seen = Vec::new();
     let next = parameters.step_each(&gradients, |symbol, current, _| {

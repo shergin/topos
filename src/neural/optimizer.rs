@@ -1,4 +1,4 @@
-use crate::{Differentiable, Gradients, Parameters, Tensorial};
+use crate::{Differentiable, Parameters, Tensorial};
 
 /// A training-step strategy: how gradients and the current parameter
 /// state become the next state.
@@ -8,9 +8,11 @@ use crate::{Differentiable, Gradients, Parameters, Tensorial};
 /// strategy — kept an *open* trait rather than a closed enum on
 /// purpose: custom optimizers are ordinary implementations with the
 /// same standing as the built-in ones, holding whatever state they
-/// need as plain fields ([`Field`](crate::Field) algebra was designed
-/// as the state carrier). The trait is object-safe, so a comparison
-/// loop can iterate `&mut dyn Optimizer` implementations side by side.
+/// need as plain fields ([`Parameters`](crate::Parameters) algebra is
+/// the designed state carrier: moments and velocities are
+/// parameter-aligned tables). The trait is object-safe, so a
+/// comparison loop can iterate `&mut dyn Optimizer` implementations
+/// side by side.
 ///
 /// The learning rate is a per-step argument, not optimizer state:
 /// schedules stay caller-owned loop arithmetic, visible on the page
@@ -19,13 +21,15 @@ pub trait Optimizer<Data: Tensorial> {
     /// Returns `parameters` stepped by `gradients` at `learning_rate`,
     /// updating this optimizer's own state.
     ///
-    /// The gradients may come from [`Run::backward`](crate::Run::backward)
-    /// or from [`Run::recorded_gradients`](crate::Run::recorded_gradients)
-    /// over a compiled gradient plan — a field is a field.
+    /// The gradients arrive parameter-aligned:
+    /// [`Run::recorded_gradients`](crate::Run::recorded_gradients)
+    /// answers this grain directly, and an engine
+    /// [`backward`](crate::Run::backward) projects through
+    /// [`Field::parameters`](crate::Field::parameters).
     fn step(
         &mut self,
         parameters: &Parameters<Data>,
-        gradients: &Gradients<Data>,
+        gradients: &Parameters<Data>,
         learning_rate: &Data,
     ) -> Parameters<Data>;
 }
@@ -41,7 +45,7 @@ impl<Data: Tensorial> Optimizer<Data> for Sgd {
     fn step(
         &mut self,
         parameters: &Parameters<Data>,
-        gradients: &Gradients<Data>,
+        gradients: &Parameters<Data>,
         learning_rate: &Data,
     ) -> Parameters<Data> {
         parameters.step(gradients, |parameter, gradient| {

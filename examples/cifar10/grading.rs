@@ -225,7 +225,7 @@ fn main() {
 
         let gradients = match &adjoints {
             Some(adjoints) => run.recorded_gradients(adjoints),
-            None => run.backward(loss),
+            None => run.backward(loss).parameters(&parameters),
         };
         let learning_rate = if step < steps * 3 / 4 { &fast } else { &slow };
         parameters = parameters.step(&gradients, |parameter, gradient| {

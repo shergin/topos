@@ -66,7 +66,7 @@ fn mlp_learns_xor() {
     let mut parameters = network.parameters();
     for _ in 0..2000 {
         let run = network.forward(&parameters, []);
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)
         });

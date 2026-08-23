@@ -45,7 +45,7 @@ fn combination_rejects_foreign_networks() {
 }
 
 #[test]
-fn fields_step_later_parameter_states() {
+fn projected_fields_step_later_parameter_states() {
     let tape = Tape::new();
     let w = tape.parameter(1.0_f64).symbol();
     let network = tape.into_network();
@@ -55,10 +55,11 @@ fn fields_step_later_parameter_states() {
     let gradients = run.backward(w);
     assert_eq!(*gradients.of(w), 1.0);
 
-    // A field is detached state: it still steps parameter states minted
-    // after the run it came from.
-    let stepped = parameters.step(&gradients, |parameter, direction| parameter - direction);
+    // A projected direction is detached state: it still steps
+    // parameter states minted after the run it came from.
+    let direction = gradients.parameters(&parameters);
+    let stepped = parameters.step(&direction, |parameter, direction| parameter - direction);
     assert_eq!(*stepped.of(w), 0.0);
-    let again = stepped.step(&gradients, |parameter, direction| parameter - direction);
+    let again = stepped.step(&direction, |parameter, direction| parameter - direction);
     assert_eq!(*again.of(w), -1.0);
 }

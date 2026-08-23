@@ -234,7 +234,7 @@ fn main() {
             );
             window_loss = 0.0;
         }
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         let learning_rate = if step < 4000 { &fast } else { &slow };
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)

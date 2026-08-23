@@ -217,7 +217,7 @@ fn engine_trains_tensor_payloads_unchanged() {
     let mut parameters = network.parameters();
     for _ in 0..200 {
         let run = network.forward(&parameters, []);
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.clone()
         });
@@ -474,7 +474,7 @@ fn step_rejects_shape_changing_rules() {
     let network = tape.into_network();
     let parameters = network.parameters();
     let run = network.forward(&parameters, []);
-    let gradients = run.backward(loss);
+    let gradients = run.backward(loss).parameters(&parameters);
     parameters.step(&gradients, |_parameter, _gradient| {
         Tensor::new([2], [7.0, 8.0])
     });
@@ -500,7 +500,7 @@ fn linear_regression_trains_in_matrix_form() {
     let mut parameters = network.parameters();
     for _ in 0..300 {
         let run = network.forward(&parameters, []);
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)
         });

@@ -80,7 +80,7 @@ fn main() {
             for _ in 0..500 {
                 let run = network.forward(&parameters, []);
                 losses.push(*run.of(loss));
-                let gradients = run.backward(loss);
+                let gradients = run.backward(loss).parameters(&parameters);
                 parameters = parameters.step(&gradients, |parameter, gradient| {
                     parameter - learning_rate * gradient
                 });

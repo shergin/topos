@@ -1,6 +1,6 @@
 use std::thread;
 
-use crate::{Field, Tape, Tensor};
+use crate::{Parameters, Tape, Tensor};
 
 #[test]
 fn sealing_preserves_the_recorded_length() {
@@ -126,7 +126,7 @@ fn training_steps_state_without_touching_the_network() {
             &parameters,
             [(input, sample_input), (target, sample_target)],
         );
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter - 0.05 * gradient
         });
@@ -149,7 +149,10 @@ fn gradient_descent_converges() {
 
     let mut parameters = network.parameters();
     for _ in 0..30 {
-        let gradients = network.forward(&parameters, []).backward(loss);
+        let gradients = network
+            .forward(&parameters, [])
+            .backward(loss)
+            .parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| parameter - 0.3 * gradient);
     }
     assert!((*parameters.of(parameter) - 3.0).abs() < 1e-6);
@@ -166,9 +169,12 @@ fn momentum_descent_converges() {
     let network = tape.into_network();
 
     let mut parameters = network.parameters();
-    let mut velocity: Option<Field<f64>> = None;
+    let mut velocity: Option<Parameters<f64>> = None;
     for _ in 0..40 {
-        let gradients = network.forward(&parameters, []).backward(loss);
+        let gradients = network
+            .forward(&parameters, [])
+            .backward(loss)
+            .parameters(&parameters);
         let step = match velocity {
             Some(previous) => previous.scale(&0.5) + gradients,
             None => gradients,
@@ -256,7 +262,7 @@ fn sliced_gradients_step_parameters_like_full_gradients() {
 
     let parameters = network.parameters();
     let run = network.forward_for(&parameters, [first_loss], []);
-    let gradients = run.backward(first_loss);
+    let gradients = run.backward(first_loss).parameters(&parameters);
     let stepped = parameters.step(&gradients, |parameter: &Tensor<f64>, gradient| {
         parameter.clone() - gradient.clone()
     });

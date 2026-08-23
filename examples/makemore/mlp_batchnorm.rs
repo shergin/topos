@@ -216,7 +216,7 @@ fn main() {
         mean_estimate = mean_estimate * keep.clone() + batch_mean * take.clone();
         variance_estimate = variance_estimate * keep.clone() + batch_variance * take.clone();
 
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         let learning_rate = if step < 4000 { &fast } else { &slow };
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)

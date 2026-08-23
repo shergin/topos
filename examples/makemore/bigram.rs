@@ -94,7 +94,7 @@ fn main() {
         if step % 100 == 0 {
             println!("step {step:4}: minibatch loss = {batch_loss:.4}");
         }
-        let gradients = run.backward(loss_symbol);
+        let gradients = run.backward(loss_symbol).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)
         });

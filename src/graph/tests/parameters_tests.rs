@@ -13,7 +13,7 @@ fn parameters_materialize_the_record_site_initials() {
     // Every call answers an independent state: stepping one leaves a
     // fresh materialization at the initials.
     let run = network.forward(&parameters, []);
-    let gradients = run.backward(weight);
+    let gradients = run.backward(weight).parameters(&parameters);
     let stepped = parameters.step(&gradients, |parameter, gradient| parameter - gradient);
     assert_eq!(*stepped.of(weight), 0.5);
     assert_eq!(*network.parameters().of(weight), 1.5);
@@ -29,7 +29,7 @@ fn step_each_passes_the_parameter_symbol() {
 
     let parameters = network.parameters();
     let run = network.forward(&parameters, []);
-    let gradients = run.backward(loss);
+    let gradients = run.backward(loss).parameters(&parameters);
     let stepped = parameters.step_each(&gradients, |symbol, current, direction| {
         if symbol == first {
             current - direction
@@ -51,7 +51,7 @@ fn cloned_states_diverge_independently() {
     let parameters = network.parameters();
     let fast = parameters.clone();
     let run = network.forward(&fast, []);
-    let gradients = run.backward(loss);
+    let gradients = run.backward(loss).parameters(&fast);
     let fast = fast.step(&gradients, |parameter, _| parameter + 1.0);
 
     assert_eq!(*fast.of(weight), 1.0);
@@ -81,38 +81,45 @@ fn of_rejects_non_parameter_symbols() {
 }
 
 #[test]
-#[should_panic(expected = "field belongs to a different network")]
-fn step_rejects_foreign_fields() {
+#[should_panic(expected = "direction belongs to a different network")]
+fn step_rejects_foreign_directions() {
     let first = Tape::new();
     let weight = first.parameter(1.0_f64).symbol();
     let first = first.into_network();
-    let gradients = first.forward(&first.parameters(), []).backward(weight);
+    let state = first.parameters();
+    let direction = first
+        .forward(&state, [])
+        .backward(weight)
+        .parameters(&state);
 
     let second = Tape::new();
     second.parameter(1.0_f64);
     let second = second.into_network();
     second
         .parameters()
-        .step(&gradients, |parameter, _| *parameter);
+        .step(&direction, |parameter, _| *parameter);
 }
 
 #[test]
-#[should_panic(expected = "field is stale")]
-fn step_rejects_stale_fields_after_extension() {
+#[should_panic(expected = "direction covers different parameter slots")]
+fn step_rejects_directions_over_different_slots() {
     let tape = Tape::new();
     let weight = tape.parameter(1.0_f64).symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
-    let gradients = network.forward(&parameters, []).backward(weight);
+    let direction = network
+        .forward(&parameters, [])
+        .backward(weight)
+        .parameters(&parameters);
 
-    // Reopen and record one more parameter: the old field no longer
-    // covers the new slot, and stepping the carried state with it must
+    // Reopen and record one more parameter: the old direction does not
+    // cover the new slot, and stepping the carried state with it must
     // be loud.
     let tape = network.into_tape();
     tape.parameter(2.0);
     let network = tape.into_network();
     let carried = parameters.carried(&network);
-    carried.step(&gradients, |parameter, _| *parameter);
+    carried.step(&direction, |parameter, _| *parameter);
 }
 
 #[test]
@@ -120,11 +127,10 @@ fn carried_keeps_payloads_and_seeds_new_slots() {
     let tape = Tape::new();
     let old = tape.parameter(1.0_f64).symbol();
     let network = tape.into_network();
-    let run = network.forward(&network.parameters(), []);
-    let gradients = run.backward(old);
-    let parameters = network
-        .parameters()
-        .step(&gradients, |parameter, gradient| parameter + gradient);
+    let initial = network.parameters();
+    let run = network.forward(&initial, []);
+    let gradients = run.backward(old).parameters(&initial);
+    let parameters = initial.step(&gradients, |parameter, gradient| parameter + gradient);
     assert_eq!(*parameters.of(old), 2.0);
 
     let tape = network.into_tape();

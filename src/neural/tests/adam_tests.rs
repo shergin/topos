@@ -29,7 +29,7 @@ fn two_steps_match_the_paper_trace() {
     let (mut beta1_power, mut beta2_power) = (1.0_f64, 1.0);
     for _ in 0..2 {
         let run = network.forward(&parameters, []);
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         parameters = adam.step(&parameters, &gradients, &rate);
 
         let gradient = 2.0 * expected_w;
@@ -63,7 +63,7 @@ fn identical_runs_are_bitwise_identical() {
         let mut parameters = network.parameters();
         for _ in 0..5 {
             let run = network.forward(&parameters, []);
-            let gradients = run.backward(loss);
+            let gradients = run.backward(loss).parameters(&parameters);
             parameters = adam.step(&parameters, &gradients, &rate);
         }
         parameters.of(w).to_vec()
@@ -92,7 +92,7 @@ fn adamw_decays_weights_and_spares_biases() {
 
     let parameters = network.parameters();
     let run = network.forward(&parameters, []);
-    let gradients = run.backward(loss);
+    let gradients = run.backward(loss).parameters(&parameters);
     let by_adam = plain.step(&parameters, &gradients, &rate);
     let by_adamw = decoupled.step(&parameters, &gradients, &rate);
 
@@ -127,7 +127,7 @@ fn step_where_overrides_the_structural_policy() {
 
     let parameters = network.parameters();
     let run = network.forward(&parameters, []);
-    let gradients = run.backward(loss);
+    let gradients = run.backward(loss).parameters(&parameters);
     let by_adam = plain.step(&parameters, &gradients, &rate);
     // Decay nothing: AdamW must reproduce Adam bitwise.
     let spared = decoupled.step_where(&parameters, &gradients, &rate, |_, _| false);
@@ -144,8 +144,9 @@ fn step_where_overrides_the_structural_policy() {
 
 #[test]
 fn recorded_gradients_feed_adam_bitwise() {
-    // A field is a field: the compiled-training route and the engine's
-    // backward produce the same Adam trajectory.
+    // Two grains, one trajectory: recorded gradients arrive
+    // parameter-aligned, an engine backward projects onto the same
+    // slots, and Adam cannot tell the routes apart.
     let build = || {
         let tape = Tape::new();
         let w = tape.parameter(Tensor::new([2, 2], [1.0_f64, -0.5, 0.25, 2.0]));
@@ -170,7 +171,7 @@ fn recorded_gradients_feed_adam_bitwise() {
 
     for _ in 0..4 {
         let run = engine_network.forward(&engine_parameters, []);
-        let gradients = run.backward(engine_loss);
+        let gradients = run.backward(engine_loss).parameters(&engine_parameters);
         engine_parameters = engine_adam.step(&engine_parameters, &gradients, &rate);
 
         let run = plan.forward(&recorded_parameters, []);
@@ -189,6 +190,28 @@ fn recorded_gradients_feed_adam_bitwise() {
 }
 
 #[test]
+fn moments_cover_parameter_slots_not_graph_nodes() {
+    let tape = Tape::new();
+    let w = tape.parameter(Tensor::new([2, 2], [1.0_f64, -0.5, 0.25, 2.0]));
+    let loss = (w * w).sum().symbol();
+    let network = tape.into_network();
+    let (beta1, beta2, epsilon) = conventional();
+    let mut adam = Adam::new(beta1, beta2, epsilon);
+    let rate = Tensor::new([], [0.05_f64]);
+    let parameters = network.parameters();
+
+    let run = network.forward(&parameters, []);
+    let gradients = run.backward(loss).parameters(&parameters);
+    adam.step(&parameters, &gradients, &rate);
+
+    // The moment tables are parameter-aligned: one entry per slot,
+    // never one per recorded node.
+    let first = adam.first.as_ref().expect("a step ran");
+    assert_eq!(first.len(), parameters.len());
+    assert!(network.len() > parameters.len());
+}
+
+#[test]
 fn adam_descends_faster_than_sgd_on_a_skewed_bowl() {
     // A quadratic bowl with wildly different curvatures per axis: the
     // fixed problem where per-coordinate step normalization pays.
@@ -202,7 +225,7 @@ fn adam_descends_faster_than_sgd_on_a_skewed_bowl() {
         let mut parameters = network.parameters();
         for _ in 0..100 {
             let run = network.forward(&parameters, []);
-            let gradients = run.backward(loss);
+            let gradients = run.backward(loss).parameters(&parameters);
             parameters = strategy.step(&parameters, &gradients, &rate);
         }
         let run = network.forward(&parameters, []);

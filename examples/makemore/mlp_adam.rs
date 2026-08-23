@@ -13,13 +13,14 @@
 //! the sanctioned example-side use of dynamic dispatch.
 //!
 //! `TOPOS_GRADIENTS=engine` flips the gradient source to the
-//! interpreter's `backward`. The losses are bit-identical either way
-//! (the parity contract), but the gradient fields are not the same
-//! shape of object: recorded gradients reach the optimizer with
-//! O(1)-constant payloads in every non-parameter slot, so Adam's
-//! moment fields stay constant there too, while engine backward
-//! carries dense intermediate gradients into the moments. Run both
-//! under a memory monitor to see the difference.
+//! interpreter's `backward`, projected onto the parameter slots.
+//! The losses are bit-identical either way (the parity contract),
+//! and since gradients and Adam's moments became parameter-aligned
+//! tables, so is the optimizer's memory: the engine route's dense
+//! intermediate cotangents live only inside its backward pass, never
+//! in the moments. (Before the grain split, engine-route moments
+//! carried a dense payload per graph node — the difference a memory
+//! monitor used to show here.)
 //!
 //! Run with: `cargo run --release --example makemore_mlp_adam`
 
@@ -141,9 +142,9 @@ fn train(
 
     // The recorded route: the chain rule on the tape, one forward-only
     // plan per run. The engine route skips both and differentiates
-    // each interpreter run procedurally — bit-identical losses, but
-    // dense gradient fields where the recorded route carries
-    // O(1)-constant non-parameter slots into the optimizer's moments.
+    // each interpreter run procedurally, projecting each complete
+    // field onto the parameter slots — bit-identical losses, and the
+    // same parameter-aligned gradients either way.
     let adjoints = recorded.then(|| tape.differentiate(loss, parameter_symbols));
     let network = tape.into_network();
     let plan = adjoints
@@ -178,7 +179,10 @@ fn train(
             (run.of(loss).to_vec()[0], gradients)
         } else {
             let run = network.forward(&parameters, feeds);
-            (run.of(loss).to_vec()[0], run.backward(loss))
+            (
+                run.of(loss).to_vec()[0],
+                run.backward(loss).parameters(&parameters),
+            )
         };
         losses.push(batch_loss);
 

@@ -92,7 +92,7 @@ fn main() {
             started = Instant::now();
         }
         let run = network.forward(&parameters, [(features, batch.clone())]);
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)
         });

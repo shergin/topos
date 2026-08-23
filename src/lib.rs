@@ -30,7 +30,7 @@
 //! for step in 0..100 {
 //!     let (sample_x, sample_y) = samples[step % samples.len()];
 //!     let run = network.forward(&parameters, [(x, sample_x), (y, sample_y)]);
-//!     let gradients = run.backward(loss);
+//!     let gradients = run.backward(loss).parameters(&parameters);
 //!     parameters = parameters.step(&gradients, |w, g| w - 0.02 * g);
 //! }
 //!

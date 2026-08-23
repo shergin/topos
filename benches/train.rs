@@ -40,7 +40,7 @@ fn training_step(criterion: &mut Criterion) {
     group.bench_function("step/scalar-100-samples", |bencher| {
         bencher.iter(|| {
             let evaluation = scalar.forward(&scalar_parameters, []);
-            let gradients = evaluation.backward(loss);
+            let gradients = evaluation.backward(loss).parameters(&scalar_parameters);
             scalar_parameters.step(&gradients, |parameter, gradient| {
                 parameter - 0.01 * gradient
             })
@@ -61,7 +61,9 @@ fn training_step(criterion: &mut Criterion) {
     group.bench_function("step/tensor-regression", |bencher| {
         bencher.iter(|| {
             let evaluation = tensor.forward(&tensor_parameters, []);
-            let gradients = evaluation.backward(tensor_loss);
+            let gradients = evaluation
+                .backward(tensor_loss)
+                .parameters(&tensor_parameters);
             tensor_parameters.step(&gradients, |parameter, gradient| {
                 parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)
             })
@@ -84,7 +86,9 @@ fn training_step(criterion: &mut Criterion) {
         let network = tape.into_network();
         let parameters = network.parameters();
         let evaluation = network.forward(&parameters, []);
-        let direction = evaluation.backward(target);
+        // The projection runs outside the timed loop: `step` itself is
+        // O(parameters) now, whatever the padded graph size.
+        let direction = evaluation.backward(target).parameters(&parameters);
 
         group.throughput(Throughput::Elements(nodes as u64));
         group.bench_with_input(BenchmarkId::new("step", nodes), &nodes, |bencher, _| {

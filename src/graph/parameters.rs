@@ -172,20 +172,23 @@ impl<Data: Differentiable> Parameters<Data> {
     /// Returns the state with every payload replaced by
     /// `rule(current, direction)`: the training-step transition.
     ///
-    /// `direction` is any field over this network family: the
-    /// [`Gradients`](crate::Gradients) of a backward run, or a derived
-    /// update direction such as a momentum velocity. The step is pure
-    /// data — O(parameters) work and allocations, no new network, no
-    /// lock — and slot order is preserved, so symbols keep naming
-    /// their parameters.
+    /// `direction` is any parameter-aligned table of this network
+    /// family: the recorded gradients of a compiled training run
+    /// ([`Run::recorded_gradients`](crate::Run::recorded_gradients)),
+    /// an engine backward projected through
+    /// [`Field::parameters`](crate::Field::parameters), or a derived
+    /// direction such as a momentum velocity. The step is pure data —
+    /// O(parameters) work and allocations, no new network, no lock —
+    /// and slot order is preserved, so symbols keep naming their
+    /// parameters.
     ///
     /// # Panics
-    /// Panics if `direction` belongs to a different network or is
-    /// stale, or if `rule` returns a payload whose shape differs from
-    /// the parameter's.
+    /// Panics if `direction` belongs to a different network or covers
+    /// different parameter slots, or if `rule` returns a payload whose
+    /// shape differs from the parameter's.
     pub fn step(
         &self,
-        direction: &Field<Data>,
+        direction: &Parameters<Data>,
         mut rule: impl FnMut(&Data, &Data) -> Data,
     ) -> Self {
         self.step_each(direction, move |_, current, direction| {
@@ -208,26 +211,25 @@ impl<Data: Differentiable> Parameters<Data> {
     /// Panics as [`Parameters::step`] panics.
     pub fn step_each(
         &self,
-        direction: &Field<Data>,
+        direction: &Parameters<Data>,
         mut rule: impl FnMut(Symbol, &Data, &Data) -> Data,
     ) -> Self {
         assert!(
-            direction.origin() == self.origin,
-            "field belongs to a different network"
+            direction.origin == self.origin,
+            "direction belongs to a different network"
         );
-        if let Some(last) = self.store.last_node() {
-            assert!(
-                last.index() < direction.len(),
-                "field is stale: it does not cover every parameter"
-            );
-        }
+        assert_eq!(
+            direction.store.len(),
+            self.store.len(),
+            "direction covers different parameter slots"
+        );
         let mut payloads = Vec::with_capacity(self.store.len());
-        for (node, current) in self.store.iter() {
+        for ((node, current), direction) in self.store.iter().zip(direction.store.payloads()) {
             let symbol = Symbol {
                 origin: self.origin,
                 id: node,
             };
-            let next = rule(symbol, current, &direction.payloads()[node.index()]);
+            let next = rule(symbol, current, direction);
             assert_eq!(
                 next.shape(),
                 current.shape(),

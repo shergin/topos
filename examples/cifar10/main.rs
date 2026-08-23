@@ -232,7 +232,7 @@ fn main() {
                 "step 0: minibatch loss = {batch_loss:.4} (a uniform model costs ln 10 ~ 2.30)"
             );
         }
-        let gradients = run.backward(loss);
+        let gradients = run.backward(loss).parameters(&parameters);
         let learning_rate = if step < STEPS * 3 / 4 { &fast } else { &slow };
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)

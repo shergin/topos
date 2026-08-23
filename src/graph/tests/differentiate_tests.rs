@@ -554,7 +554,7 @@ fn a_recorded_training_loop_matches_the_engine_bitwise() {
         let batch = varied([4, 3], 10 + step);
 
         let engine_run = engine_network.forward(&engine_state, [(engine_x, batch.clone())]);
-        let engine_gradients = engine_run.backward(engine_loss);
+        let engine_gradients = engine_run.backward(engine_loss).parameters(&engine_state);
         engine_state = engine_state.step(&engine_gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * Tensor::filled(gradient.shape(), 0.05)
         });
@@ -685,6 +685,24 @@ fn vjp_rejects_a_mismatched_seed_shape() {
     let output = x.tanh();
     let seed = tape.leaf(varied([2], 2));
     tape.vjp(output, seed, [x]);
+}
+
+#[test]
+fn recorded_gradients_zero_fill_unnamed_parameters() {
+    let tape = Tape::new();
+    let a = tape.parameter(varied([2], 1));
+    let b = tape.parameter(varied([3], 2));
+    let loss = a.sum();
+    let (a, b, loss) = (a.symbol(), b.symbol(), loss.symbol());
+    // Only `a` is differentiated: the table still covers every
+    // parameter slot, with a zero of `b`'s shape in its slot.
+    let adjoints = tape.differentiate(loss, [a]);
+    let network = tape.into_network();
+    let run = network.forward(&network.parameters(), []);
+    let gradients = run.recorded_gradients(&adjoints);
+    assert_eq!(gradients.len(), 2);
+    assert_eq!(gradients.of(a).to_vec(), &[1.0, 1.0]);
+    assert_eq!(gradients.of(b).to_vec(), &[0.0; 3]);
 }
 
 #[test]

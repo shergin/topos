@@ -205,8 +205,12 @@ passed by reference into every run and plan, stepped as pure data
 slots take their initials), and installed into by name
 (`with_payloads`, the checkpoint route). `Clone` is honest and
 O(parameters), which is the whole cost of a what-if: one spec, any
-number of states. Optimizer state is `Field` algebra held beside a
-`Parameters` value; nothing hides in the graph. In topos:
+number of states. The type doubles as the parameter-aligned table:
+an update direction, an optimizer moment, or the recorded gradients
+of a compiled training run are other instances over the same slots,
+combined with the slot algebra (`map`, `zip`, `scale`, `+`).
+Optimizer state is such tables held beside the live weights in the
+caller's structs; nothing hides in the graph. In topos:
 [`Parameters`](src/graph/parameters.rs).
 
 **Value (proxy).** The operand of recording: a `Copy` handle pairing a
@@ -357,7 +361,8 @@ engine-backward plan (everything `backward` reads retained) — so an
 impossible combination cannot be represented. Runs never mutate the network, so any number can
 execute concurrently; a backward sweep reads a `Run` and returns
 [`Gradients`](src/graph/field.rs) (a gradient per node, for one target;
-a `Field`, so it combines and carries optimizer state directly). Both
+a `Field`, projected onto the parameter slots for training by
+`Field::parameters`). Both
 are read back with the same proxies that built the graph: every
 position-indexed buffer — runs, gradients, fields — answers the same
 read-back accessor, `of(value)`.
@@ -510,17 +515,19 @@ still bar when readable, and a statistic feeding an expression
 outside the formula bars the match.
 
 **Field.** A value-aligned buffer: one payload per node, carrying its
-network family's origin rather than borrowing anything, so it can be
-combined across runs (averaging data-parallel gradients) and carried
-across training steps (momentum velocity, Adam moments). Supports
-elementwise algebra — `+`, `scale`, `zip`, `map` — with kinship (same
-origin, same covered length) checked on every combination;
-`Parameters::step` takes any field as its update direction. In physics terms, a `Gradients` is
-a discrete gradient field over the graph, which is why `Gradients` is an
-alias for `Field` rather than a wrapper around it: the buffer's invariant is
-alignment to a graph, not differentiation, and Adam's second moment or a
-run's forward payloads are fields that are not gradients at all. In
-topos: [`Field`](src/graph/field.rs).
+network family's origin rather than borrowing anything. The node
+grain is the research and teaching product — every cotangent of a
+backward run readable, whole-graph combination possible — while
+training speaks the parameter grain: `Field::parameters` projects a
+field onto a `Parameters` table, and optimizer state lives at that
+alignment, never per node. Supports elementwise algebra — `+`,
+`scale`, `zip`, `map` — with kinship (same origin, same covered
+length) checked on every combination. In physics terms, a
+`Gradients` is a discrete gradient field over the graph, which is
+why `Gradients` is an alias for `Field` rather than a wrapper around
+it: the buffer's invariant is alignment to a graph, not
+differentiation, and a run's forward payloads are a field that is
+not gradients at all. In topos: [`Field`](src/graph/field.rs).
 
 **Origin.** The identity of one tape-network family: a `Copy` token
 minted from a process-global counter at `Tape::new` and carried through
@@ -957,8 +964,10 @@ assembly.
 `Parameters` state become the next state. The loop-land analogue of
 what `Activation` is to a layer — a uniform slot — kept an open,
 object-safe trait so custom optimizers are ordinary implementations,
-with `Field` algebra as the designed state carrier (moments are
-fields, carried across steps beside the parameters). `Sgd` is the
+with `Parameters` algebra as the designed state carrier (moments are
+parameter-aligned tables, carried across steps beside the live
+weights). Gradients arrive at the same grain: recorded gradients
+directly, an engine backward through `Field::parameters`. `Sgd` is the
 stateless base case, `Adam` adds bias-corrected moments (powers
 carried as payloads, so steps are exact and deterministic), and
 `AdamW` adds decoupled weight decay under a structural policy: rank

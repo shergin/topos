@@ -1,4 +1,4 @@
-use crate::{Gradients, Parameters, Symbol, Tensorial};
+use crate::{Parameters, Symbol, Tensorial};
 
 use super::Optimizer;
 use super::optimizer::assert_single_value;
@@ -9,12 +9,13 @@ use super::optimizer::assert_single_value;
 /// Hyperparameters are single-value payloads written by the caller
 /// (`Tensor::new([], [0.9])`), like every learning rate in the
 /// examples: `0.9` is not mintable from a generic payload, and the
-/// values belong on the page. The moment fields initialize lazily
+/// values belong on the page. The moment tables are parameter-aligned
+/// ([`Parameters`](crate::Parameters) algebra) and initialize lazily
 /// from the first step's gradients, and the bias-correction powers
 /// `beta^t` are carried as payloads multiplied once per step — exact
 /// and deterministic, with no float-of-step-count conversion. Every
-/// step is pure field algebra over pure payload arithmetic, so two
-/// identical runs cannot differ.
+/// step is pure parameter-table algebra over pure payload arithmetic,
+/// so two identical runs cannot differ.
 #[derive(Debug, Clone)]
 pub struct Adam<Data> {
     beta1: Data,
@@ -24,8 +25,8 @@ pub struct Adam<Data> {
     /// each moment update.
     first_share: Data,
     second_share: Data,
-    first: Option<Gradients<Data>>,
-    second: Option<Gradients<Data>>,
+    first: Option<Parameters<Data>>,
+    second: Option<Parameters<Data>>,
     /// The running `beta^t` each correction divides out of its moment.
     beta1_power: Data,
     beta2_power: Data,
@@ -59,7 +60,7 @@ impl<Data: Tensorial> Adam<Data> {
     /// bias-corrected update direction
     /// `first / (sqrt(second) + epsilon)`: the shared core of `Adam`
     /// and [`AdamW`].
-    fn direction(&mut self, gradients: &Gradients<Data>) -> Gradients<Data> {
+    fn direction(&mut self, gradients: &Parameters<Data>) -> Parameters<Data> {
         let zeros = || gradients.map(|gradient| gradient.zero_like());
         let first = self.first.take().unwrap_or_else(zeros);
         let second = self.second.take().unwrap_or_else(zeros);
@@ -89,7 +90,7 @@ impl<Data: Tensorial> Optimizer<Data> for Adam<Data> {
     fn step(
         &mut self,
         parameters: &Parameters<Data>,
-        gradients: &Gradients<Data>,
+        gradients: &Parameters<Data>,
         learning_rate: &Data,
     ) -> Parameters<Data> {
         let direction = self.direction(gradients);
@@ -137,7 +138,7 @@ impl<Data: Tensorial> AdamW<Data> {
     pub fn step_where(
         &mut self,
         parameters: &Parameters<Data>,
-        gradients: &Gradients<Data>,
+        gradients: &Parameters<Data>,
         learning_rate: &Data,
         mut policy: impl FnMut(Symbol, &Data) -> bool,
     ) -> Parameters<Data> {
@@ -161,7 +162,7 @@ impl<Data: Tensorial> Optimizer<Data> for AdamW<Data> {
     fn step(
         &mut self,
         parameters: &Parameters<Data>,
-        gradients: &Gradients<Data>,
+        gradients: &Parameters<Data>,
         learning_rate: &Data,
     ) -> Parameters<Data> {
         self.step_where(parameters, gradients, learning_rate, |_, parameter| {

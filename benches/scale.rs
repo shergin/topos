@@ -81,7 +81,7 @@ fn scale(criterion: &mut Criterion) {
                             let mut state = trainer_parameters.clone();
                             for _ in 0..20 {
                                 let evaluation = trainer.forward(&state, []);
-                                let gradients = evaluation.backward(loss_symbol);
+                                let gradients = evaluation.backward(loss_symbol).parameters(&state);
                                 state = state.step(&gradients, |parameter, gradient| {
                                     parameter - 0.01 * gradient
                                 });

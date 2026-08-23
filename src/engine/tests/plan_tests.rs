@@ -121,7 +121,7 @@ fn one_plan_serves_every_training_step() {
         let planned = plan.forward(&parameters, std::iter::empty());
         let interpreted = network.forward(&parameters, []);
         assert_eq!(planned.of(loss).to_vec(), interpreted.of(loss).to_vec());
-        let gradients = planned.backward(loss);
+        let gradients = planned.backward(loss).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter: &Tensor<f64>, gradient| {
             parameter.clone() - gradient.clone() * Tensor::filled([2], 0.05)
         });

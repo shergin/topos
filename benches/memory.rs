@@ -85,7 +85,7 @@ fn main() {
     let mut scalar_parameters = scalar.parameters();
     report("scalar training, 200 parameters", STEPS, || {
         let evaluation = scalar.forward(&scalar_parameters, []);
-        let gradients = evaluation.backward(target);
+        let gradients = evaluation.backward(target).parameters(&scalar_parameters);
         scalar_parameters = scalar_parameters.step(&gradients, |parameter, gradient| {
             parameter - 0.01 * gradient
         });
@@ -103,7 +103,7 @@ fn main() {
     let mut tensor_parameters = tensor.parameters();
     report("tensor training, [32, 16] parameter", STEPS, || {
         let evaluation = tensor.forward(&tensor_parameters, []);
-        let gradients = evaluation.backward(loss);
+        let gradients = evaluation.backward(loss).parameters(&tensor_parameters);
         tensor_parameters = tensor_parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)
         });

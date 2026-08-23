@@ -50,7 +50,10 @@
 //! let network: Network<f64> = tape.into_network();
 //! let mut parameters: Parameters<f64> = network.parameters();
 //! for _ in 0..300 {
-//!     let gradients = network.forward(&parameters, []).backward(loss);
+//!     let gradients = network
+//!         .forward(&parameters, [])
+//!         .backward(loss)
+//!         .parameters(&parameters);
 //!     parameters = parameters.step(&gradients, |p, g| p - 0.02 * g);
 //! }
 //! parameters.of(w);            // the trained payload, by name
