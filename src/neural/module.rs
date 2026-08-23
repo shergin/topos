@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use crate::{Element, Symbol, Tape, Value};
+use crate::{Element, Symbol, Value};
 
 /// A named, parameterized recording function: the unit of model
 /// composition.
@@ -20,9 +20,9 @@ use crate::{Element, Symbol, Tape, Value};
 /// the serialization boundary alone, where checkpoints need stable
 /// structured paths.
 pub trait Module<E: Element>: Send + Sync {
-    /// Records this module's formula over `input` on `tape` and
-    /// returns the output value.
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E>;
+    /// Records this module's formula over `input` — on the tape the
+    /// input already carries — and returns the output value.
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E>;
 
     /// Walks this module's parameters and children in a stable order,
     /// announcing each parameter under its local name and each child

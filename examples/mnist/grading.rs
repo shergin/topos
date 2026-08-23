@@ -86,15 +86,10 @@ impl Model {
     /// Records the model's expression over `images` and returns the
     /// `[rows, 10]` logits: conv, rectify, pool, twice, then flatten
     /// and score.
-    fn express<'tape>(
-        &self,
-        tape: &'tape Tape<f32>,
-        images: Value<'tape, f32>,
-        rows: usize,
-    ) -> Value<'tape, f32> {
-        let stage_1 = max_pool(self.conv_1.express(tape, images).relu(), 2, 2);
-        let stage_2 = max_pool(self.conv_2.express(tape, stage_1).relu(), 2, 2);
-        self.head.express(tape, stage_2.reshape([rows, FLAT_LEN]))
+    fn express<'tape>(&self, images: Value<'tape, f32>, rows: usize) -> Value<'tape, f32> {
+        let stage_1 = max_pool(self.conv_1.express(images).relu(), 2, 2);
+        let stage_2 = max_pool(self.conv_2.express(stage_1).relu(), 2, 2);
+        self.head.express(stage_2.reshape([rows, FLAT_LEN]))
     }
 
     /// Returns the parameter symbols in a fixed order, for `wrt` and
@@ -147,7 +142,7 @@ fn main() {
         0.0_f32,
     ));
     let targets = tape.input(Tensor::selection(vec![0; BATCH_LEN], CLASSES, 1.0));
-    let loss = cross_entropy(model.express(&tape, images, BATCH_LEN), targets);
+    let loss = cross_entropy(model.express(images, BATCH_LEN), targets);
 
     let (images, targets, loss) = (images.symbol(), targets.symbol(), loss.symbol());
     let parameter_symbols = model.parameters();

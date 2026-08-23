@@ -1,5 +1,7 @@
 use crate::{Shape, Tape, Tensor};
 
+use crate::Module;
+
 use super::LayerNorm;
 
 #[test]
@@ -53,7 +55,7 @@ fn express_standardizes_every_sample() {
     // variances `[1, 4]`, so both standardize to `[-1, 1]`.
     let input = tape.leaf(Tensor::new([2, 2], [1.0, 3.0, 2.0, 6.0]));
 
-    let output = norm.express(&tape, input);
+    let output = norm.express(input);
     assert_eq!(output.shape(), Shape::new([2, 2]));
 
     let output = output.symbol();
@@ -73,7 +75,7 @@ fn express_applies_the_learned_affine() {
     );
     let input = tape.leaf(Tensor::new([2, 2], [1.0, 3.0, 2.0, 6.0]));
 
-    let output = norm.express(&tape, input).symbol();
+    let output = norm.express(input).symbol();
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
@@ -95,8 +97,8 @@ fn samples_normalize_independently() {
     let lone = tape.leaf(Tensor::new([1, 2], [1.0, 3.0]));
     let paired = tape.leaf(Tensor::new([2, 2], [1.0, 3.0, -100.0, 900.0]));
 
-    let lone_output = norm.express(&tape, lone).symbol();
-    let paired_output = norm.express(&tape, paired).symbol();
+    let lone_output = norm.express(lone).symbol();
+    let paired_output = norm.express(paired).symbol();
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
@@ -118,7 +120,7 @@ fn express_records_tensor_granularity() {
     let input = tape.leaf(Tensor::new([3, 2], vec![1.0; 6]));
     let nodes_before = tape.len();
 
-    norm.express(&tape, input);
+    norm.express(input);
 
     // Sixteen computed nodes plus the two count literals the means
     // record; the total does not grow with batch or feature sizes.
@@ -136,7 +138,7 @@ fn express_rejects_mismatched_features() {
         Tensor::filled([], 0.0),
     );
     let input = tape.leaf(Tensor::new([2, 3], vec![1.0; 6]));
-    norm.express(&tape, input);
+    norm.express(input);
 }
 
 #[test]
@@ -156,7 +158,7 @@ fn gradients_flow_through_the_sample_statistics() {
     );
     let input = tape.leaf(Tensor::new([1, 2], [3.0, 1.0]));
 
-    let output = norm.express(&tape, input);
+    let output = norm.express(input);
     let target = output.narrow(1, 0, 1).sum();
 
     let (target, input) = (target.symbol(), input.symbol());

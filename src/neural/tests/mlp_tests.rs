@@ -1,4 +1,4 @@
-use crate::{Shape, Tape, Tensor};
+use crate::{Activation, Module, Shape, Tape, Tensor};
 
 use super::Mlp;
 
@@ -23,7 +23,12 @@ fn deterministic_initializer() -> impl FnMut(&Shape) -> Tensor<f64> {
 #[test]
 fn new_builds_the_topology() {
     let tape = Tape::new();
-    let mlp = Mlp::new(&tape, &[3, 4, 4, 1], deterministic_initializer());
+    let mlp = Mlp::new(
+        &tape,
+        &[3, 4, 4, 1],
+        Activation::Tanh,
+        deterministic_initializer(),
+    );
     // Three layers, each one weight tensor and one bias tensor.
     assert_eq!(mlp.parameters().count(), 6);
     assert_eq!(tape.len(), 6);
@@ -33,30 +38,40 @@ fn new_builds_the_topology() {
 #[should_panic(expected = "input and an output width")]
 fn new_rejects_degenerate_topologies() {
     let tape = Tape::<f64>::new();
-    Mlp::new(&tape, &[3], deterministic_initializer());
+    Mlp::new(&tape, &[3], Activation::Tanh, deterministic_initializer());
 }
 
 #[test]
 fn express_chains_layers() {
     let tape = Tape::new();
-    let mlp = Mlp::new(&tape, &[3, 4, 2], deterministic_initializer());
+    let mlp = Mlp::new(
+        &tape,
+        &[3, 4, 2],
+        Activation::Tanh,
+        deterministic_initializer(),
+    );
     let input = tape.leaf(Tensor::filled([5, 3], 0.5_f64));
 
-    let output = mlp.express(&tape, input);
+    let output = mlp.express(input);
     assert_eq!(output.shape(), Shape::new([5, 2]));
 }
 
 #[test]
 fn mlp_learns_xor() {
     let tape = Tape::new();
-    let mlp = Mlp::new(&tape, &[2, 4, 1], deterministic_initializer());
+    let mlp = Mlp::new(
+        &tape,
+        &[2, 4, 1],
+        Activation::Tanh,
+        deterministic_initializer(),
+    );
     let x = tape.leaf(Tensor::new(
         [4, 2],
         [0.0_f64, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0],
     ));
     let y = tape.leaf(Tensor::new([4, 1], [-1.0, 1.0, 1.0, -1.0]));
 
-    let predicted = mlp.express(&tape, x);
+    let predicted = mlp.express(x);
     let error = predicted - y;
     let loss = (error * error).sum();
     let (predicted, loss) = (predicted.symbol(), loss.symbol());
@@ -80,4 +95,22 @@ fn mlp_learns_xor() {
             "prediction {prediction} misses target {target}"
         );
     }
+}
+
+#[test]
+fn the_activation_is_caller_owned() {
+    // A Relu perceptron records `Maximum` nodes (relu composes as a
+    // maximum against a counted zero) and no `Tanh` anywhere.
+    let tape: Tape<f64> = Tape::new();
+    let mlp = Mlp::new(
+        &tape,
+        &[2, 3, 1],
+        Activation::Relu,
+        deterministic_initializer(),
+    );
+    let input = tape.input(Tensor::filled([1, 2], 0.0_f64));
+    let _output = mlp.express(input);
+    let described = tape.describe();
+    assert!(described.contains("Maximum"));
+    assert!(!described.contains("Tanh"));
 }

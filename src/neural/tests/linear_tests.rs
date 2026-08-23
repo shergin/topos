@@ -46,7 +46,7 @@ fn express_records_the_affine_transform() {
         Tensor::new([2], [10.0, 20.0]),
     );
     let input = tape.leaf(Tensor::new([1, 2], [1.0_f64, 1.0]));
-    let output = linear.express(&tape, input).symbol();
+    let output = linear.express(input).symbol();
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);

@@ -116,9 +116,7 @@ fn main() {
         1.0,
     ));
     let targets = tape.input(Tensor::selection(vec![0; BATCH_LEN], VOCABULARY_LEN, 1.0));
-    let normalization = model
-        .norm
-        .express(&tape, model.preactivation(contexts, BATCH_LEN));
+    let normalization = model.norm.express(model.preactivation(contexts, BATCH_LEN));
     let loss = cross_entropy(model.logits(normalization.output), targets);
 
     // The sampling twin normalizes by running estimates fed per run:
@@ -128,7 +126,6 @@ fn main() {
     let running_mean = tape.input(Tensor::filled([HIDDEN_LEN], 0.0));
     let running_variance = tape.input(Tensor::filled([HIDDEN_LEN], 1.0));
     let sample_normalized = model.norm.express_with(
-        &tape,
         model.preactivation(sample_context, 1),
         running_mean,
         running_variance,

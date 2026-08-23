@@ -83,7 +83,8 @@ impl<E: Element> Module<E> for Gelu {
     ///
     /// The constants are leaves, not parameters, so the default no-op
     /// `visit` is right: the checkpoint has nothing to restore here.
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         let half = tape.resolve(self.half);
         let one = tape.resolve(self.one);
         let root = tape.resolve(self.root);
@@ -145,7 +146,7 @@ impl<E: Element> Attention<E> {
         mask: Value<'tape, E>,
     ) -> Decoded<'tape, E> {
         let scale = tape.resolve(self.scale);
-        let fused = self.fused.express(tape, input);
+        let fused = self.fused.express(input);
         let keys = keys
             + fused
                 .narrow(1, EMBED_DIM, EMBED_DIM)
@@ -165,7 +166,7 @@ impl<E: Element> Attention<E> {
             })
             .collect();
         Decoded {
-            output: self.projection.express(tape, concat(&heads, 1)),
+            output: self.projection.express(concat(&heads, 1)),
             keys,
             values,
         }
@@ -173,10 +174,11 @@ impl<E: Element> Attention<E> {
 }
 
 impl<E: Element> Module<E> for Attention<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         let mask = tape.resolve(self.mask);
         let scale = tape.resolve(self.scale);
-        let fused = self.fused.express(tape, input);
+        let fused = self.fused.express(input);
         let heads: Vec<Value<'tape, E>> = (0..HEAD_COUNT)
             .map(|head| {
                 let query = fused.narrow(1, head * HEAD_DIM, HEAD_DIM);
@@ -187,7 +189,7 @@ impl<E: Element> Module<E> for Attention<E> {
                 weights.matmul(value)
             })
             .collect();
-        self.projection.express(tape, concat(&heads, 1))
+        self.projection.express(concat(&heads, 1))
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {
@@ -220,10 +222,10 @@ impl<E: Element + From<f32>> FeedForward<E> {
 }
 
 impl<E: Element> Module<E> for FeedForward<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        let lifted = self.up.express(tape, input);
-        let hidden = self.activation.express(tape, lifted);
-        self.down.express(tape, hidden)
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let lifted = self.up.express(input);
+        let hidden = self.activation.express(lifted);
+        self.down.express(hidden)
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {
@@ -271,16 +273,14 @@ impl<E: Element> Block<E> {
     ) -> Decoded<'tape, E> {
         let attended = self.attention.express_decode(
             tape,
-            self.attention_norm.express(tape, input),
+            self.attention_norm.express(input),
             keys,
             values,
             position,
             mask,
         );
         let stream = input + attended.output;
-        let lifted = self
-            .feed_forward
-            .express(tape, self.hidden_norm.express(tape, stream));
+        let lifted = self.feed_forward.express(self.hidden_norm.express(stream));
         Decoded {
             output: stream + lifted,
             keys: attended.keys,
@@ -290,14 +290,10 @@ impl<E: Element> Block<E> {
 }
 
 impl<E: Element> Module<E> for Block<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        let attended = self
-            .attention
-            .express(tape, self.attention_norm.express(tape, input));
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let attended = self.attention.express(self.attention_norm.express(input));
         let stream = input + attended;
-        let lifted = self
-            .feed_forward
-            .express(tape, self.hidden_norm.express(tape, stream));
+        let lifted = self.feed_forward.express(self.hidden_norm.express(stream));
         stream + lifted
     }
 
@@ -426,22 +422,23 @@ impl<E: Element> Gpt2<E> {
             stream = decoded.output;
             updated.push((decoded.keys, decoded.values));
         }
-        (self.final_norm.express(tape, stream), updated)
+        (self.final_norm.express(stream), updated)
     }
 }
 
 impl<E: Element> Module<E> for Gpt2<E> {
     /// Records the model over the embedded `[context, embed]` window:
     /// positions in, the block stack, the final norm.
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         let positions = tape.resolve(self.positions);
         let context = input.shape().axes()[0];
         let stream = input + positions.narrow(0, 0, context);
         let stream = self
             .blocks
             .iter()
-            .fold(stream, |value, block| block.express(tape, value));
-        self.final_norm.express(tape, stream)
+            .fold(stream, |value, block| block.express(value));
+        self.final_norm.express(stream)
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

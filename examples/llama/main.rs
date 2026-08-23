@@ -70,8 +70,8 @@ fn record<E: Element + From<f32> + 'static>(
         E::from(0.0),
     ));
     let extraction = tape.input(Tensor::selection(vec![0], CONTEXT_LEN, E::from(1.0)));
-    let last = model.express(tape, embedded).gather(extraction);
-    let logits = model.predict(tape, last);
+    let last = model.express(embedded).gather(extraction);
+    let logits = model.predict(last);
     Sampler {
         stream: embedded.symbol(),
         extraction: extraction.symbol(),

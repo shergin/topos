@@ -1,5 +1,7 @@
 use crate::{Shape, Tape, Tensor};
 
+use crate::Module;
+
 use super::{Conv2d, conv2d};
 
 #[test]
@@ -193,7 +195,7 @@ fn express_records_tensor_granularity() {
     ));
     let nodes_before = tape.len();
 
-    let output = layer.express(&tape, input);
+    let output = layer.express(input);
 
     // Two pads, two unfolds, the patch permute + reshape, the weight
     // permute + reshape, the product, the bias broadcast and shift, and

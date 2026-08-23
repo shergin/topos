@@ -44,7 +44,7 @@ fn an_unfed_run_is_the_identity() {
         vec![0.5_f64, -1.0, 2.0, 3.0, -0.25, 1.5],
     ));
     let dropout = Dropout::new(&tape, [2, 3]);
-    let masked = dropout.express(&tape, x + x).symbol();
+    let masked = dropout.express(x + x).symbol();
     let plain = (x + x).symbol();
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
@@ -56,7 +56,7 @@ fn gradients_route_through_the_mask() {
     let tape = Tape::new();
     let x = tape.parameter(Tensor::new([1, 4], [1.0_f64, 2.0, 3.0, 4.0]));
     let dropout = Dropout::new(&tape, [1, 4]);
-    let loss = dropout.express(&tape, x).sum();
+    let loss = dropout.express(x).sum();
     let (loss, x) = (loss.symbol(), x.symbol());
     let network = tape.into_network();
     let mask = Tensor::new([1, 4], [2.0_f64, 0.0, 2.0, 0.0]);
@@ -73,7 +73,7 @@ fn training_replays_bitwise_under_matched_seeds() {
         let w = tape.parameter(Tensor::new([2, 2], [0.5_f64, -0.25, 0.75, 0.1]));
         let x = tape.leaf(Tensor::new([2, 2], [1.0_f64, 2.0, -1.0, 0.5]));
         let dropout = Dropout::new(&tape, [2, 2]);
-        let product = dropout.express(&tape, x.matmul(w));
+        let product = dropout.express(x.matmul(w));
         let loss = (product * product).sum().symbol();
         let network = tape.into_network();
 
@@ -103,7 +103,7 @@ fn dropout_composes_as_a_module() {
     let x = tape.parameter(Tensor::new([2, 2], [1.0_f64, -2.0, 3.0, -4.0]));
     let dropout = Dropout::new(&tape, [2, 2]);
     let module: &dyn Module<f64> = &dropout;
-    let through_trait = module.express(&tape, x).symbol();
+    let through_trait = module.express(x).symbol();
     let network = tape.into_network();
     let mask = Tensor::new([2, 2], [2.0_f64, 0.0, 0.0, 2.0]);
     let run = network.forward(&network.parameters(), [(dropout.mask(), mask)]);

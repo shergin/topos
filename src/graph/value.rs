@@ -69,6 +69,13 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.id
     }
 
+    /// Returns the tape this proxy records onto: the recording phase
+    /// *is* this operand, which is what lets a module express itself
+    /// from its input alone.
+    pub fn tape(&self) -> &'tape Tape<E> {
+        self.tape
+    }
+
     /// Returns the detached name of this value: the currency of every
     /// phase after recording, and the documented bridge across
     /// [`Tape::into_network`].

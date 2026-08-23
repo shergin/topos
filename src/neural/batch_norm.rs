@@ -93,7 +93,7 @@ impl<E: Element> BatchNorm<E> {
 
 impl<E: Element> BatchNorm<E> {
     /// Records the training-mode expression over the `[batch, features]`
-    /// value `input` on `tape` — normalization by the batch's own
+    /// value `input` — normalization by the batch's own
     /// mean and biased variance — and returns the output together with
     /// the statistic values it normalized by.
     ///
@@ -101,18 +101,14 @@ impl<E: Element> BatchNorm<E> {
     /// Panics if the layer's parameters or `input` are not allocated on
     /// `tape`, or if `input` is not a rank-2 `[batch, features]`
     /// value agreeing with the parameters on the feature count.
-    pub fn express<'tape>(
-        &self,
-        tape: &'tape Tape<E>,
-        input: Value<'tape, E>,
-    ) -> Normalization<'tape, E> {
+    pub fn express<'tape>(&self, input: Value<'tape, E>) -> Normalization<'tape, E> {
         let mean = input.mean_along(0);
         let centered = input - mean.broadcast_along(0, input);
         // The biased (population) variance, which normalization uses at
         // training time; an unbiased running estimate is the caller's
         // averaging policy, not the graph's.
         let variance = (centered * centered).mean_along(0);
-        let output = self.normalize(tape, centered, variance);
+        let output = self.normalize(centered, variance);
         Normalization {
             output,
             mean,
@@ -121,7 +117,7 @@ impl<E: Element> BatchNorm<E> {
     }
 
     /// Records the inference-mode expression over the `[batch, features]`
-    /// value `input` on `tape`: normalization by the supplied
+    /// value `input`: normalization by the supplied
     /// `[features]` statistics instead of the batch's own.
     ///
     /// Record `mean` and `variance` as per-run inputs and feed the
@@ -135,23 +131,22 @@ impl<E: Element> BatchNorm<E> {
     /// `[features]` values.
     pub fn express_with<'tape>(
         &self,
-        tape: &'tape Tape<E>,
         input: Value<'tape, E>,
         mean: Value<'tape, E>,
         variance: Value<'tape, E>,
     ) -> Value<'tape, E> {
         let centered = input - mean.broadcast_along(0, input);
-        self.normalize(tape, centered, variance)
+        self.normalize(centered, variance)
     }
 
     /// Records the shared tail of both expressions: division by the
     /// epsilon-stabilized deviation and the learned affine.
     fn normalize<'tape>(
         &self,
-        tape: &'tape Tape<E>,
         centered: Value<'tape, E>,
         variance: Value<'tape, E>,
     ) -> Value<'tape, E> {
+        let tape = centered.tape();
         let scale = tape.resolve(self.scale);
         let shift = tape.resolve(self.shift);
         let epsilon = tape.resolve(self.epsilon);

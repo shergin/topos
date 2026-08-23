@@ -73,20 +73,27 @@ impl<E: Element> RmsNorm<E> {
 
     /// Returns the symbols of the layer's parameters: the scale alone.
     pub fn parameters(&self) -> impl Iterator<Item = Symbol> + '_ {
-        [self.scale].into_iter()
+        super::parameters(self).into_iter()
     }
 }
 
-impl<E: Element> RmsNorm<E> {
+impl<E: Element> RmsNorm<E> {}
+
+#[cfg(test)]
+#[path = "tests/rms_norm_tests.rs"]
+mod tests;
+
+impl<E: Element> Module<E> for RmsNorm<E> {
     /// Records the layer's expression over the `[batch, features]`
-    /// value `input` on `tape` and returns the `[batch, features]`
+    /// value `input` and returns the `[batch, features]`
     /// output value.
     ///
     /// # Panics
     /// Panics if the layer's parameter or `input` are not allocated on
     /// `tape`, or if `input` is not a rank-2 `[batch, features]`
     /// value agreeing with the scale on the feature count.
-    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         let scale = tape.resolve(self.scale);
         let epsilon = tape.resolve(self.epsilon);
         let input_shape = input.shape();
@@ -107,16 +114,6 @@ impl<E: Element> RmsNorm<E> {
         let root = (power + epsilon.broadcast_like(power)).sqrt();
         // `input / r_i * scale[j]`.
         input / root.broadcast_along(1, input) * scale.broadcast_along(0, input)
-    }
-}
-
-#[cfg(test)]
-#[path = "tests/rms_norm_tests.rs"]
-mod tests;
-
-impl<E: Element> Module<E> for RmsNorm<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        RmsNorm::express(self, tape, input)
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

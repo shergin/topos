@@ -13,7 +13,7 @@
 use std::time::Instant;
 
 use malevich::{Frame, Line, Plot, Points};
-use topos::{Mlp, Shape, Tape, Tensor, init};
+use topos::{Activation, Mlp, Module, Shape, Tape, Tensor, init};
 
 /// How many noisy samples the model trains on; the chart grid reuses
 /// the count so the recorded expression serves both.
@@ -44,11 +44,16 @@ fn main() {
         .collect();
 
     let tape: Tape<f32> = Tape::new();
-    let mlp = Mlp::new(&tape, &[1, HIDDEN_LEN, 1], init::xavier(7));
+    let mlp = Mlp::new(
+        &tape,
+        &[1, HIDDEN_LEN, 1],
+        Activation::Tanh,
+        init::xavier(7),
+    );
 
     let input = tape.input(features);
     let expected = tape.input(Tensor::new([SAMPLE_LEN, 1], target_values.clone()));
-    let predicted = mlp.express(&tape, input);
+    let predicted = mlp.express(input);
     let error = predicted - expected;
     let loss = (error * error).sum();
 

@@ -65,7 +65,7 @@ fn express_standardizes_every_feature() {
     // variances `[1, 4]`, so both standardize to `[-1, 1]`.
     let input = tape.leaf(Tensor::new([2, 2], [1.0, 2.0, 3.0, 6.0]));
 
-    let normalization = norm.express(&tape, input);
+    let normalization = norm.express(input);
     assert_eq!(normalization.output.shape(), Shape::new([2, 2]));
     assert_eq!(normalization.mean.shape(), Shape::new([2]));
     assert_eq!(normalization.variance.shape(), Shape::new([2]));
@@ -93,7 +93,7 @@ fn express_applies_the_learned_affine() {
     );
     let input = tape.leaf(Tensor::new([2, 2], [1.0, 2.0, 3.0, 6.0]));
 
-    let output = norm.express(&tape, input).output.symbol();
+    let output = norm.express(input).output.symbol();
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
@@ -113,7 +113,7 @@ fn epsilon_keeps_a_constant_feature_finite() {
     // without the epsilon under the square root.
     let input = tape.leaf(Tensor::new([2, 1], [5.0, 5.0]));
 
-    let output = norm.express(&tape, input).output.symbol();
+    let output = norm.express(input).output.symbol();
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
@@ -132,7 +132,7 @@ fn express_records_tensor_granularity() {
     let input = tape.leaf(Tensor::new([3, 2], vec![1.0; 6]));
     let nodes_before = tape.len();
 
-    norm.express(&tape, input);
+    norm.express(input);
 
     // Sixteen computed nodes plus the two count literals the means
     // record; the total does not grow with batch or feature sizes.
@@ -152,7 +152,7 @@ fn express_with_normalizes_by_the_fed_statistics() {
     let mean = tape.input(Tensor::filled([2], 0.0));
     let variance = tape.input(Tensor::filled([2], 1.0));
 
-    let output = norm.express_with(&tape, input, mean, variance);
+    let output = norm.express_with(input, mean, variance);
 
     let (output, input, mean, variance) = (
         output.symbol(),
@@ -196,7 +196,7 @@ fn express_rejects_mismatched_features() {
         Tensor::filled([], 0.0),
     );
     let input = tape.leaf(Tensor::new([2, 3], vec![1.0; 6]));
-    norm.express(&tape, input);
+    norm.express(input);
 }
 
 #[test]
@@ -216,7 +216,7 @@ fn gradients_flow_through_the_batch_statistics() {
     );
     let input = tape.leaf(Tensor::new([2, 1], [3.0, 1.0]));
 
-    let normalization = norm.express(&tape, input);
+    let normalization = norm.express(input);
     let target = normalization.output.narrow(0, 0, 1).sum();
 
     let (target, input) = (target.symbol(), input.symbol());

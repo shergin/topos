@@ -22,7 +22,7 @@ fn training_network() -> (Network<f64>, usize, usize, usize) {
         [3, 2],
         (0..6).map(|v| v as f64 * 0.7 - 2.0).collect::<Vec<_>>(),
     ));
-    let normalization = layer.express(&tape, input);
+    let normalization = layer.express(input);
     let root = normalization.output.symbol().id.index();
     let mean = normalization.mean.symbol().id.index();
     let variance = normalization.variance.symbol().id.index();
@@ -102,7 +102,7 @@ fn a_shared_statistic_bars_the_match() {
         [3, 2],
         (0..6).map(|v| v as f64 * 0.4 - 1.0).collect::<Vec<_>>(),
     ));
-    let normalization = layer.express(&tape, input);
+    let normalization = layer.express(input);
     let _drift = normalization.mean.sum();
     let root = normalization.output.symbol().id.index();
     let network = tape.into_network();
@@ -164,7 +164,7 @@ fn the_inference_formula_matches_supplied_statistics() {
     ));
     let mean = tape.input(Tensor::new([2], [0.1_f64, -0.1]));
     let variance = tape.input(Tensor::new([2], [1.5_f64, 0.5]));
-    let output = layer.express_with(&tape, input, mean, variance);
+    let output = layer.express_with(input, mean, variance);
     let root = output.symbol().id.index();
     let mean = mean.symbol().id.index();
     let variance = variance.symbol().id.index();

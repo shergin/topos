@@ -875,7 +875,7 @@ Programmatic access (tying, freezing) goes through typed accessors
 (`weights()`, struct fields), never names; names exist only as the
 structured `Path`/`Segment` checkpoint identity. Distinct from a Rust
 module (a namespace): this is the ML term of art. In topos:
-[`Module`](src/neural/module.rs).
+[`Module`](src/neural/module.rs). `express` takes only the input value: the input's tape (`Value::tape`) *is* the recording phase, so a module cannot be handed the wrong tape, and every facade has exactly one `express` spelling.
 
 **Sequential.** The ordered module chain: each stage's output feeds
 the next, stages heterogeneous behind `dyn Module`, appended with the
@@ -904,7 +904,7 @@ module already exposes, the way GPT-2's example records its head over
 the embedding table's transpose. In topos:
 [`Linear`](src/neural/linear.rs).
 
-**Mlp.** A multilayer perceptron: affine stages chained by a topology
+**Mlp.** A multilayer perceptron: affine stages chained by a topology, the hidden activation a caller-owned argument (no default, per the facade rule)
 of value widths (`[3, 4, 4, 1]`), hidden stages squashing with `Tanh`
 and an affine output stage. The convenience constructor over
 `Linear`, with initialization owned by the caller through a

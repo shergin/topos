@@ -200,22 +200,7 @@ impl<E: Element> Conv2d<E> {
     /// Returns the symbols of the layer's parameters: the weights, then
     /// the bias.
     pub fn parameters(&self) -> impl Iterator<Item = Symbol> + '_ {
-        [self.weights, self.bias].into_iter()
-    }
-}
-
-impl<E: Element> Conv2d<E> {
-    /// Records the layer's expression over the `[batch, channels,
-    /// height, width]` value `input` on `tape` and returns the
-    /// `[batch, filters, out_height, out_width]` output value.
-    ///
-    /// # Panics
-    /// Panics as documented on [`conv2d`], or if the layer's parameters
-    /// or `input` are not allocated on `tape`.
-    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        let weights = tape.resolve(self.weights);
-        let bias = tape.resolve(self.bias);
-        conv2d(input, weights, bias, self.stride, self.padding)
+        super::parameters(self).into_iter()
     }
 }
 
@@ -237,8 +222,18 @@ impl<E: Element> Conv2d<E> {
 }
 
 impl<E: Element> Module<E> for Conv2d<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        Conv2d::express(self, tape, input)
+    /// Records the layer's expression over the `[batch, channels,
+    /// height, width]` value `input` and returns the
+    /// `[batch, filters, out_height, out_width]` output value.
+    ///
+    /// # Panics
+    /// Panics as documented on [`conv2d`], or if the layer's parameters
+    /// or `input` are not allocated on `tape`.
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
+        let weights = tape.resolve(self.weights);
+        let bias = tape.resolve(self.bias);
+        conv2d(input, weights, bias, self.stride, self.padding)
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

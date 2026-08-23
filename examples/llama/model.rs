@@ -63,7 +63,8 @@ impl<E: Element + From<f32>> Projection<E> {
 }
 
 impl<E: Element> Module<E> for Projection<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         input.matmul(tape.resolve(self.weights))
     }
 
@@ -161,13 +162,14 @@ impl<E: Element + From<f32>> Attention<E> {
 }
 
 impl<E: Element> Module<E> for Attention<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         let head_dim = self.family.head_dim();
         let mask = tape.resolve(self.mask);
         let scale = tape.resolve(self.scale);
-        let queries = self.query.express(tape, input);
-        let keys = self.key.express(tape, input);
-        let values = self.value.express(tape, input);
+        let queries = self.query.express(input);
+        let keys = self.key.express(input);
+        let values = self.value.express(input);
 
         // Each key/value head rotates and transposes once and serves
         // its whole group of query heads.
@@ -190,7 +192,7 @@ impl<E: Element> Module<E> for Attention<E> {
                 weights.matmul(values.narrow(1, group * head_dim, head_dim))
             })
             .collect();
-        self.output.express(tape, concat(&heads, 1))
+        self.output.express(concat(&heads, 1))
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {
@@ -232,14 +234,14 @@ impl<E: Element + From<f32>> FeedForward<E> {
 }
 
 impl<E: Element> Module<E> for FeedForward<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         let one = tape.resolve(self.one);
-        let gated = self.gate.express(tape, input);
+        let gated = self.gate.express(input);
         // SiLU as `x sigmoid(x)`, spelled `x / (1 + exp(-x))` from the
         // op surface.
         let activated = gated / ((-gated).exp() + one.broadcast_like(gated));
-        self.down
-            .express(tape, activated * self.up.express(tape, input))
+        self.down.express(activated * self.up.express(input))
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {
@@ -283,14 +285,10 @@ impl<E: Element + From<f32>> Block<E> {
 }
 
 impl<E: Element> Module<E> for Block<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        let attended = self
-            .attention
-            .express(tape, self.attention_norm.express(tape, input));
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let attended = self.attention.express(self.attention_norm.express(input));
         let stream = input + attended;
-        let lifted = self
-            .feed_forward
-            .express(tape, self.hidden_norm.express(tape, stream));
+        let lifted = self.feed_forward.express(self.hidden_norm.express(stream));
         stream + lifted
     }
 
@@ -391,17 +389,16 @@ impl<E: Element + From<f32> + 'static> Llama<E> {
 
     /// Records the untied head over the extracted `[1, embed]` row and
     /// returns the `[1, vocabulary]` logits.
-    pub fn predict<'tape>(&self, tape: &'tape Tape<E>, last: Value<'tape, E>) -> Value<'tape, E> {
-        self.head.express(tape, last)
+    pub fn predict<'tape>(&self, last: Value<'tape, E>) -> Value<'tape, E> {
+        self.head.express(last)
     }
 }
 
 impl<E: Element> Module<E> for Llama<E> {
     /// Records the model over the embedded `[context, embed]` window:
     /// the block stack, then the final norm.
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        self.final_norm
-            .express(tape, self.blocks.express(tape, input))
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        self.final_norm.express(self.blocks.express(input))
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

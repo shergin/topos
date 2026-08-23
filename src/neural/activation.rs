@@ -1,4 +1,4 @@
-use crate::{Element, Tape, Value};
+use crate::{Element, Value};
 
 use super::Module;
 
@@ -52,7 +52,7 @@ mod tests;
 impl<E: Element> Module<E> for Activation {
     /// A stateless stage: the network is unused, and the default
     /// no-op `visit` stands.
-    fn express<'tape>(&self, _tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
         Activation::express(*self, input)
     }
 }

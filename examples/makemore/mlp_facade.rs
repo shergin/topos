@@ -18,7 +18,7 @@ mod corpus;
 
 use std::time::Instant;
 
-use topos::{Mlp, Shape, Tape, Tensor, cross_entropy, init};
+use topos::{Activation, Mlp, Module, Shape, Tape, Tensor, cross_entropy, init};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};
@@ -55,6 +55,7 @@ fn main() {
     let mlp = Mlp::new(
         &tape,
         &[CONTEXT_LEN * EMBED_DIM, HIDDEN_LEN, VOCABULARY_LEN],
+        Activation::Tanh,
         init::xavier(7),
     );
 
@@ -69,7 +70,7 @@ fn main() {
     let embedded = embeddings
         .gather(contexts)
         .reshape([BATCH_LEN, CONTEXT_LEN * EMBED_DIM]);
-    let loss = cross_entropy(mlp.express(&tape, embedded), targets);
+    let loss = cross_entropy(mlp.express(embedded), targets);
 
     // The sampling twin: the same parameters expressed over a single
     // context row, with the composite softmax on top.
@@ -77,7 +78,7 @@ fn main() {
     let sample_embedded = embeddings
         .gather(sample_context)
         .reshape([1, CONTEXT_LEN * EMBED_DIM]);
-    let sample_probabilities = mlp.express(&tape, sample_embedded).softmax(1);
+    let sample_probabilities = mlp.express(sample_embedded).softmax(1);
 
     let (contexts, targets, loss, sample_context, sample_probabilities) = (
         contexts.symbol(),

@@ -15,7 +15,7 @@ use std::f32::consts::PI;
 use std::time::Instant;
 
 use malevich::{Cells, Frame, Line, Plot, Points};
-use topos::{Mlp, Shape, Tape, Tensor, init};
+use topos::{Activation, Mlp, Module, Shape, Tape, Tensor, init};
 
 /// How many points each half-moon holds.
 const MOON_LEN: usize = 100;
@@ -73,11 +73,11 @@ fn main() {
     target_values.extend(vec![-1.0; MOON_LEN]);
 
     let tape: Tape<f32> = Tape::new();
-    let mlp = Mlp::new(&tape, &[2, 16, 16, 1], init::xavier(7));
+    let mlp = Mlp::new(&tape, &[2, 16, 16, 1], Activation::Tanh, init::xavier(7));
 
     let input = tape.input(Tensor::new([2 * MOON_LEN, 2], feature_values));
     let expected = tape.input(Tensor::new([2 * MOON_LEN, 1], target_values.clone()));
-    let predicted = mlp.express(&tape, input);
+    let predicted = mlp.express(input);
     let error = predicted - expected;
     let loss = (error * error).sum();
 
@@ -97,7 +97,7 @@ fn main() {
         [SURFACE_COLUMNS * SURFACE_ROWS, 2],
         surface_centers,
     ));
-    let surface_predicted = mlp.express(&tape, surface_input);
+    let surface_predicted = mlp.express(surface_input);
 
     let (predicted, surface_predicted, loss) = (
         predicted.symbol(),

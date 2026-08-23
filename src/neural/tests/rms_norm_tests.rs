@@ -1,5 +1,7 @@
 use crate::{Shape, Tape, Tensor};
 
+use crate::Module;
+
 use super::RmsNorm;
 
 #[test]
@@ -46,7 +48,7 @@ fn express_normalizes_by_the_root_mean_square() {
     // `[1, -1]`. No centering: the second row's sign survives.
     let input = tape.leaf(Tensor::new([2, 2], [2.0, 2.0, 3.0, -3.0]));
 
-    let output = norm.express(&tape, input);
+    let output = norm.express(input);
     assert_eq!(output.shape(), Shape::new([2, 2]));
 
     let output = output.symbol();
@@ -65,7 +67,7 @@ fn express_applies_the_learned_scale() {
     );
     let input = tape.leaf(Tensor::new([2, 2], [2.0, 2.0, 3.0, -3.0]));
 
-    let output = norm.express(&tape, input).symbol();
+    let output = norm.express(input).symbol();
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
@@ -79,7 +81,7 @@ fn express_records_tensor_granularity() {
     let input = tape.leaf(Tensor::new([3, 2], vec![1.0; 6]));
     let nodes_before = tape.len();
 
-    norm.express(&tape, input);
+    norm.express(input);
 
     // Ten computed nodes plus the one count literal the mean records;
     // the total does not grow with batch or feature sizes.
@@ -92,7 +94,7 @@ fn express_rejects_mismatched_features() {
     let tape = Tape::new();
     let norm = RmsNorm::new(&tape, Tensor::filled([2], 1.0_f64), Tensor::filled([], 0.0));
     let input = tape.leaf(Tensor::new([2, 3], vec![1.0; 6]));
-    norm.express(&tape, input);
+    norm.express(input);
 }
 
 #[test]
@@ -106,7 +108,7 @@ fn gradients_flow_through_the_root_mean_square() {
     let norm = RmsNorm::new(&tape, Tensor::filled([2], 1.0_f64), Tensor::filled([], 2.0));
     let input = tape.leaf(Tensor::new([1, 2], [2.0, 0.0]));
 
-    let output = norm.express(&tape, input);
+    let output = norm.express(input);
     let target = output.narrow(1, 0, 1).sum();
 
     let (target, input) = (target.symbol(), input.symbol());

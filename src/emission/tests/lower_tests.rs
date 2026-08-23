@@ -474,7 +474,7 @@ fn batch_norm_training_case() -> Case {
         (0..6).map(|v| v as f32 * 0.7 - 2.0).collect::<Vec<_>>(),
     );
     let input_value = tape.input(input.clone());
-    let normalization = layer.express(&tape, input_value);
+    let normalization = layer.express(input_value);
     let output = normalization.output.symbol();
     let mean = normalization.mean.symbol();
     let variance = normalization.variance.symbol();
@@ -540,7 +540,7 @@ fn batch_norm_inference_case() -> Case {
     let variance = Tensor::new([2], [1.25_f32, 0.75]);
     let variance_value = tape.input(variance.clone());
     let output = layer
-        .express_with(&tape, input_value, mean_value, variance_value)
+        .express_with(input_value, mean_value, variance_value)
         .symbol();
     let network = tape.into_network();
     let plan = network.compile(Request::roots([output]));

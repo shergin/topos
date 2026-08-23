@@ -608,7 +608,7 @@ fn batch_norm_fuses_exactly_when_a_backend_can_feed() {
         Tensor::filled([64], 0.3),
         Tensor::filled([1], 1.0e-5),
     );
-    let output = layer.express(&tape, input).output.symbol();
+    let output = layer.express(input).output.symbol();
     let network = tape.into_network();
 
     // The fused batch-norm kernel's in-process fallback is the
@@ -641,7 +641,7 @@ fn fused_batch_norm_grades_against_the_oracle() {
         Tensor::filled([64], 0.3),
         Tensor::filled([1], 1.0e-5),
     );
-    let normalization = layer.express(&tape, input);
+    let normalization = layer.express(input);
     let output = normalization.output.symbol();
     let mean = normalization.mean.symbol();
     let variance = normalization.variance.symbol();

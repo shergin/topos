@@ -49,7 +49,7 @@ fn sequential_expresses_through_dyn_stages() {
     let tape = Tape::new();
     let model = tree(&tape);
     let input = tape.leaf(Tensor::filled([2, 3], 0.5_f64));
-    let output = model.express(&tape, input).symbol();
+    let output = model.express(input).symbol();
     // Zero weights and biases: tanh(0) = 0, and the second affine
     // stage maps it to zero again, so the output is exactly zero.
     let network = tape.into_network();

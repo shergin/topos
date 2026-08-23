@@ -90,7 +90,7 @@ struct Sampler {
 fn record<E: Element + From<f32> + 'static>(tape: &Tape<E>, model: &Gpt2<E>) -> Sampler {
     let embedded = tape.input(Tensor::filled([CONTEXT_LEN, EMBED_DIM], E::from(0.0)));
     let extraction = tape.input(Tensor::selection(vec![0], CONTEXT_LEN, E::from(1.0)));
-    let last = model.express(tape, embedded).gather(extraction);
+    let last = model.express(embedded).gather(extraction);
     let logits = last.matmul(tape.resolve(model.embeddings()).transpose());
     Sampler {
         stream: embedded.symbol(),

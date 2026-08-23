@@ -84,20 +84,27 @@ impl<E: Element> LayerNorm<E> {
     /// Returns the symbols of the layer's parameters: the scale, then
     /// the shift.
     pub fn parameters(&self) -> impl Iterator<Item = Symbol> + '_ {
-        [self.scale, self.shift].into_iter()
+        super::parameters(self).into_iter()
     }
 }
 
-impl<E: Element> LayerNorm<E> {
+impl<E: Element> LayerNorm<E> {}
+
+#[cfg(test)]
+#[path = "tests/layer_norm_tests.rs"]
+mod tests;
+
+impl<E: Element> Module<E> for LayerNorm<E> {
     /// Records the layer's expression over the `[batch, features]`
-    /// value `input` on `tape` and returns the `[batch, features]`
+    /// value `input` and returns the `[batch, features]`
     /// output value.
     ///
     /// # Panics
     /// Panics if the layer's parameters or `input` are not allocated on
     /// `tape`, or if `input` is not a rank-2 `[batch, features]`
     /// value agreeing with the parameters on the feature count.
-    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         let scale = tape.resolve(self.scale);
         let shift = tape.resolve(self.shift);
         let epsilon = tape.resolve(self.epsilon);
@@ -125,16 +132,6 @@ impl<E: Element> LayerNorm<E> {
         let normalized = centered / deviation.broadcast_along(1, input);
         // The learned per-feature affine `scale[j] * n + shift[j]`.
         normalized * scale.broadcast_along(0, input) + shift.broadcast_along(0, input)
-    }
-}
-
-#[cfg(test)]
-#[path = "tests/layer_norm_tests.rs"]
-mod tests;
-
-impl<E: Element> Module<E> for LayerNorm<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        LayerNorm::express(self, tape, input)
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

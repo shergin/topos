@@ -1,4 +1,4 @@
-use crate::{Element, Tape, Value};
+use crate::{Element, Value};
 
 use super::{Module, Segment, Visitor};
 
@@ -44,10 +44,10 @@ impl<E: Element> Default for Sequential<E> {
 }
 
 impl<E: Element> Module<E> for Sequential<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
         self.stages
             .iter()
-            .fold(input, |value, stage| stage.express(tape, value))
+            .fold(input, |value, stage| stage.express(value))
     }
 
     fn visit(&self, visitor: &mut dyn Visitor) {

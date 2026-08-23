@@ -26,7 +26,9 @@ mod corpus;
 
 use std::time::Instant;
 
-use topos::{Dropout, Request, RmsNorm, Shape, Tape, Tensor, Value, concat, cross_entropy, init};
+use topos::{
+    Dropout, Module, Request, RmsNorm, Shape, Tape, Tensor, Value, concat, cross_entropy, init,
+};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};
@@ -126,7 +128,7 @@ impl<'tape> Model<'tape> {
     /// `[rows, rows]`.
     fn states(
         &self,
-        tape: &'tape Tape<f32>,
+        _tape: &'tape Tape<f32>,
         tokens: Value<'tape, f32>,
         positions: Value<'tape, f32>,
         mask: Value<'tape, f32>,
@@ -137,7 +139,7 @@ impl<'tape> Model<'tape> {
         // Pre-norm attention: every head attends over the same
         // normalized stream, and `concat` joins the head outputs along
         // the feature axis.
-        let normalized = self.attention_norm.express(tape, stream);
+        let normalized = self.attention_norm.express(stream);
         let heads: Vec<Value<'tape, f32>> = self
             .heads
             .iter()
@@ -150,20 +152,19 @@ impl<'tape> Model<'tape> {
                 weights.matmul(normalized.matmul(head.value))
             })
             .collect();
-        let stream = stream + dropouts[0].express(tape, concat(&heads, 1).matmul(self.projection));
+        let stream = stream + dropouts[0].express(concat(&heads, 1).matmul(self.projection));
 
         // Pre-norm feed-forward onto the residual stream.
-        let normalized = self.hidden_norm.express(tape, stream);
+        let normalized = self.hidden_norm.express(stream);
         let stream = stream
             + dropouts[1].express(
-                tape,
                 normalized
                     .matmul(self.hidden_weights)
                     .relu()
                     .matmul(self.output_weights),
             );
 
-        self.final_norm.express(tape, stream)
+        self.final_norm.express(stream)
     }
 
     /// Records the logits of the rows picked by the one-hot

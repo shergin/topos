@@ -50,21 +50,18 @@ impl<E: Element> Dropout<E> {
     pub fn mask(&self) -> Symbol {
         self.mask
     }
+}
 
+impl<E: Element> Module<E> for Dropout<E> {
     /// Records the masked value: `input * mask`.
     ///
     /// # Panics
     /// Panics if `input`'s shape differs from the declared mask
     /// shape, or if the module's mask does not resolve on `tape`
     /// generation.
-    pub fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         input * tape.resolve(self.mask)
-    }
-}
-
-impl<E: Element> Module<E> for Dropout<E> {
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
-        Dropout::express(self, tape, input)
     }
 }
 

@@ -28,7 +28,7 @@ fn positional_checkpoints_round_trip() {
     let trained_tape = Tape::new();
     let trained = model(&trained_tape, 0.5);
     let trained_input = trained_tape.leaf(Tensor::filled(input_shape, 1.0_f64));
-    let trained_output = trained.express(&trained_tape, trained_input).symbol();
+    let trained_output = trained.express(trained_input).symbol();
     let trained_network = trained_tape.into_network();
     let trained_parameters = trained_network.parameters();
     let payloads = snapshot(&trained_parameters, &trained);
@@ -38,7 +38,7 @@ fn positional_checkpoints_round_trip() {
     let fresh_tape = Tape::new();
     let fresh = model(&fresh_tape, 0.0);
     let fresh_input = fresh_tape.leaf(Tensor::filled(input_shape, 1.0_f64));
-    let fresh_output = fresh.express(&fresh_tape, fresh_input).symbol();
+    let fresh_output = fresh.express(fresh_input).symbol();
     let fresh_network = fresh_tape.into_network();
     let restored = restore(&fresh_network.parameters(), &fresh, payloads);
 
@@ -114,12 +114,8 @@ fn tied_parameters_restore_once() {
     /// shares an embedding's weights.
     struct Tied(Symbol);
     impl Module<f64> for Tied {
-        fn express<'tape>(
-            &self,
-            tape: &'tape Tape<f64>,
-            _input: Value<'tape, f64>,
-        ) -> Value<'tape, f64> {
-            tape.resolve(self.0)
+        fn express<'tape>(&self, input: Value<'tape, f64>) -> Value<'tape, f64> {
+            input.tape().resolve(self.0)
         }
         fn visit(&self, visitor: &mut dyn Visitor) {
             visitor.enter(Segment::Name("embedding"));

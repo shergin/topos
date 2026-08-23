@@ -18,7 +18,7 @@ mod corpus;
 use std::time::Instant;
 
 use malevich::{Color, Frame, Plot, Text};
-use topos::{Mlp, Shape, Tape, Tensor, cross_entropy, init};
+use topos::{Activation, Mlp, Module, Shape, Tape, Tensor, cross_entropy, init};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, from_token, load_names, shuffle, training_samples};
@@ -160,6 +160,7 @@ fn main() {
     let mlp = Mlp::new(
         &tape,
         &[CONTEXT_LEN * EMBED_DIM, HIDDEN_LEN, VOCABULARY_LEN],
+        Activation::Tanh,
         init::xavier(7),
     );
 
@@ -172,7 +173,7 @@ fn main() {
     let embedded = embeddings
         .gather(contexts)
         .reshape([BATCH_LEN, CONTEXT_LEN * EMBED_DIM]);
-    let loss = cross_entropy(mlp.express(&tape, embedded), targets);
+    let loss = cross_entropy(mlp.express(embedded), targets);
 
     println!(
         "{}",

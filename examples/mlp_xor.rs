@@ -13,7 +13,7 @@
 use std::time::Instant;
 
 use malevich::{Cells, Frame, Line, Plot};
-use topos::{Mlp, Tape, Tensor, init};
+use topos::{Activation, Mlp, Module, Tape, Tensor, init};
 
 /// The resolution of the decision-surface chart: how many grid cells
 /// span the unit square along each axis.
@@ -24,14 +24,14 @@ fn main() {
     let tape = Tape::new();
     // A deterministic seeded initializer keeps the run reproducible
     // while hidden-unit symmetry still breaks.
-    let mlp = Mlp::new(&tape, &[2, 4, 1], init::uniform(7, 0.5));
+    let mlp = Mlp::new(&tape, &[2, 4, 1], Activation::Tanh, init::uniform(7, 0.5));
 
     // Declared inputs: the minibatch arrives per run, so the defaults
     // only fix the shapes — two samples of two features, two targets.
     let x = tape.input(Tensor::filled([2, 2], 0.0_f32));
     let y = tape.input(Tensor::filled([2, 1], 0.0));
 
-    let predicted = mlp.express(&tape, x);
+    let predicted = mlp.express(x);
     let error = predicted - y;
     let loss = (error * error).sum();
 

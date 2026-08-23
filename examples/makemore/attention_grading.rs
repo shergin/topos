@@ -26,7 +26,8 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
 use topos::{
-    Request, RmsNorm, Shape, Symbol, Tape, Tensor, Value, concat, cross_entropy, init, stack,
+    Module, Request, RmsNorm, Shape, Symbol, Tape, Tensor, Value, concat, cross_entropy, init,
+    stack,
 };
 
 use corpus::{VOCABULARY_LEN, load_names, shuffle, training_samples};
@@ -163,7 +164,7 @@ fn recorded(
     let targets = tape.input(Tensor::selection(vec![0; BATCH_LEN], VOCABULARY_LEN, 1.0));
 
     let stream = embeddings.gather(tokens) + positions_table.gather(positions);
-    let normalized = attention_norm.express(&tape, stream);
+    let normalized = attention_norm.express(stream);
     let attended = if batched {
         let project = |slot: usize| {
             let slices: Vec<_> = heads
@@ -192,13 +193,13 @@ fn recorded(
         concat(&outputs, 1)
     };
     let stream = stream + attended.matmul(projection);
-    let normalized = hidden_norm.express(&tape, stream);
+    let normalized = hidden_norm.express(stream);
     let stream = stream
         + normalized
             .matmul(hidden_weights)
             .relu()
             .matmul(output_weights);
-    let states = final_norm.express(&tape, stream);
+    let states = final_norm.express(stream);
     let product = states.gather(extraction).matmul(logit_weights);
     let loss = cross_entropy(product + logit_bias.broadcast_along(0, product), targets);
 

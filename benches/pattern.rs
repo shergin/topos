@@ -80,7 +80,7 @@ fn pattern(criterion: &mut Criterion) {
         Tensor::filled([512], 0.0),
         Tensor::filled([1], 1.0e-5),
     );
-    let output = layer.express(&tape, input).output.symbol();
+    let output = layer.express(input).output.symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
     let plan = network.compile(Request::roots([output]));

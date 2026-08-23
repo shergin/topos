@@ -8,7 +8,7 @@ fn an_empty_chain_is_the_identity() {
     let chain: Sequential<f64> = Sequential::new();
     assert!(chain.is_empty());
     let input = tape.leaf(Tensor::filled([2], 1.0_f64));
-    let output = chain.express(&tape, input);
+    let output = chain.express(input);
     // No stage records anything: the output is the input node itself.
     assert_eq!(output.symbol(), input.symbol());
 }
@@ -26,7 +26,7 @@ fn stages_chain_in_order() {
     let chain = Sequential::new().then(negation).then(Activation::Relu);
     assert_eq!(chain.len(), 2);
     let input = tape.leaf(Tensor::new([2, 2], [-1.0_f64, 2.0, -3.0, 4.0]));
-    let output = chain.express(&tape, input).symbol();
+    let output = chain.express(input).symbol();
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);

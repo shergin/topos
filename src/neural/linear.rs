@@ -79,7 +79,7 @@ impl<E: Element> Linear<E> {
     /// Returns the symbols of the transform's parameters: the weights,
     /// then the bias.
     pub fn parameters(&self) -> impl Iterator<Item = Symbol> + '_ {
-        [self.weights, self.bias].into_iter()
+        super::parameters(self).into_iter()
     }
 }
 
@@ -91,7 +91,8 @@ impl<E: Element> Module<E> for Linear<E> {
     /// Panics if the parameters or `input` are not allocated on
     /// `tape`, or if `input` and the weights are not compatible
     /// rank-2 matrices.
-    fn express<'tape>(&self, tape: &'tape Tape<E>, input: Value<'tape, E>) -> Value<'tape, E> {
+    fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
+        let tape = input.tape();
         let weights = tape.resolve(self.weights);
         let bias = tape.resolve(self.bias);
         let product = input.matmul(weights);
