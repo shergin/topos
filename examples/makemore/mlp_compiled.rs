@@ -139,7 +139,7 @@ fn main() {
     // dead-node elimination drops it from every training step.
     let forward_nodes = tape.len();
     let parameter_symbols = model.parameters().map(|parameter| parameter.symbol());
-    let gradient_symbols = tape.differentiate(loss, parameter_symbols);
+    let adjoints = tape.differentiate(loss, parameter_symbols);
     println!(
         "recorded the chain rule: {} forward nodes + {} gradient nodes",
         forward_nodes,
@@ -147,9 +147,7 @@ fn main() {
     );
     let network = tape.into_network();
     let mut parameters = network.parameters();
-    let plan = network.compile(Request::roots(
-        std::iter::once(loss).chain(gradient_symbols.iter().copied()),
-    ));
+    let plan = network.compile(Request::roots(adjoints.roots()));
 
     // A fresh model is roughly uniform over the vocabulary, so the
     // first printed loss should sit near `ln(27) ~ 3.30`; matched
@@ -201,12 +199,7 @@ fn main() {
         // The gradients were computed by the same plan run that
         // computed the loss; assembling the update direction is a
         // read, not a backward pass.
-        let gradients = run.recorded_gradients(
-            parameter_symbols
-                .iter()
-                .copied()
-                .zip(gradient_symbols.iter().copied()),
-        );
+        let gradients = run.recorded_gradients(&adjoints);
         let learning_rate = if step < 4000 { &fast } else { &slow };
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)

@@ -31,9 +31,7 @@ use std::io::{Read, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
-use topos::{
-    Differentiable, Request, Shape, Symbol, Tape, Tensor, Tensorial, Value, cross_entropy, init,
-};
+use topos::{Differentiable, Request, Shape, Tape, Tensor, Tensorial, Value, cross_entropy, init};
 
 use corpus::{VOCABULARY_LEN, load_names, shuffle, training_samples};
 
@@ -209,22 +207,18 @@ fn main() {
 
     let (contexts, targets, loss) = (contexts.symbol(), targets.symbol(), loss.symbol());
     let parameter_symbols = parameters.map(|parameter| parameter.symbol());
-    let gradient_symbols = tape.differentiate(loss, parameter_symbols);
     // Pin the emitted result order: results are the readable set in
     // recording order, and the raw gradient nodes sit at scan-artifact
     // positions, so record one same-shape reshape alias per gradient,
     // in parameter order, and compile the aliases as the roots.
-    let aliases: Vec<Symbol> = gradient_symbols
-        .iter()
-        .map(|&gradient| {
+    let adjoints = tape
+        .differentiate(loss, parameter_symbols)
+        .map_gradients(|gradient| {
             let value = tape.resolve(gradient);
             value.reshape(value.shape()).symbol()
-        })
-        .collect();
+        });
     let network = tape.into_network();
-    let plan = network.compile(Request::roots(
-        std::iter::once(loss).chain(aliases.iter().copied()),
-    ));
+    let plan = network.compile(Request::roots(adjoints.roots()));
     let module = plan.emit_stablehlo().expect("the joint step emits");
     println!(
         "emitted the joint step: {} nodes, {} bytes of StableHLO",
@@ -251,12 +245,7 @@ fn main() {
         oracle_losses.push(run.of(loss).to_vec()[0]);
         // The aliases are the readable set; they carry the gradient
         // payloads bit for bit (a same-shape reshape is the identity).
-        let gradients = run.recorded_gradients(
-            parameter_symbols
-                .iter()
-                .copied()
-                .zip(aliases.iter().copied()),
-        );
+        let gradients = run.recorded_gradients(&adjoints);
         let rate = learning_rate(step);
         oracle_parameters = oracle_parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * rate.broadcast_like(gradient)

@@ -155,24 +155,19 @@ fn main() {
 
     // The routes differ only here: what the plan computes and where
     // the gradients come from.
-    let gradient_symbols = if recorded {
-        let gradient_symbols = tape.differentiate(loss, parameter_symbols);
+    let adjoints = recorded.then(|| {
+        let adjoints = tape.differentiate(loss, parameter_symbols);
         println!(
             "recorded the chain rule: {forward_nodes} forward nodes + {} gradient nodes",
             tape.len() - forward_nodes
         );
-        gradient_symbols
-    } else {
-        Vec::new()
-    };
+        adjoints
+    });
     let network = tape.into_network();
     let mut parameters = network.parameters();
-    let plan = if recorded {
-        network.compile(Request::roots(
-            std::iter::once(loss).chain(gradient_symbols.iter().copied()),
-        ))
-    } else {
-        network.compile(Request::roots([loss]).backward())
+    let plan = match &adjoints {
+        Some(adjoints) => network.compile(Request::roots(adjoints.roots())),
+        None => network.compile(Request::roots([loss]).backward()),
     };
     for line in plan
         .describe()
@@ -206,15 +201,9 @@ fn main() {
         }
         last_loss = batch_loss;
 
-        let gradients = if recorded {
-            run.recorded_gradients(
-                parameter_symbols
-                    .iter()
-                    .copied()
-                    .zip(gradient_symbols.iter().copied()),
-            )
-        } else {
-            run.backward(loss)
+        let gradients = match &adjoints {
+            Some(adjoints) => run.recorded_gradients(adjoints),
+            None => run.backward(loss),
         };
         let learning_rate = if step < steps * 3 / 4 { &fast } else { &slow };
         parameters = parameters.step(&gradients, |parameter, gradient| {

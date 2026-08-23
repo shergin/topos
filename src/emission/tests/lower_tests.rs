@@ -137,13 +137,11 @@ fn gradient_case() -> Case {
     let windows = (signal_value.unfold(0, 3, 2, 1) * mix_value).relu().sum();
     let lookup = table_value.gather(tokens_value).sum();
     let loss = windows + lookup;
-    let gradients = tape.differentiate(loss, [signal_value, table_value]);
+    let adjoints = tape.differentiate(loss, [signal_value, table_value]);
 
     // The module's result list follows recording order, so the
     // expected vectors must too.
-    let mut readable: Vec<_> = std::iter::once(loss.into())
-        .chain(gradients.iter().copied())
-        .collect();
+    let mut readable: Vec<_> = adjoints.roots().collect();
     readable.sort_by_key(|&symbol: &crate::Symbol| symbol.id.index());
     let network = tape.into_network();
     let plan = network.compile(Request::roots(readable.clone()));
@@ -187,13 +185,11 @@ fn batched_case() -> Case {
     );
     let b_value = tape.input(b.clone());
     let loss = a_value.matmul(b_value).sum();
-    let gradients = tape.differentiate(loss, [a_value, b_value]);
+    let adjoints = tape.differentiate(loss, [a_value, b_value]);
 
     // The module's result list follows recording order, so the
     // expected vectors must too.
-    let mut readable: Vec<_> = std::iter::once(loss.into())
-        .chain(gradients.iter().copied())
-        .collect();
+    let mut readable: Vec<_> = adjoints.roots().collect();
     readable.sort_by_key(|&symbol: &crate::Symbol| symbol.id.index());
     let network = tape.into_network();
     let plan = network.compile(Request::roots(readable.clone()));

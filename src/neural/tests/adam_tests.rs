@@ -1,5 +1,3 @@
-use std::iter;
-
 use crate::{Adam, AdamW, Optimizer, Request, Sgd, Tape, Tensor};
 
 /// The conventional hyperparameters as single-value payloads.
@@ -164,11 +162,9 @@ fn recorded_gradients_feed_adam_bitwise() {
     let mut engine_parameters = engine_network.parameters();
 
     let (recorded_tape, recorded_w, recorded_loss) = build();
-    let gradient_symbols = recorded_tape.differentiate(recorded_loss, [recorded_w]);
+    let adjoints = recorded_tape.differentiate(recorded_loss, [recorded_w]);
     let recorded_network = recorded_tape.into_network();
-    let plan = recorded_network.compile(Request::roots(
-        iter::once(recorded_loss).chain(gradient_symbols.iter().copied()),
-    ));
+    let plan = recorded_network.compile(Request::roots(adjoints.roots()));
     let mut recorded_adam = Adam::new(beta1, beta2, epsilon);
     let mut recorded_parameters = recorded_network.parameters();
 
@@ -178,7 +174,7 @@ fn recorded_gradients_feed_adam_bitwise() {
         engine_parameters = engine_adam.step(&engine_parameters, &gradients, &rate);
 
         let run = plan.forward(&recorded_parameters, []);
-        let gradients = run.recorded_gradients([(recorded_w, gradient_symbols[0])]);
+        let gradients = run.recorded_gradients(&adjoints);
         recorded_parameters = recorded_adam.step(&recorded_parameters, &gradients, &rate);
 
         for (engine, recorded) in engine_parameters

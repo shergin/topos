@@ -32,9 +32,7 @@ use std::time::Instant;
 
 use malevich::stat::Window;
 use malevich::{Frame, Line, Plot, Rule};
-use topos::{
-    Adam, Optimizer, Request, Sgd, Shape, Symbol, Tape, Tensor, Value, cross_entropy, init,
-};
+use topos::{Adam, Optimizer, Request, Sgd, Shape, Tape, Tensor, Value, cross_entropy, init};
 
 use corpus::{VOCABULARY_LEN, load_names, shuffle, training_samples};
 
@@ -146,17 +144,11 @@ fn train(
     // each interpreter run procedurally — bit-identical losses, but
     // dense gradient fields where the recorded route carries
     // O(1)-constant non-parameter slots into the optimizer's moments.
-    let gradient_symbols: Vec<Symbol> = if recorded {
-        tape.differentiate(loss, parameter_symbols)
-    } else {
-        Vec::new()
-    };
+    let adjoints = recorded.then(|| tape.differentiate(loss, parameter_symbols));
     let network = tape.into_network();
-    let plan = recorded.then(|| {
-        network.compile(Request::roots(
-            std::iter::once(loss).chain(gradient_symbols.iter().copied()),
-        ))
-    });
+    let plan = adjoints
+        .as_ref()
+        .map(|adjoints| network.compile(Request::roots(adjoints.roots())));
 
     let mut parameters = network.parameters();
     let mut losses = Vec::new();
@@ -180,14 +172,9 @@ fn train(
             ),
         ];
 
-        let (batch_loss, gradients) = if let Some(plan) = &plan {
+        let (batch_loss, gradients) = if let (Some(plan), Some(adjoints)) = (&plan, &adjoints) {
             let run = plan.forward(&parameters, feeds);
-            let gradients = run.recorded_gradients(
-                parameter_symbols
-                    .iter()
-                    .copied()
-                    .zip(gradient_symbols.iter().copied()),
-            );
+            let gradients = run.recorded_gradients(adjoints);
             (run.of(loss).to_vec()[0], gradients)
         } else {
             let run = network.forward(&parameters, feeds);

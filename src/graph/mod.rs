@@ -7,6 +7,7 @@
 //! value-aligned [`Field`] buffers that carry gradients and optimizer
 //! state over the graph.
 
+mod adjoints;
 mod composite;
 mod field;
 mod literal;
@@ -25,6 +26,7 @@ mod tape;
 mod trace;
 mod value;
 
+pub use adjoints::Adjoints;
 pub use composite::{concat, stack};
 pub use field::{Field, Gradients};
 pub use network::Network;

@@ -7,7 +7,9 @@ use crate::{Differentiable, Numerics, Tensorial};
 
 use crate::backend::NumericsScope;
 use crate::function::{Function, SlotId};
-use crate::graph::{Field, Gradients, Network, Origin, Parameters, Structure, Symbol, ValueId};
+use crate::graph::{
+    Adjoints, Field, Gradients, Network, Origin, Parameters, Structure, Symbol, ValueId,
+};
 
 // Request-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
@@ -153,38 +155,36 @@ impl<Data: Differentiable> Run<Data> {
     }
 
     /// Assembles a [`Gradients`] field from recorded gradient values:
-    /// each `(parameter, gradient)` pair copies the gradient node's
-    /// payload from this run into the parameter's slot, with
-    /// zeros everywhere else — the field [`Run::backward`]
-    /// would produce for those parameters, when the gradients were
-    /// recorded by [`Tape::differentiate`](crate::Tape::differentiate)
-    /// instead of computed by the engine.
+    /// each of the adjoints' `(wrt, gradient)` pairs copies the
+    /// gradient node's payload from this run into the `wrt`
+    /// parameter's slot, with zeros everywhere else — the field
+    /// [`Run::backward`] would produce for those parameters, when the
+    /// gradients were recorded by
+    /// [`Tape::differentiate`](crate::Tape::differentiate) instead of
+    /// computed by the engine.
     ///
     /// It is the bridge from recorded gradients to
     /// [`Parameters::step`](crate::Parameters::step): one forward run
-    /// of a compiled `[loss, gradients...]` plan yields the update
+    /// of a plan compiled over the adjoints' roots yields the update
     /// direction with no backward pass at all, and the closure suite
     /// pins the two routes bitwise.
     ///
     /// # Panics
     /// Panics as [`Run::of`] panics for either half of a pair,
-    /// if a pair's first symbol is not a parameter, or if a gradient's
+    /// if a `wrt` entry is not a parameter, or if a gradient's
     /// payload shape differs from its parameter's recorded shape.
-    pub fn recorded_gradients(
-        &self,
-        pairs: impl IntoIterator<Item = (Symbol, Symbol)>,
-    ) -> Gradients<Data> {
+    pub fn recorded_gradients(&self, adjoints: &Adjoints) -> Gradients<Data> {
         let values = self.field.payloads();
         let mut gradients: Vec<Data> = values.iter().map(|value| value.zero_like()).collect();
-        for (parameter, gradient) in pairs {
+        for &(parameter, gradient) in adjoints.pairs() {
             let index = self.locate(parameter);
             assert!(
                 matches!(
                     self.structure.functions.get(index),
                     Some(Function::Parameter(_))
                 ),
-                "recorded gradients pair each parameter with its gradient; the first \
-                 symbol of a pair is not a parameter"
+                "recorded gradients scatter into parameter slots; a `wrt` entry of \
+                 these adjoints is not a parameter"
             );
             let payload = self.of(gradient).clone();
             assert_eq!(

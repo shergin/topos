@@ -9,11 +9,11 @@ use crate::{Differentiable, Request, Symbol, Tape, Tensor};
 /// arithmetic drifts apart. Sealing the tape is part of the fixture,
 /// so it consumes it.
 fn assert_closure(loss: Symbol, wrt: &[Symbol], tape: Tape<Tensor<f64>>) {
-    let gradients = tape.differentiate(loss, wrt.iter().copied());
+    let adjoints = tape.differentiate(loss, wrt.iter().copied());
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
     let engine = run.backward(loss);
-    for (&target, gradient) in wrt.iter().zip(gradients) {
+    for &(target, gradient) in adjoints.pairs() {
         let recorded = run.of(gradient).to_vec();
         let computed = engine.of(target).to_vec();
         assert_eq!(recorded.len(), computed.len());
@@ -390,16 +390,14 @@ fn a_composed_loss_closes_through_a_plan() {
     let loss = logits.tanh().sum();
 
     let targets = [weights.symbol(), bias.symbol()];
-    let gradients = tape.differentiate(loss.symbol(), targets);
+    let adjoints = tape.differentiate(loss.symbol(), targets);
     let loss = loss.symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
-    let plan = network.compile(Request::roots(
-        std::iter::once(loss).chain(gradients.iter().copied()),
-    ));
+    let plan = network.compile(Request::roots(adjoints.roots()));
     let planned = plan.forward(&parameters, []);
     let engine = network.forward(&parameters, []).backward(loss);
-    for (&target, gradient) in targets.iter().zip(gradients) {
+    for &(target, gradient) in adjoints.pairs() {
         let recorded = planned.of(gradient).to_vec();
         let computed = engine.of(target).to_vec();
         for (recorded, computed) in recorded.iter().zip(&computed) {
@@ -412,12 +410,12 @@ fn a_composed_loss_closes_through_a_plan() {
 fn non_ancestors_answer_recorded_zeros() {
     let tape = Tape::new();
     let a = tape.parameter(varied([2], 1));
-    let unrelated = tape.parameter(varied([3], 2));
+    let unrelated = tape.parameter(varied([3], 2)).symbol();
     let loss = a.sum();
-    let gradients = tape.differentiate(loss, [unrelated]);
+    let adjoints = tape.differentiate(loss, [unrelated]);
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(run.of(gradients[0]).to_vec(), &[0.0; 3]);
+    assert_eq!(run.of(adjoints.of(unrelated)).to_vec(), &[0.0; 3]);
 }
 
 #[test]
@@ -447,14 +445,15 @@ fn second_derivative_of_a_cubic_is_exact() {
     let tape = Tape::new();
     let x = tape.parameter(Tensor::new([3], [0.5_f64, -1.25, 2.0]));
     let loss = (x * x * x).sum();
+    let x = x.symbol();
 
     let first = tape.differentiate(loss, [x]);
-    let first_value = tape.resolve(first[0]);
+    let first_value = tape.resolve(first.of(x));
     let second = tape.differentiate(first_value.sum(), [x]);
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    let computed = run.of(second[0]).to_vec();
+    let computed = run.of(second.of(x)).to_vec();
     for (computed, x) in computed.iter().zip([0.5_f64, -1.25, 2.0]) {
         assert_eq!(*computed, 6.0 * x);
     }
@@ -466,12 +465,13 @@ fn second_derivative_of_tanh_matches_finite_differences() {
     let tape = Tape::new();
     let x = tape.parameter(Tensor::new([1], [probe]));
     let loss = x.tanh().sum();
+    let x = x.symbol();
     let first = tape.differentiate(loss, [x]);
-    let second = tape.differentiate(tape.resolve(first[0]).sum(), [x]);
+    let second = tape.differentiate(tape.resolve(first.of(x)).sum(), [x]);
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    let computed = run.of(second[0]).to_vec()[0];
+    let computed = run.of(second.of(x)).to_vec()[0];
     let step = 1e-6;
     let derivative_at = |x: f64| 1.0 - x.tanh().powi(2);
     let expected = (derivative_at(probe + step) - derivative_at(probe - step)) / (2.0 * step);
@@ -485,12 +485,13 @@ fn relu_hessians_are_exact_zeros() {
     // gradient answers zero almost everywhere, never `NaN`.
     let x = tape.parameter(Tensor::new([3], [-2.0_f64, 0.5, 3.0]));
     let loss = x.relu().sum();
+    let x = x.symbol();
     let first = tape.differentiate(loss, [x]);
-    let second = tape.differentiate(tape.resolve(first[0]).sum(), [x]);
+    let second = tape.differentiate(tape.resolve(first.of(x)).sum(), [x]);
 
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    assert_eq!(run.of(second[0]).to_vec(), &[0.0; 3]);
+    assert_eq!(run.of(second.of(x)).to_vec(), &[0.0; 3]);
 }
 
 #[test]
@@ -543,11 +544,9 @@ fn a_recorded_training_loop_matches_the_engine_bitwise() {
     let engine_network = engine_tape.into_network();
     let recorded_tape = Tape::new();
     let (recorded_x, recorded_params, recorded_loss) = build(&recorded_tape);
-    let gradients = recorded_tape.differentiate(recorded_loss, recorded_params.iter().copied());
+    let adjoints = recorded_tape.differentiate(recorded_loss, recorded_params.iter().copied());
     let recorded_network = recorded_tape.into_network();
-    let plan = recorded_network.compile(Request::roots(
-        std::iter::once(recorded_loss).chain(gradients.iter().copied()),
-    ));
+    let plan = recorded_network.compile(Request::roots(adjoints.roots()));
 
     let mut engine_state = engine_network.parameters();
     let mut recorded_state = recorded_network.parameters();
@@ -561,12 +560,7 @@ fn a_recorded_training_loop_matches_the_engine_bitwise() {
         });
 
         let recorded_run = plan.forward(&recorded_state, [(recorded_x, batch)]);
-        let recorded_field = recorded_run.recorded_gradients(
-            recorded_params
-                .iter()
-                .copied()
-                .zip(gradients.iter().copied()),
-        );
+        let recorded_field = recorded_run.recorded_gradients(&adjoints);
         recorded_state = recorded_state.step(&recorded_field, |parameter, gradient| {
             parameter.clone() - gradient.clone() * Tensor::filled(gradient.shape(), 0.05)
         });
@@ -587,13 +581,16 @@ fn a_recorded_training_loop_matches_the_engine_bitwise() {
 
 #[test]
 #[should_panic(expected = "is not a parameter")]
-fn recorded_gradients_reject_swapped_pairs() {
+fn recorded_gradients_reject_non_parameter_wrt_entries() {
     let tape = Tape::new();
+    // Swapped pairs became unrepresentable with `Adjoints`; the
+    // remaining misuse is differentiating with respect to an interior
+    // value and asking for a parameter field anyway.
     let a = tape.parameter(varied([2], 1));
+    let doubled = (a + a).symbol();
     let loss = a.sum();
-    let a = a.symbol();
-    let gradients = tape.differentiate(loss, [a]);
+    let adjoints = tape.differentiate(loss, [doubled]);
     let network = tape.into_network();
     let run = network.forward(&network.parameters(), []);
-    run.recorded_gradients([(gradients[0], a)]);
+    run.recorded_gradients(&adjoints);
 }

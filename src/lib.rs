@@ -66,7 +66,9 @@ pub use backend::{
 };
 pub use emission::{EmitError, Emittable};
 pub use engine::{Plan, Request, Run};
-pub use graph::{Field, Gradients, Network, Parameters, Symbol, Tape, Value, concat, stack};
+pub use graph::{
+    Adjoints, Field, Gradients, Network, Parameters, Symbol, Tape, Value, concat, stack,
+};
 pub use neural::{
     Activation, Adam, AdamW, BatchNorm, Conv2d, Dropout, LayerNorm, Linear, Mlp, Module,
     Normalization, Optimizer, Path, RmsNorm, Segment, Sequential, Sgd, Visitor, checkpoint, conv2d,

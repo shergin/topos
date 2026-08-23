@@ -7,7 +7,7 @@ use crate::function::Function;
 use crate::{Differentiable, Shape, Tensorial};
 
 use super::trace::Trace;
-use super::{Network, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId};
+use super::{Adjoints, Network, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId};
 
 // Request-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`. The tape is the root every other guarantee rests on.
@@ -311,13 +311,13 @@ impl<Data: Differentiable> Tape<Data> {
 impl<Data: Tensorial> Tape<Data> {
     /// Records the reverse-mode gradient of `loss` with respect to each
     /// `wrt` entry as ordinary computed nodes on this tape, and returns
-    /// their symbols in `wrt` order.
+    /// the [`Adjoints`] pairing each entry with its gradient.
     ///
     /// It is `backward` as a tape-to-tape transform: the same reverse
     /// scan the engine runs over payload buffers runs here over
     /// recording `Trace` handles, applying the very same derivative
     /// rules — so the recorded gradient and the engine's are one body
-    /// of knowledge, and a compiled plan over `[loss, gradients...]`
+    /// of knowledge, and a compiled plan over the adjoints' roots
     /// reproduces [`Run::backward`](crate::Run::backward) bitwise
     /// (same seed, same accumulation order). Gradients become
     /// first-class values: compilable, emittable, readable, and
@@ -336,7 +336,7 @@ impl<Data: Tensorial> Tape<Data> {
         &self,
         loss: impl Into<Symbol>,
         wrt: impl IntoIterator<Item = impl Into<Symbol>>,
-    ) -> Vec<Symbol> {
+    ) -> Adjoints {
         let loss_value = self.resolve(loss.into());
         assert_eq!(
             loss_value.shape().rank(),
@@ -395,18 +395,21 @@ impl<Data: Tensorial> Tape<Data> {
             }
         }
 
-        wrt.into_iter()
-            .map(|target| {
-                let value = self.resolve(target.into());
-                match cotangents.get(value.id().index()).copied().flatten() {
+        let pairs = wrt
+            .into_iter()
+            .map(|entry| {
+                let value = self.resolve(entry.into());
+                let gradient = match cotangents.get(value.id().index()).copied().flatten() {
                     Some(gradient) => gradient.value().symbol(),
                     // A non-ancestor's gradient is a recorded zero of
                     // its own shape, the tape twin of the zeros a
                     // gradient field holds there.
                     None => value.literal(Data::counted(value.shape(), 0)).symbol(),
-                }
+                };
+                (value.symbol(), gradient)
             })
-            .collect()
+            .collect();
+        Adjoints::new(loss_value.symbol(), pairs)
     }
 }
 

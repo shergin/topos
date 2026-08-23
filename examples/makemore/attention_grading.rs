@@ -216,20 +216,16 @@ fn recorded(
         ])
         .map(|value| value.symbol())
         .collect();
-    let gradients = tape.differentiate(loss, wrt);
-    let aliases: Vec<Symbol> = gradients
-        .iter()
-        .map(|&gradient| {
-            let value = tape.resolve(gradient);
-            value.reshape(value.shape()).symbol()
-        })
-        .collect();
+    // Alias each gradient through a same-shape reshape so the emitted
+    // result order follows recording order.
+    let adjoints = tape.differentiate(loss, wrt).map_gradients(|gradient| {
+        let value = tape.resolve(gradient);
+        value.reshape(value.shape()).symbol()
+    });
     let (tokens, targets, loss) = (tokens.symbol(), targets.symbol(), loss.symbol());
     let network = tape.into_network();
     let parameters = network.parameters();
-    let plan = network.compile(Request::roots(
-        std::iter::once(loss).chain(aliases.iter().copied()),
-    ));
+    let plan = network.compile(Request::roots(adjoints.roots()));
     let run = plan.forward(
         &parameters,
         [(tokens, feeds.0.clone()), (targets, feeds.1.clone())],

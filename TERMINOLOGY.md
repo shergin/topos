@@ -246,20 +246,36 @@ once finite logits differed by more than the representable range.
 **Differentiate (gradient recording).** Reverse-mode differentiation
 as a tape-to-tape transform: `Tape::differentiate(loss, wrt)`
 appends the gradient computation as ordinary computed nodes and
-returns one symbol per `wrt` entry, so gradients are first-class
-values — compilable, emittable, readable, and differentiable again
-for higher-order derivatives. The transform runs the very same
-derivative rules the engine's `backward` runs, over a recording
-`Trace` payload instead of buffers (the rules are generic over the
-payload traits, so interpretation and transformation are two
-payloads of one rule — derivative knowledge cannot fork). The
-recorded scan mirrors the engine's seed, ancestor masking, and
-accumulation order, so a compiled plan over `[loss, gradients...]`
-reproduces `Run::backward` bitwise; per-variant closure tests
-hold that contract. Differentiation appends nodes, so it is a
-construction-phase operation and lives on the tape. In topos:
+returns the `Adjoints` pairing each `wrt` entry with its gradient
+symbol, so gradients are first-class values — compilable, emittable,
+readable, and differentiable again for higher-order derivatives. The
+transform runs the very same derivative rules the engine's `backward`
+runs, over a recording `Trace` payload instead of buffers (the rules
+are generic over the payload traits, so interpretation and
+transformation are two payloads of one rule — derivative knowledge
+cannot fork). The recorded scan mirrors the engine's seed, ancestor
+masking, and accumulation order, so a compiled plan over the
+adjoints' roots reproduces `Run::backward` bitwise; per-variant
+closure tests hold that contract. Differentiation appends nodes, so
+it is a construction-phase operation and lives on the tape. In topos:
 `Tape::differentiate`, the `Trace` payload, and the closure suite in
 `graph/tests/differentiate_tests.rs`.
+
+**Adjoints.** The carrier of a differentiation transform's product:
+the differentiated target plus one `(wrt, gradient)` symbol pair per
+`wrt` entry, in `wrt` order. The name is the AD term of art — an
+adjoint is the cotangent a reverse scan assigns a value. The pairs
+exist because the product's whole purpose is to be paired: each
+gradient with its `wrt` entry for `Run::recorded_gradients`, all of
+them with the target for a training request's roots
+(`Request::roots(adjoints.roots())`) — holding them together makes
+misordered pairs unrepresentable, where bare symbol lists forced
+every consumer into parallel-vector discipline. `map_gradients`
+rewrites the gradient symbols (the emission consumers alias each
+through a same-shape reshape to pin emitted result order) while the
+pairing and target ride along. Plain detached data, like `Symbol`.
+In topos: [`Adjoints`](src/graph/adjoints.rs), returned by
+`Tape::differentiate`.
 
 **Symbol.** A detached, `Copy` name of a value: an origin plus a node
 position, and the sole currency of every phase after recording. Access
