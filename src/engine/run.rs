@@ -9,10 +9,12 @@ use crate::{Element, Numerics, Tensor};
 use crate::backend::NumericsScope;
 use crate::function::{Function, SlotId};
 use crate::graph::{
-    Adjoints, Field, Gradients, Network, Origin, Parameters, Structure, Symbol, ValueId,
+    Adjoints, Field, Gradients, Network, Origin, Parameters, SlotStore, Structure, Symbol, ValueId,
 };
 
-// Request-time thread-safety contract; the anchor rationale is documented
+use super::Entry;
+
+// Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
 assert_impl_all!(Run<f64>: Send, Sync);
 
@@ -264,7 +266,7 @@ impl<E: Element> Run<E> {
         assert!(
             self.posture.differentiable(),
             "this run came from a forward-only plan, whose liveness pass freed \
-             the buffers backward reads; compile with `Request::backward` to differentiate"
+             the buffers backward reads; compile with `Entry::backward` to differentiate"
         );
         assert_eq!(
             values[output_index].shape().rank(),
@@ -392,33 +394,30 @@ impl<E: Element> Network<E> {
         );
     }
 
-    /// Evaluates only the ancestors of `targets` — the target-sliced
-    /// run — with `feeds` bound to declared inputs for this run only.
+    /// Evaluates only the ancestors of an entry's declared results —
+    /// the body of [`BoundEntry::interpret`](crate::BoundEntry::interpret).
     ///
-    /// It is `forward` restricted to what the caller will read:
-    /// reachability over the operand links selects the targets'
+    /// It is `forward` restricted to what the caller declared:
+    /// reachability over the operand links selects the results'
     /// ancestor closure, and every node outside it is skipped, its slot
     /// holding an O(1) zero placeholder of the recorded shape. Reads
     /// stay loud: [`Run::of`] and [`Run::backward`] panic on a skipped
-    /// value instead of answering with a placeholder.
-    ///
-    /// With several expressions recorded on one tape (the training and
-    /// evaluation twins of the examples), slicing to one expression's
-    /// targets skips the other expression entirely — the first rung of
-    /// the plan-lowering ladder, applied without any plan object.
-    ///
-    /// # Panics
-    /// Panics if a target does not resolve in this network, or as
-    /// [`Network::forward`] panics.
-    pub fn forward_for(
+    /// value instead of answering with a placeholder. With several
+    /// expressions recorded on one tape (the training and evaluation
+    /// twins of the examples), one entry's closure skips the other
+    /// expression entirely — the first rung of the lowering ladder,
+    /// applied without any plan object.
+    pub(crate) fn interpret_entry(
         &self,
+        entry: &Entry,
         parameters: &Parameters<E>,
-        targets: impl IntoIterator<Item = Symbol>,
         feeds: impl IntoIterator<Item = (Symbol, Tensor<E>)>,
     ) -> Run<E> {
-        let targets: Vec<ValueId> = targets
-            .into_iter()
-            .map(|target| self.locate(target))
+        let targets: Vec<ValueId> = entry
+            .roots
+            .iter()
+            .chain(&entry.observe)
+            .map(|&target| self.locate(target))
             .collect();
         self.run(parameters, Some(targets), feeds)
     }
@@ -462,39 +461,10 @@ impl<E: Element> Network<E> {
             );
             bindings.push((slot, payload));
         }
-        let inputs = if bindings.is_empty() {
-            Arc::clone(self.inputs())
-        } else {
-            let mut overlaid = self.inputs().as_ref().clone();
-            for (slot, payload) in bindings {
-                overlaid.set(slot, payload);
-            }
-            Arc::new(overlaid)
-        };
+        let inputs = SlotStore::overlaid(self.inputs(), bindings);
 
         let structure = self.structure();
-        // Reachability doubles the backward scan's trick in reverse:
-        // operands live below their consumers, so one descending sweep
-        // marks the whole ancestor closure.
-        let computed = targets.map(|targets| {
-            let mut wanted = vec![false; structure.len()];
-            for target in targets {
-                wanted[target.index()] = true;
-            }
-            for index in (0..wanted.len()).rev() {
-                if !wanted[index] {
-                    continue;
-                }
-                let links = structure
-                    .operands
-                    .get(index)
-                    .expect("operands cover the network");
-                for link in links.as_slice() {
-                    wanted[link.index()] = true;
-                }
-            }
-            wanted
-        });
+        let computed = targets.map(|targets| structure.ancestors(targets));
         let mut values = Vec::with_capacity(structure.len());
         for (index, (function, links)) in structure
             .functions

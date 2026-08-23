@@ -2,7 +2,7 @@ use static_assertions::assert_impl_all;
 
 use super::backend::Backend;
 
-// Request-time thread-safety contract; the anchor rationale is
+// Entry-time thread-safety contract; the anchor rationale is
 // documented in `network.rs`.
 assert_impl_all!(Formula: Send, Sync);
 assert_impl_all!(Precision: Send, Sync);

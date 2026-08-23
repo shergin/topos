@@ -10,7 +10,7 @@ use super::{
     Reads, Reshape, Scatter, Step, Sub, Sum, SumAlong, Transpose, Unfold,
 };
 
-// Request-time thread-safety contract; the anchor rationale is documented
+// Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
 assert_impl_all!(Function<f64>: Send, Sync);
 

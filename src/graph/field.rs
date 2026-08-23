@@ -6,7 +6,7 @@ use crate::{Element, Tensor};
 
 use super::{Origin, Parameters, Symbol};
 
-// Request-time thread-safety contract; the anchor rationale is documented
+// Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
 assert_impl_all!(Field<f64>: Send, Sync);
 

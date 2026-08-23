@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::function::SlotId;
 
 use super::ValueId;
@@ -135,5 +137,21 @@ impl<Data> SlotStore<Data> {
     pub(crate) fn iter(&self) -> impl Iterator<Item = (ValueId, &Data)> {
         debug_assert_eq!(self.payloads.len(), self.nodes.len());
         self.nodes.iter().copied().zip(self.payloads.iter())
+    }
+}
+
+impl<T: Clone> SlotStore<T> {
+    /// Returns `defaults` with `bindings` overlaid: the shared
+    /// feed-overlay of the interpreter and the plan, sharing the
+    /// default store untouched when nothing is bound.
+    pub(crate) fn overlaid(defaults: &Arc<Self>, bindings: Vec<(SlotId, T)>) -> Arc<Self> {
+        if bindings.is_empty() {
+            return Arc::clone(defaults);
+        }
+        let mut overlaid = defaults.as_ref().clone();
+        for (slot, payload) in bindings {
+            overlaid.set(slot, payload);
+        }
+        Arc::new(overlaid)
     }
 }

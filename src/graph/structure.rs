@@ -63,6 +63,32 @@ impl<Data> Structure<Data> {
 }
 
 impl<Data> Structure<Data> {
+    /// Marks the ancestor closure of `seeds` over the operand links:
+    /// one descending sweep, correct because operands live below
+    /// their consumers. The shared reachability of the interpreter's
+    /// entry closure and the plan's wanted set; the reverse scans
+    /// keep their own integrated marking, welded to this pair by the
+    /// closure suite.
+    pub(crate) fn ancestors(&self, seeds: impl IntoIterator<Item = ValueId>) -> Vec<bool> {
+        let mut wanted = vec![false; self.len()];
+        for seed in seeds {
+            wanted[seed.index()] = true;
+        }
+        for index in (0..wanted.len()).rev() {
+            if !wanted[index] {
+                continue;
+            }
+            let links = self
+                .operands
+                .get(index)
+                .expect("operand links cover the columns");
+            for link in links.as_slice() {
+                wanted[link.index()] = true;
+            }
+        }
+        wanted
+    }
+
     /// Builds the public snapshot of the node at `index`, minting
     /// symbols of the `origin` family for the node and its operands.
     ///

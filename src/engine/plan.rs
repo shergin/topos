@@ -13,9 +13,9 @@ use crate::graph::{Network, Node, Operands, Origin, Parameters, SlotStore, Struc
 use super::pattern::{
     BatchNormalization, Candidates, Catalog, Pattern, ReduceWindow, View, WindowProduct,
 };
-use super::{Posture, Request, Run};
+use super::{Entry, Posture, Run};
 
-// Request-time thread-safety contract; the anchor rationale is documented
+// Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
 assert_impl_all!(Plan<f64>: Send, Sync);
 
@@ -155,29 +155,18 @@ impl<E: Element> Plan<E> {
         let structure = network.structure().clone();
         let length = structure.len();
 
-        let mut wanted = vec![false; length];
         let mut readable = vec![false; length];
         let mut results: Vec<Symbol> = Vec::with_capacity(roots.len() + observe.len());
+        let mut seeds = Vec::with_capacity(results.capacity());
         for symbol in roots.iter().chain(observe) {
-            let index = network.locate(*symbol).index();
-            if !readable[index] {
+            let id = network.locate(*symbol);
+            if !readable[id.index()] {
                 results.push(*symbol);
             }
-            wanted[index] = true;
-            readable[index] = true;
+            readable[id.index()] = true;
+            seeds.push(id);
         }
-        for index in (0..length).rev() {
-            if !wanted[index] {
-                continue;
-            }
-            let links = structure
-                .operands
-                .get(index)
-                .expect("snapshot cannot shrink");
-            for link in links.as_slice() {
-                wanted[link.index()] = true;
-            }
-        }
+        let wanted = structure.ancestors(seeds);
 
         // Patterns: discovery pools every closed candidate over the
         // frozen columns, posture-blind; each consumer then elects
@@ -310,7 +299,7 @@ impl<E: Element> Plan<E> {
     }
 
     /// Returns the numerics posture this plan's runs execute under,
-    /// as chosen by [`Request::numerics`](crate::Request::numerics).
+    /// as chosen by [`Entry::numerics`](crate::Entry::numerics).
     pub fn numerics(&self) -> Numerics {
         self.numerics
     }
@@ -586,15 +575,7 @@ impl<E: Element> Plan<E> {
             );
             bindings.push((slot, payload));
         }
-        let inputs = if bindings.is_empty() {
-            Arc::clone(&self.inputs)
-        } else {
-            let mut overlaid = self.inputs.as_ref().clone();
-            for (slot, payload) in bindings {
-                overlaid.set(slot, payload);
-            }
-            Arc::new(overlaid)
-        };
+        let inputs = SlotStore::overlaid(&self.inputs, bindings);
 
         let mut values: Vec<Tensor<E>> = Vec::with_capacity(self.len());
         for index in 0..self.len() {
@@ -674,24 +655,25 @@ impl<E: Element> Plan<E> {
 }
 
 impl<E: Element> Network<E> {
-    /// Compiles `request` into a [`Plan`]: the single lowering entry
-    /// point, over the request's roots, observes, and engine-backward
-    /// memory posture.
+    /// Compiles a detached `entry` into a [`Plan`]: the late-binding
+    /// twin of [`BoundEntry::lower`](crate::BoundEntry::lower), for
+    /// entries stored across phases.
     ///
-    /// Forward-only requests (never calling
-    /// [`Request::backward`]) free every non-readable buffer
-    /// after its last consumer, so their runs refuse `backward`;
-    /// recorded gradient symbols compile as ordinary roots.
+    /// Forward-only entries (never calling
+    /// [`Entry::backward`](crate::Entry::backward)) free every
+    /// non-readable buffer after its last consumer, so their runs
+    /// refuse `backward`; recorded gradient symbols compile as
+    /// ordinary roots.
     ///
     /// # Panics
     /// Panics if a root or observe does not resolve in this network.
-    pub fn compile(&self, request: Request) -> Plan<E> {
+    pub fn compile(&self, entry: Entry) -> Plan<E> {
         Plan::new(
             self,
-            &request.roots,
-            &request.observe,
-            request.backward,
-            request.numerics,
+            &entry.roots,
+            &entry.observe,
+            entry.backward,
+            entry.numerics,
         )
     }
 }

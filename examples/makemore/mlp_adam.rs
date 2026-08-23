@@ -33,7 +33,7 @@ use std::time::Instant;
 
 use malevich::stat::Window;
 use malevich::{Frame, Line, Plot, Rule};
-use topos::{Adam, Optimizer, Request, Sgd, Shape, Tape, Tensor, Value, cross_entropy, init};
+use topos::{Adam, Optimizer, Sgd, Shape, Tape, Tensor, Value, cross_entropy, init};
 
 use corpus::{VOCABULARY_LEN, load_names, shuffle, training_samples};
 
@@ -145,7 +145,7 @@ fn train(
     let network = tape.into_network();
     let plan = adjoints
         .as_ref()
-        .map(|adjoints| network.compile(Request::roots(adjoints.roots())));
+        .map(|adjoints| network.entry(adjoints.roots()).lower());
 
     let mut parameters = network.parameters();
     let mut losses = Vec::new();

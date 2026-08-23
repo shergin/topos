@@ -14,7 +14,7 @@ use super::storage::Storage;
 use super::tensorial::{composed_batch_norm, composed_max_pool, composed_windowed_patches};
 use super::{Differentiable, Element, Elementary, Shape, Tensorial};
 
-// Request-time thread-safety contract; the anchor rationale is documented
+// Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
 assert_impl_all!(Tensor<f64>: Send, Sync);
 

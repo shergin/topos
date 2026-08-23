@@ -15,7 +15,7 @@ use super::coverage::Fidelity;
 /// boundaries.
 ///
 /// The posture is a value, not a build flag: it rides a
-/// [`Request`](crate::Request) onto the plan and its runs, so an
+/// [`Entry`](crate::Entry) onto the plan and its runs, so an
 /// exact oracle result and a fast result are comparable in one
 /// process. The default — for interpreter runs and host-side payload
 /// calls outside any run — is `Fast`: enabling a backend feature

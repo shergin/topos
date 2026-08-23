@@ -28,8 +28,7 @@ mod dataset;
 use std::time::Instant;
 
 use topos::{
-    Conv2d, Linear, Module, Request, Shape, Symbol, Tape, Tensor, Value, cross_entropy, init,
-    max_pool,
+    Conv2d, Linear, Module, Shape, Symbol, Tape, Tensor, Value, cross_entropy, init, max_pool,
 };
 
 use dataset::{Split, load, shuffle};
@@ -161,8 +160,8 @@ fn main() {
     let network = tape.into_network();
     let mut parameters = network.parameters();
     let plan = match &adjoints {
-        Some(adjoints) => network.compile(Request::roots(adjoints.roots())),
-        None => network.compile(Request::roots([loss]).backward()),
+        Some(adjoints) => network.entry(adjoints.roots()).lower(),
+        None => network.entry([loss]).backward().lower(),
     };
     for line in plan
         .describe()

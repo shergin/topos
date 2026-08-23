@@ -6,7 +6,7 @@ use crate::{Element, Shape, Symbol, Tape, Tensor, Value};
 
 use super::Module;
 
-// Request-time thread-safety contract; the anchor rationale is documented
+// Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
 assert_impl_all!(Dropout<f64>: Send, Sync);
 

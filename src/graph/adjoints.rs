@@ -65,7 +65,7 @@ impl Adjoints {
 
     /// Returns the training roots: the target, then every gradient in
     /// `wrt` order — the exact root list a compiled training plan
-    /// wants, so `Request::roots(adjoints.roots())` replaces the
+    /// wants, so `Entry::roots(adjoints.roots())` replaces the
     /// hand-chained loss-plus-gradients idiom.
     pub fn roots(&self) -> impl Iterator<Item = Symbol> + '_ {
         std::iter::once(self.target).chain(self.gradients())

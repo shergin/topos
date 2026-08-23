@@ -13,7 +13,7 @@ use super::metal::Metal;
 use super::simd::Simd;
 use super::stablehlo::StableHlo;
 
-// Request-time thread-safety contract; the anchor rationale is
+// Entry-time thread-safety contract; the anchor rationale is
 // documented in `network.rs`.
 assert_impl_all!(Backend: Send, Sync);
 assert_impl_all!(BackendUnavailable: Send, Sync);

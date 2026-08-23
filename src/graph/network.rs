@@ -8,7 +8,7 @@ use crate::function::Function;
 
 use super::{Node, Origin, Parameters, SlotStore, Structure, Symbol, Tape, ValueId};
 
-// Request-time thread-safety contract. `Differentiable` already requires
+// Entry-time thread-safety contract. `Differentiable` already requires
 // `Data: Send + Sync`, so only a structural change (an `Rc`, a `RefCell`, a
 // raw pointer) could break sharing across threads; a single concrete anchor
 // is enough to catch that.

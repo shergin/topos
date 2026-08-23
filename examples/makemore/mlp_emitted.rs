@@ -31,7 +31,7 @@ use std::io::{Read, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
-use topos::{Request, Shape, Tape, Tensor, Value, cross_entropy, init};
+use topos::{Shape, Tape, Tensor, Value, cross_entropy, init};
 
 use corpus::{VOCABULARY_LEN, load_names, shuffle, training_samples};
 
@@ -212,7 +212,7 @@ fn main() {
     // no aliasing ceremony.
     let adjoints = tape.differentiate(loss, parameter_symbols);
     let network = tape.into_network();
-    let plan = network.compile(Request::roots(adjoints.roots()));
+    let plan = network.entry(adjoints.roots()).lower();
     let module = plan.emit_stablehlo().expect("the joint step emits");
     println!(
         "emitted the joint step: {} nodes, {} bytes of StableHLO",

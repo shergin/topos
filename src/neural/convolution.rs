@@ -18,7 +18,7 @@ use crate::{Element, Symbol, Tape, Tensor, Value};
 
 use super::{Module, Visitor};
 
-// Request-time thread-safety contract; the anchor rationale is documented
+// Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
 assert_impl_all!(Conv2d<f64>: Send, Sync);
 

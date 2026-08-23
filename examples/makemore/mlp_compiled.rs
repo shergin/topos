@@ -20,7 +20,7 @@ mod corpus;
 
 use std::time::Instant;
 
-use topos::{Request, Shape, Tape, Tensor, Value, cross_entropy, init};
+use topos::{Shape, Tape, Tensor, Value, cross_entropy, init};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};
@@ -143,7 +143,7 @@ fn main() {
     );
     let network = tape.into_network();
     let mut parameters = network.parameters();
-    let plan = network.compile(Request::roots(adjoints.roots()));
+    let plan = network.entry(adjoints.roots()).lower();
 
     // A fresh model is roughly uniform over the vocabulary, so the
     // first printed loss should sit near `ln(27) ~ 3.30`; matched
@@ -215,9 +215,8 @@ fn main() {
         let mut window = [0usize; CONTEXT_LEN];
         let mut name = String::new();
         loop {
-            let run = network.forward_for(
+            let run = network.entry([sample_probabilities]).interpret(
                 &parameters,
-                [sample_probabilities],
                 [(
                     sample_context,
                     Tensor::selection(window.to_vec(), VOCABULARY_LEN, 1.0),

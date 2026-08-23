@@ -37,7 +37,7 @@ mod weights;
 use std::io::Write;
 use std::time::Instant;
 
-use topos::{Bf16, Element, Module, Plan, Request, Symbol, Tape, Tensor};
+use topos::{Bf16, Element, Module, Plan, Symbol, Tape, Tensor};
 
 use family::{Family, LLAMA2_7B, TINYLLAMA};
 use model::{CONTEXT_LEN, Llama, load};
@@ -149,7 +149,7 @@ where
     );
 
     let compiling = Instant::now();
-    let plan: Plan<E> = network.compile(Request::roots([sampler.logits]));
+    let plan: Plan<E> = network.entry([sampler.logits]).lower();
     println!(
         "recorded {} nodes and compiled the plan in {:.1}s",
         network.len(),

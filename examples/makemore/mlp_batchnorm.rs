@@ -22,7 +22,7 @@ mod corpus;
 
 use std::time::Instant;
 
-use topos::{BatchNorm, Request, Shape, Tape, Tensor, Value, cross_entropy, init};
+use topos::{BatchNorm, Shape, Tape, Tensor, Value, cross_entropy, init};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};
@@ -144,12 +144,15 @@ fn main() {
     let network = tape.into_network();
     let mut parameters = network.parameters();
 
-    // Request once: the training plan keeps the batch statistics
+    // Entry once: the training plan keeps the batch statistics
     // readable — the keep-set naming exactly what the loop reads —
     // and the sampling plan is forward-only.
-    let training_plan =
-        network.compile(Request::roots([loss]).observe([mean, variance]).backward());
-    let sampling_plan = network.compile(Request::roots([sample_probabilities]));
+    let training_plan = network
+        .entry([loss])
+        .observe([mean, variance])
+        .backward()
+        .lower();
+    let sampling_plan = network.entry([sample_probabilities]).lower();
 
     // The running estimates: loop-owned payloads, never engine state.
     let mut mean_estimate = Tensor::filled([HIDDEN_LEN], 0.0_f32);

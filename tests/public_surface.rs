@@ -3,7 +3,7 @@
 //! and emit — every call through `topos::` re-exports, which is the
 //! vantage from which a seam closure or a missing export is visible.
 
-use topos::{Numerics, Opcode, Request, Tape, Tensor};
+use topos::{Entry, Numerics, Opcode, Tape, Tensor};
 
 #[test]
 fn the_stack_walks_end_to_end_through_the_public_surface() {
@@ -38,7 +38,7 @@ fn the_stack_walks_end_to_end_through_the_public_surface() {
     // bits, and their describes must be spec lines plus liveness.
     for numerics in [Numerics::Exact, Numerics::Fast] {
         let plan = network.compile(
-            Request::roots(adjoints.roots())
+            Entry::roots(adjoints.roots())
                 .observe([loss])
                 .numerics(numerics),
         );
@@ -59,7 +59,7 @@ fn the_stack_walks_end_to_end_through_the_public_surface() {
     }
 
     // Emit: the declared results, in declared order.
-    let plan = network.compile(Request::roots(adjoints.roots()).observe([loss]));
+    let plan = network.compile(Entry::roots(adjoints.roots()).observe([loss]));
     let module = plan
         .emit_stablehlo()
         .expect("every current operation lowers");

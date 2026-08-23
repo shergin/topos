@@ -54,9 +54,7 @@ use std::io::{Read, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
-use topos::{
-    Bf16, Element, Emittable, Module, Plan, Request, Run, Symbol, Tape, Tensor, checkpoint,
-};
+use topos::{Bf16, Element, Emittable, Module, Plan, Run, Symbol, Tape, Tensor, checkpoint};
 
 use model::{CONTEXT_LEN, EMBED_DIM, Gpt2, VOCABULARY_LEN, load};
 use tokenizer::Tokenizer;
@@ -375,7 +373,7 @@ where
             .iter()
             .flat_map(|cache| [cache.keys_out, cache.values_out])
             .collect();
-        let plan: Plan<E> = network.compile(Request::roots([decoder.logits]).observe(outputs));
+        let plan: Plan<E> = network.entry([decoder.logits]).observe(outputs).lower();
         println!(
             "recorded {} nodes and compiled the decode plan in {:.1}s",
             network.len(),
@@ -462,7 +460,7 @@ where
     }
 
     let compiling = Instant::now();
-    let plan: Plan<E> = network.compile(Request::roots([sampler.logits]));
+    let plan: Plan<E> = network.entry([sampler.logits]).lower();
     println!(
         "recorded {} nodes and compiled the plan in {:.1}s",
         network.len(),

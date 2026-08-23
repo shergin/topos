@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use crate::{Bf16, Request, Shape, Tape, Tensor, concat, cross_entropy};
+use crate::{Bf16, Entry, Shape, Tape, Tensor, concat, cross_entropy};
 
 /// One emitted module with the payloads and oracle results the
 /// conformance tests replay: the arguments in the module's own order
@@ -30,7 +30,7 @@ fn small_case() -> Case {
     let x_value = tape.input(x.clone());
     let loss = x_value.matmul(weights_value).relu().sum().symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([loss]));
+    let plan = network.compile(Entry::roots([loss]));
     let run = plan.forward(&network.parameters(), []);
     Case {
         name: "small",
@@ -68,7 +68,7 @@ fn attention_case() -> Case {
         .collect();
     let output = concat(&heads, 1).symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([output]));
+    let plan = network.compile(Entry::roots([output]));
     let run = plan.forward(&network.parameters(), []);
     // The one-hot selection crosses the boundary as its dense matrix.
     let dense_tokens = Tensor::new(Shape::new([2, 3]), tokens.to_vec());
@@ -97,7 +97,7 @@ fn cross_entropy_case() -> Case {
     let targets_value = tape.input(targets.clone());
     let loss = cross_entropy(logits_value, targets_value).symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([loss]));
+    let plan = network.compile(Entry::roots([loss]));
     let run = plan.forward(&network.parameters(), []);
     // The one-hot selection crosses the boundary as its dense matrix.
     let dense_targets = Tensor::new(Shape::new([2, 3]), targets.to_vec());
@@ -144,7 +144,7 @@ fn gradient_case() -> Case {
     let mut readable: Vec<_> = adjoints.roots().collect();
     readable.sort_by_key(|&symbol: &crate::Symbol| symbol.id.index());
     let network = tape.into_network();
-    let plan = network.compile(Request::roots(readable.clone()));
+    let plan = network.compile(Entry::roots(readable.clone()));
     let run = plan.forward(&network.parameters(), []);
     let dense_tokens = Tensor::new(Shape::new([3, 3]), tokens.to_vec());
     Case {
@@ -192,7 +192,7 @@ fn batched_case() -> Case {
     let mut readable: Vec<_> = adjoints.roots().collect();
     readable.sort_by_key(|&symbol: &crate::Symbol| symbol.id.index());
     let network = tape.into_network();
-    let plan = network.compile(Request::roots(readable.clone()));
+    let plan = network.compile(Entry::roots(readable.clone()));
     let run = plan.forward(&network.parameters(), []);
     Case {
         name: "batched",
@@ -221,7 +221,7 @@ fn unfold_case() -> Case {
     let x_value = tape.parameter(x.clone());
     let windows = x_value.unfold(0, 3, 2, 1).symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([windows]));
+    let plan = network.compile(Entry::roots([windows]));
     let run = plan.forward(&network.parameters(), []);
     Case {
         name: "unfold",
@@ -306,7 +306,7 @@ fn convolution_case() -> Case {
     let bias_value = tape.parameter(bias.clone());
     let convolved = conv2d(image_value, weights_value, bias_value, 2, 1).symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([convolved]));
+    let plan = network.compile(Entry::roots([convolved]));
     assert_eq!(plan.home().groups(), 1, "the forward plan fuses");
     let run = plan.forward(&network.parameters(), []);
     Case {
@@ -357,7 +357,7 @@ fn probe_case() -> Case {
         .log_softmax(1)
         .symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([scores]));
+    let plan = network.compile(Entry::roots([scores]));
     assert_eq!(plan.home().groups(), 2, "the conv chain and the pool fuse");
     let run = plan.forward(&network.parameters(), []);
     Case {
@@ -394,7 +394,7 @@ fn pool_case() -> Case {
     let image_value = tape.parameter(image.clone());
     let pooled = max_pool(image_value, 2, 2).symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([pooled]));
+    let plan = network.compile(Entry::roots([pooled]));
     let run = plan.forward(&network.parameters(), []);
     Case {
         name: "pool",
@@ -449,7 +449,7 @@ fn a_hand_rolled_pool_fold_raises_identically() {
     }
     let pooled = largest.squeeze(4).symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([pooled]));
+    let plan = network.compile(Entry::roots([pooled]));
     let module = plan.emit_stablehlo().expect("the plan emits");
     assert_eq!(module, pool_case().module);
 }
@@ -483,7 +483,7 @@ fn batch_norm_training_case() -> Case {
     let mut readable: Vec<crate::Symbol> = vec![output, mean, variance];
     readable.sort_by_key(|&symbol: &crate::Symbol| symbol.id.index());
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([output]).observe([mean, variance]));
+    let plan = network.compile(Entry::roots([output]).observe([mean, variance]));
     let run = plan.forward(&network.parameters(), []);
     Case {
         name: "batch-norm-training",
@@ -543,7 +543,7 @@ fn batch_norm_inference_case() -> Case {
         .express_with(input_value, mean_value, variance_value)
         .symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([output]));
+    let plan = network.compile(Entry::roots([output]));
     let run = plan.forward(&network.parameters(), []);
     Case {
         name: "batch-norm-inference",
@@ -584,7 +584,7 @@ fn engine_backward_plans_still_raise_the_pool() {
     ));
     let loss = max_pool(image_value, 2, 2).sum().symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([loss]).backward());
+    let plan = network.compile(Entry::roots([loss]).backward());
     let module = plan.emit_stablehlo().expect("the plan emits");
     assert!(module.contains("\"stablehlo.reduce_window\""), "{module}");
 }
@@ -609,8 +609,8 @@ fn engine_backward_plans_emit_the_same_module() {
     let convolved = conv2d(image, weights, bias, 1, 0).symbol();
     let network = tape.into_network();
 
-    let forward = network.compile(Request::roots([convolved]));
-    let backward = network.compile(Request::roots([convolved]).backward());
+    let forward = network.compile(Entry::roots([convolved]));
+    let backward = network.compile(Entry::roots([convolved]).backward());
     let forward_module = forward.emit_stablehlo().expect("the forward plan emits");
     let backward_module = backward.emit_stablehlo().expect("the backward plan emits");
     assert!(
@@ -705,7 +705,7 @@ fn bf16_case() -> Case {
     let x_value = tape.input(x.clone());
     let loss = x_value.matmul(weights_value).relu().sum().symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([loss]));
+    let plan = network.compile(Entry::roots([loss]));
     let run = plan.forward(&network.parameters(), []);
     let expected: Vec<f32> = run.of(loss).iter().map(Bf16::to_f32).collect();
     Case {

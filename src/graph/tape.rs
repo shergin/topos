@@ -11,7 +11,7 @@ use super::{
     Adjoints, Network, Node, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId,
 };
 
-// Request-time thread-safety contract; the anchor rationale is documented
+// Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`. The tape is the root every other guarantee rests on.
 assert_impl_all!(Tape<f64>: Send, Sync);
 

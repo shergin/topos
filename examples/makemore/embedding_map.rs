@@ -209,9 +209,8 @@ fn main() {
         let batch_targets: Vec<usize> = batch.iter().map(|&(_, next)| next).collect();
 
         // Slice the run to the loss it reads.
-        let run = network.forward_for(
+        let run = network.entry([loss]).interpret(
             &parameters,
-            [loss],
             [
                 (
                     contexts,

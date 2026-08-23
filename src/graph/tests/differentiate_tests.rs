@@ -1,4 +1,4 @@
-use crate::{Request, Symbol, Tape, Tensor};
+use crate::{Entry, Symbol, Tape, Tensor};
 
 /// Asserts the closure contract for one recorded graph: the gradients
 /// `differentiate` records must reproduce `Run::backward`
@@ -394,7 +394,7 @@ fn a_composed_loss_closes_through_a_plan() {
     let loss = loss.symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
-    let plan = network.compile(Request::roots(adjoints.roots()));
+    let plan = network.compile(Entry::roots(adjoints.roots()));
     let planned = plan.forward(&parameters, []);
     let engine = network.forward(&parameters, []).backward(loss);
     for &(target, gradient) in adjoints.pairs() {
@@ -546,7 +546,7 @@ fn a_recorded_training_loop_matches_the_engine_bitwise() {
     let (recorded_x, recorded_params, recorded_loss) = build(&recorded_tape);
     let adjoints = recorded_tape.differentiate(recorded_loss, recorded_params.iter().copied());
     let recorded_network = recorded_tape.into_network();
-    let plan = recorded_network.compile(Request::roots(adjoints.roots()));
+    let plan = recorded_network.compile(Entry::roots(adjoints.roots()));
 
     let mut engine_state = engine_network.parameters();
     let mut recorded_state = recorded_network.parameters();

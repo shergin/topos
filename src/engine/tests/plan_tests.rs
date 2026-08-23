@@ -1,4 +1,4 @@
-use crate::{Numerics, Request, Symbol, Tape, Tensor, concat};
+use crate::{Entry, Numerics, Symbol, Tape, Tensor, concat};
 
 /// The empty feed set, typed for the scalar tests.
 fn no_feeds() -> std::iter::Empty<(Symbol, Tensor<f64>)> {
@@ -14,7 +14,7 @@ fn plan_forward_matches_the_interpreter_bitwise() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([target]));
+    let plan = network.compile(Entry::roots([target]));
     let planned = plan.forward(&parameters, std::iter::empty());
     let interpreted = network.forward(&parameters, []);
 
@@ -29,7 +29,7 @@ fn plan_skips_what_the_targets_cannot_observe() {
     let _unwanted = x + x;
     let network = tape.into_network();
 
-    let plan = network.compile(Request::roots([wanted]));
+    let plan = network.compile(Entry::roots([wanted]));
     let run = plan.forward(&network.parameters(), no_feeds());
     assert_eq!(run.of(wanted).scalar(), 4.0);
 }
@@ -46,7 +46,7 @@ fn plan_reads_outside_the_readable_set_are_rejected() {
     let interior = interior.symbol();
     let network = tape.into_network();
 
-    let plan = network.compile(Request::roots([target]));
+    let plan = network.compile(Entry::roots([target]));
     let run = plan.forward(&network.parameters(), no_feeds());
     run.of(interior);
 }
@@ -60,7 +60,7 @@ fn keep_makes_an_interior_value_readable() {
     let interior = interior.symbol();
     let network = tape.into_network();
 
-    let plan = network.compile(Request::roots([target]).observe([interior]));
+    let plan = network.compile(Entry::roots([target]).observe([interior]));
     let run = plan.forward(&network.parameters(), no_feeds());
     assert_eq!(run.of(target).scalar(), 6.0);
     assert_eq!(run.of(interior).scalar(), 4.0);
@@ -74,7 +74,7 @@ fn forward_only_plans_refuse_backward() {
     let target = (x * x).symbol();
     let network = tape.into_network();
 
-    let plan = network.compile(Request::roots([target]));
+    let plan = network.compile(Entry::roots([target]));
     let run = plan.forward(&network.parameters(), no_feeds());
     run.backward(target);
 }
@@ -89,7 +89,7 @@ fn training_plans_differentiate_like_the_interpreter() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([loss]).backward());
+    let plan = network.compile(Entry::roots([loss]).backward());
     let planned = plan.forward(&parameters, std::iter::empty());
     let interpreted = network.forward(&parameters, []);
 
@@ -102,7 +102,7 @@ fn training_plans_differentiate_like_the_interpreter() {
 
 #[test]
 fn one_plan_serves_every_training_step() {
-    // Request once, train for several steps: the plan's runs must
+    // Entry once, train for several steps: the plan's runs must
     // match a freshly interpreted run at every step, bitwise — the
     // plan holds no state, so there is nothing for a step to
     // invalidate.
@@ -115,7 +115,7 @@ fn one_plan_serves_every_training_step() {
     let w = w.symbol();
     let network = tape.into_network();
 
-    let plan = network.compile(Request::roots([loss]).backward());
+    let plan = network.compile(Entry::roots([loss]).backward());
     let mut parameters = network.parameters();
     for _ in 0..5 {
         let planned = plan.forward(&parameters, std::iter::empty());
@@ -142,7 +142,7 @@ fn liveness_frees_only_after_the_last_consumer() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([late]));
+    let plan = network.compile(Entry::roots([late]));
     let planned = plan.forward(&parameters, std::iter::empty());
     let interpreted = network.forward(&parameters, []);
     assert_eq!(planned.of(late).to_vec(), interpreted.of(late).to_vec());
@@ -156,7 +156,7 @@ fn plan_forward_binds_feeds() {
     let x = x.symbol();
     let network = tape.into_network();
 
-    let plan = network.compile(Request::roots([doubled]));
+    let plan = network.compile(Entry::roots([doubled]));
     let run = plan.forward(&network.parameters(), [(x, Tensor::new([2], [4.0, 5.0]))]);
     assert_eq!(run.of(doubled).to_vec(), &[8.0, 10.0]);
 }
@@ -168,7 +168,7 @@ fn plans_reject_foreign_parameters() {
     let x = tape.leaf(2.0_f64);
     let target = (x * x).symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([target]));
+    let plan = network.compile(Entry::roots([target]));
 
     let other = Tape::<f64>::new();
     let foreign = other.into_network().parameters();
@@ -190,7 +190,7 @@ fn plans_reject_uncarried_parameters_after_extension() {
     let late = tape.parameter(2.0);
     let target = (late * late).symbol();
     let network = tape.into_network();
-    let plan = network.compile(Request::roots([target]));
+    let plan = network.compile(Entry::roots([target]));
     plan.forward(&stale, no_feeds());
 }
 
@@ -204,7 +204,7 @@ fn plans_keep_serving_their_prefix_after_extension() {
     let target = (w * w).symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
-    let plan = network.compile(Request::roots([target]));
+    let plan = network.compile(Entry::roots([target]));
 
     let tape = network.into_tape();
     let late = tape.resolve(target) + tape.parameter(3.0);
@@ -224,7 +224,7 @@ fn describe_reports_the_liveness_story() {
     let target = (x.tanh() * x).sum().symbol();
     let network = tape.into_network();
 
-    let plan = network.compile(Request::roots([target]));
+    let plan = network.compile(Entry::roots([target]));
     let description = plan.describe();
     assert!(description.contains("plan: forward;"));
     assert!(description.contains("Tanh"));
@@ -267,7 +267,7 @@ fn training_liveness_matches_the_interpreter_on_a_convnet() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([loss]).backward());
+    let plan = network.compile(Entry::roots([loss]).backward());
     // The release analysis must license releases here: the conv view
     // chains and output permutes are all shape-only. Engine runs hold
     // everything (the graded posture), so the licensed set is the
@@ -314,7 +314,7 @@ fn training_liveness_matches_the_interpreter_on_every_value_reader() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([loss]).backward());
+    let plan = network.compile(Entry::roots([loss]).backward());
     let planned = plan.forward(&parameters, no_feeds());
     let interpreted = network.forward(&parameters, []);
 
@@ -341,7 +341,7 @@ fn training_liveness_retains_the_gather_selection() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([loss]).backward());
+    let plan = network.compile(Entry::roots([loss]).backward());
     let planned = plan.forward(&parameters, std::iter::empty());
     let interpreted = network.forward(&parameters, []);
 
@@ -372,7 +372,7 @@ fn forward_only_plans_fuse_and_agree() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([output]));
+    let plan = network.compile(Entry::roots([output]));
     assert!(plan.describe().contains("fused 2 groups"));
 
     let planned = plan.forward(&parameters, std::iter::empty());
@@ -401,7 +401,7 @@ fn describe_snapshots_the_fused_forward_plan() {
     let output = max_pool(conv2d(input, weights, bias, 1, 1).relu(), 2, 2).symbol();
     let network = tape.into_network();
 
-    let forward = network.compile(Request::roots([output]));
+    let forward = network.compile(Entry::roots([output]));
     let expected = "   0  Leaf                              [2, 1, 4, 4] freed after 11
    1  Leaf                              [2, 1, 3, 3] freed after 9
    2  Leaf                              [2]          freed after 12
@@ -441,7 +441,7 @@ live volume: peak 192 elements at node 13, retain-all 552
     // The posture gate: the same tape compiled engine-backward stores
     // no fused group at all.
     assert_eq!(forward.home().groups(), 2);
-    let backward = network.compile(Request::roots([output]).backward());
+    let backward = network.compile(Entry::roots([output]).backward());
     assert_eq!(backward.home().groups(), 0);
 }
 
@@ -468,14 +468,14 @@ fn kept_interiors_bar_fusion() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let fused = network.compile(Request::roots([loss]));
+    let fused = network.compile(Entry::roots([loss]));
     assert!(fused.describe().contains("fused"));
     // Engine-backward plans do not fuse at all: their memory
     // contract stays exact for the reverse scan.
-    let engine = network.compile(Request::roots([loss]).backward());
+    let engine = network.compile(Entry::roots([loss]).backward());
     assert!(!engine.describe().contains("fused"));
 
-    let barred = network.compile(Request::roots([loss]).observe([patches]));
+    let barred = network.compile(Entry::roots([loss]).observe([patches]));
     assert!(!barred.describe().contains("window-gemm"));
     let run = barred.forward(&parameters, std::iter::empty());
     assert_eq!(
@@ -503,7 +503,7 @@ fn batched_products_do_not_fuse() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([loss]));
+    let plan = network.compile(Entry::roots([loss]));
     assert!(!plan.describe().contains("window-gemm"));
     let planned = plan.forward(&parameters, std::iter::empty());
     assert_eq!(
@@ -531,7 +531,7 @@ fn shared_windows_bar_fusion() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let plan = network.compile(Request::roots([loss]));
+    let plan = network.compile(Entry::roots([loss]));
     assert!(!plan.describe().contains("window-gemm"));
 
     let planned = plan.forward(&parameters, std::iter::empty());
@@ -554,8 +554,8 @@ fn the_numerics_posture_is_a_value_on_the_plan() {
     let product = a.matmul(b).symbol();
     let network = tape.into_network();
 
-    let fast = network.compile(Request::roots([product]));
-    let exact = network.compile(Request::roots([product]).numerics(Numerics::Exact));
+    let fast = network.compile(Entry::roots([product]));
+    let exact = network.compile(Entry::roots([product]).numerics(Numerics::Exact));
     assert_eq!(fast.numerics(), Numerics::Fast);
     assert_eq!(exact.numerics(), Numerics::Exact);
 
@@ -614,7 +614,7 @@ fn batch_norm_fuses_exactly_when_a_backend_can_feed() {
     // The fused batch-norm kernel's in-process fallback is the
     // composed formula, so election pays only when a compiled
     // offer-dispatched backend covers the formula — a build fact.
-    let plan = network.compile(Request::roots([output]));
+    let plan = network.compile(Entry::roots([output]));
     let fed = Precision::ALL.iter().any(|&precision| {
         Formula::BatchNormTraining
             .chain(precision)
@@ -648,8 +648,8 @@ fn fused_batch_norm_grades_against_the_oracle() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let fast = network.compile(Request::roots([output, mean, variance]));
-    let exact = network.compile(Request::roots([output, mean, variance]).numerics(Numerics::Exact));
+    let fast = network.compile(Entry::roots([output, mean, variance]));
+    let exact = network.compile(Entry::roots([output, mean, variance]).numerics(Numerics::Exact));
     let fast_run = fast.forward(&parameters, std::iter::empty());
     let exact_run = exact.forward(&parameters, std::iter::empty());
     let interpreted = network.forward(&parameters, []);
@@ -699,7 +699,7 @@ fn fused_max_pool_matches_the_interpreter_bitwise() {
         // The direct walk reduces in the recorded lane order, so the
         // fused plan is bit-identical under either posture.
         for numerics in [Numerics::Fast, Numerics::Exact] {
-            let plan = network.compile(Request::roots([output]).numerics(numerics));
+            let plan = network.compile(Entry::roots([output]).numerics(numerics));
             assert!(plan.describe().contains("fused 1 groups"));
             let planned = plan.forward(&parameters, std::iter::empty());
             let planned_bits: Vec<u64> = planned
@@ -843,12 +843,12 @@ fn decode_carry_matches_the_full_context_plan_bitwise() {
 
     let network = tape.into_network();
     let parameters = network.parameters();
-    let full_plan = network.compile(Request::roots([full_out]));
+    let full_plan = network.compile(Entry::roots([full_out]));
     let outputs: Vec<Symbol> = updated
         .iter()
         .flat_map(|&(keys, values)| [keys, values])
         .collect();
-    let decode_plan = network.compile(Request::roots([row_out]).observe(outputs));
+    let decode_plan = network.compile(Entry::roots([row_out]).observe(outputs));
 
     let rows: Vec<Vec<f32>> = (0..CAPACITY).map(|at| seeded(90 + at, EMBED)).collect();
     let garbage = vec![7.5_f32; EMBED];

@@ -26,8 +26,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::time::Instant;
 
 use topos::{
-    Module, Request, RmsNorm, Shape, Symbol, Tape, Tensor, Value, concat, cross_entropy, init,
-    stack,
+    Module, RmsNorm, Shape, Symbol, Tape, Tensor, Value, concat, cross_entropy, init, stack,
 };
 
 use corpus::{VOCABULARY_LEN, load_names, shuffle, training_samples};
@@ -222,7 +221,7 @@ fn recorded(
     let (tokens, targets, loss) = (tokens.symbol(), targets.symbol(), loss.symbol());
     let network = tape.into_network();
     let parameters = network.parameters();
-    let plan = network.compile(Request::roots(adjoints.roots()));
+    let plan = network.entry(adjoints.roots()).lower();
     let run = plan.forward(
         &parameters,
         [(tokens, feeds.0.clone()), (targets, feeds.1.clone())],

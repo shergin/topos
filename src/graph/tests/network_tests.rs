@@ -199,7 +199,7 @@ fn forward_for_evaluates_only_the_ancestor_closure() {
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let run = network.forward_for(&parameters, [wanted], []);
+    let run = network.entry([wanted]).interpret(&parameters, []);
     assert_eq!(run.of(wanted).to_vec(), &[13.0]);
 
     // The sliced gradients match the full ones exactly.
@@ -217,7 +217,7 @@ fn sliced_reads_outside_the_closure_are_rejected() {
     let unwanted = (x + x).symbol();
     let network = tape.into_network();
 
-    let run = network.forward_for(&network.parameters(), [wanted], []);
+    let run = network.entry([wanted]).interpret(&network.parameters(), []);
     run.of(unwanted);
 }
 
@@ -230,7 +230,7 @@ fn sliced_backward_outside_the_closure_is_rejected() {
     let unwanted = (x + x).symbol();
     let network = tape.into_network();
 
-    let run = network.forward_for(&network.parameters(), [wanted], []);
+    let run = network.entry([wanted]).interpret(&network.parameters(), []);
     run.backward(unwanted);
 }
 
@@ -242,11 +242,9 @@ fn forward_for_binds_feeds_like_forward() {
     let x = x.symbol();
     let network = tape.into_network();
 
-    let run = network.forward_for(
-        &network.parameters(),
-        [doubled],
-        [(x, Tensor::new([2], [4.0, 5.0]))],
-    );
+    let run = network
+        .entry([doubled])
+        .interpret(&network.parameters(), [(x, Tensor::new([2], [4.0, 5.0]))]);
     assert_eq!(run.of(doubled).to_vec(), &[8.0, 10.0]);
 }
 
@@ -265,7 +263,7 @@ fn sliced_gradients_step_parameters_like_full_gradients() {
     let network = tape.into_network();
 
     let parameters = network.parameters();
-    let run = network.forward_for(&parameters, [first_loss], []);
+    let run = network.entry([first_loss]).interpret(&parameters, []);
     let gradients = run.backward(first_loss).parameters(&parameters);
     let stepped = parameters.step(&gradients, |parameter: &Tensor<f64>, gradient| {
         parameter.clone() - gradient.clone()

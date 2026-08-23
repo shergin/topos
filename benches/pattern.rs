@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 
-use topos::{BatchNorm, Request, Tape, Tensor, conv2d, max_pool};
+use topos::{BatchNorm, Tape, Tensor, conv2d, max_pool};
 
 fn pattern(criterion: &mut Criterion) {
     let mut group = criterion.benchmark_group("pattern");
@@ -30,7 +30,7 @@ fn pattern(criterion: &mut Criterion) {
     let pooled = max_pool(input, 2, 2).symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
-    let plan = network.compile(Request::roots([pooled]));
+    let plan = network.entry([pooled]).lower();
     assert!(plan.describe().contains("fused 1 groups"));
     group.bench_function("pool/interpreted", |bencher| {
         bencher.iter(|| network.forward(&parameters, []));
@@ -57,7 +57,7 @@ fn pattern(criterion: &mut Criterion) {
     let features = conv2d(input, weights, bias, 1, 1).symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
-    let plan = network.compile(Request::roots([features]));
+    let plan = network.entry([features]).lower();
     assert!(plan.describe().contains("fused 1 groups"));
     group.bench_function("conv/interpreted", |bencher| {
         bencher.iter(|| network.forward(&parameters, []));
@@ -83,7 +83,7 @@ fn pattern(criterion: &mut Criterion) {
     let output = layer.express(input).output.symbol();
     let network = tape.into_network();
     let parameters = network.parameters();
-    let plan = network.compile(Request::roots([output]));
+    let plan = network.entry([output]).lower();
     // Build-adaptive: the group fuses exactly where a compiled
     // backend can take the task, so the default-build row measures
     // plan overhead and the accelerate row measures the kernel.

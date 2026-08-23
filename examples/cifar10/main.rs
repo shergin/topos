@@ -20,8 +20,8 @@ mod dataset;
 use std::time::Instant;
 
 use topos::{
-    Conv2d, Linear, Module, Parameters, Plan, Request, Shape, Symbol, Tape, Tensor, Value,
-    cross_entropy, init, max_pool,
+    Conv2d, Linear, Module, Parameters, Plan, Shape, Symbol, Tape, Tensor, Value, cross_entropy,
+    init, max_pool,
 };
 
 use chart::loss_chart;
@@ -194,9 +194,9 @@ fn main() {
     let network = tape.into_network();
     let mut parameters = network.parameters();
 
-    // Request once, run every step.
-    let training_plan = network.compile(Request::roots([loss]).backward());
-    let probe_plan = network.compile(Request::roots([probe_logits]));
+    // Entry once, run every step.
+    let training_plan = network.entry([loss]).backward().lower();
+    let probe_plan = network.entry([probe_logits]).lower();
     for line in probe_plan.describe().lines().filter(|line| {
         line.starts_with("plan:") || line.starts_with("live volume:") || line.starts_with("fused")
     }) {

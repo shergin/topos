@@ -294,7 +294,7 @@ adjoint is the cotangent a reverse scan assigns a value. The pairs
 exist because the product's whole purpose is to be paired: each
 gradient with its `wrt` entry for `Run::recorded_gradients`, all of
 them with the target for a training request's roots
-(`Request::roots(adjoints.roots())`) — holding them together makes
+(`Entry::roots(adjoints.roots())`) — holding them together makes
 misordered pairs unrepresentable, where bare symbol lists forced
 every consumer into parallel-vector discipline. `map_gradients`
 rewrites the gradient symbols (the emission consumers alias each
@@ -388,6 +388,22 @@ are read back with the same proxies that built the graph: every
 position-indexed buffer — runs, gradients, fields — answers the same
 read-back accessor, `of(value)`.
 
+**Entry (bound and detached).** A function exported from a network:
+the declared reading — roots, observes, engine-backward posture,
+numerics — that every executor takes, replacing the request/target
+spellings with one noun. The common road is bound:
+`network.entry([loss])` answers a `BoundEntry` whose `interpret` is
+the oracle over the declared closure (the interpreter, evaluating
+exactly the results' ancestors, placeholders elsewhere, loud reads)
+and whose `lower` derives the compiled `Plan` (same closure plus
+keep-set, liveness, election). A detached `Entry` is the storable
+signature — symbols stay valid across reopens, and
+`Network::compile` binds it late. The verbs are deliberate:
+*interpret* is the oracle, *lower* derives a schedule of the same
+IR, *forward* runs a plan or the whole spec — plan and interpreter
+never share a verb. In topos: [`Entry`,
+`BoundEntry`](src/engine/entry.rs).
+
 **Target-sliced run.** A forward run restricted to the ancestor
 closure of declared targets:
 [`Network::forward_for`](src/graph/network.rs) marks
@@ -409,7 +425,7 @@ tape: the ancestor closure of declared roots (dead-node
 elimination), the readable set (roots plus observes), per-node free
 lists (buffer liveness), and captured shapes. Produced by
 [`Network::compile`](src/engine/plan.rs) from one explicit
-[`Request`](src/engine/request.rs): roots (what a run must
+[`Entry`](src/engine/request.rs): roots (what a run must
 compute; recorded gradient symbols enter as ordinary roots),
 observes (extra readable interiors), and the optional `backward`
 posture, which holds every closure value the engine's reverse scan
@@ -841,7 +857,7 @@ manifest half sits outside the allow.
 
 **Numerics (Exact / Fast).** The two-valued numerics posture of a
 plan's runs, chosen on the compile request and carried by the plan
-and its runs (`Request::numerics`, `Plan::numerics`). `Fast` — the
+and its runs (`Entry::numerics`, `Plan::numerics`). `Fast` — the
 default, and the fixed posture of interpreter runs and host-side
 payload calls — is the backend chain as compiled, its per-task flop
 thresholds serving as cost heuristics inside the posture. `Exact`

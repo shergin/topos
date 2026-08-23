@@ -75,9 +75,8 @@ fn main() {
         let batch_targets: Vec<usize> = batch.iter().map(|&(_, next)| next).collect();
 
         // Slice the run to the loss it reads.
-        let run = network.forward_for(
+        let run = network.entry([loss_symbol]).interpret(
             &parameters,
-            [loss_symbol],
             [
                 (
                     contexts_symbol,
@@ -119,7 +118,9 @@ fn main() {
     let parameters = parameters.carried(&network);
     // Slice to the freshly recorded softmax: the training expression
     // does not re-run just to render the table.
-    let run = network.forward_for(&parameters, [probabilities], std::iter::empty());
+    let run = network
+        .entry([probabilities])
+        .interpret(&parameters, std::iter::empty());
     let probabilities = run
         .of(probabilities)
         .as_slice()

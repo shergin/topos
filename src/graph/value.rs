@@ -10,7 +10,7 @@ use crate::function::Function;
 
 use super::{Symbol, Tape};
 
-// Request-time contract: proxies stay thread-safe and `Copy`; the anchor
+// Entry-time contract: proxies stay thread-safe and `Copy`; the anchor
 // rationale is documented in `network.rs`.
 assert_impl_all!(Value<'static, f64>: Send, Sync, Copy);
 

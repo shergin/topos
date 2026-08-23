@@ -1,4 +1,4 @@
-use crate::{Adam, AdamW, Optimizer, Request, Sgd, Tape, Tensor};
+use crate::{Adam, AdamW, Entry, Optimizer, Sgd, Tape, Tensor};
 
 /// The conventional hyperparameters as single-value payloads.
 fn conventional() -> (Tensor<f64>, Tensor<f64>, Tensor<f64>) {
@@ -165,7 +165,7 @@ fn recorded_gradients_feed_adam_bitwise() {
     let (recorded_tape, recorded_w, recorded_loss) = build();
     let adjoints = recorded_tape.differentiate(recorded_loss, [recorded_w]);
     let recorded_network = recorded_tape.into_network();
-    let plan = recorded_network.compile(Request::roots(adjoints.roots()));
+    let plan = recorded_network.compile(Entry::roots(adjoints.roots()));
     let mut recorded_adam = Adam::new(beta1, beta2, epsilon);
     let mut recorded_parameters = recorded_network.parameters();
 

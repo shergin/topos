@@ -104,6 +104,6 @@ fn plan_results_are_the_declared_order() {
 
     // Roots in request order, then observes; declaration order, not
     // allocation order.
-    let plan = network.compile(crate::Request::roots([cubed, squared]).observe([x]));
+    let plan = network.compile(crate::Entry::roots([cubed, squared]).observe([x]));
     assert_eq!(plan.results(), [cubed, squared, x]);
 }

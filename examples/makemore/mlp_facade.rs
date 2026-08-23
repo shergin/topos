@@ -110,9 +110,8 @@ fn main() {
 
         // Slice the run to the loss: the sampling twin on the same
         // tape is skipped during training.
-        let run = network.forward_for(
+        let run = network.entry([loss]).interpret(
             &parameters,
-            [loss],
             [
                 (
                     contexts,
@@ -164,9 +163,8 @@ fn main() {
         let mut window = [0usize; CONTEXT_LEN];
         let mut name = String::new();
         loop {
-            let run = network.forward_for(
+            let run = network.entry([sample_probabilities]).interpret(
                 &parameters,
-                [sample_probabilities],
                 [(
                     sample_context,
                     Tensor::selection(window.to_vec(), VOCABULARY_LEN, 1.0),

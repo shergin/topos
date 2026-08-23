@@ -50,7 +50,7 @@
 //! [`Run::recorded_gradients`] bridging to `step`. [`Run::backward`]
 //! (the loop above) is the interpreter applying the same rules
 //! without recording — the oracle the transform is proven against
-//! bitwise, shipped forever. [`Request::backward`] is neither: a
+//! bitwise, shipped forever. [`Entry::backward`] is neither: a
 //! memory posture that retains what the engine scan reads, so a plan
 //! that did not record its derivative can still answer `backward`.
 // The default build forbids `unsafe` outright. A backend feature
@@ -83,7 +83,7 @@ pub use backend::{
     Precision,
 };
 pub use emission::{EmitError, Emittable};
-pub use engine::{Plan, Request, Run};
+pub use engine::{BoundEntry, Entry, Plan, Run};
 pub use graph::{
     Adjoints, Field, Gradients, Network, Node, Opcode, Parameters, Symbol, Tape, Trace, Value,
     concat, stack,
