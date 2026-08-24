@@ -82,7 +82,7 @@ fn erf_handles_the_edges() {
 fn erf_derivative_matches_the_scaled_gaussian() {
     // Expected values are `FRAC_2_SQRT_PI * exp(-x*x)` from CPython.
     let table = [
-        (0.0, 1.1283791670955126),
+        (0.0, std::f64::consts::FRAC_2_SQRT_PI),
         (0.1, 1.1171516067889369),
         (0.5, 0.8787825789354448),
         (1.0, 0.4151074974205947),
