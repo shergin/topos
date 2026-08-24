@@ -38,6 +38,16 @@ pub trait Optimizer<E: Element> {
 /// hand-written loop applies, as the trait's simplest implementation —
 /// stateless, so the struct is a unit, and every richer optimizer is
 /// this plus state.
+///
+/// The examples hand-roll this update on purpose and that is the
+/// decision, on record: under the caller-owned doctrine the update
+/// arithmetic is the pedagogy, so the copies across the examples are
+/// the documented price, not an adoption gap. `Sgd`'s consumer of
+/// record is the optimizer comparison loop (`mlp_adam`), where a
+/// baseline must be a strategy the loop can iterate — exactly the
+/// facade-tier bar: a hand-rolled equivalent behaves identically, and
+/// this type exists for the call sites that need the *slot*, not the
+/// arithmetic.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Sgd;
 
