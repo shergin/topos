@@ -962,14 +962,14 @@ topos: [`Numerics`](src/backend/numerics.rs).
 **Facade tier.** The crate is two tiers. The *core* is what the crate
 exists to do — the tape and graph, the derivative rules, the payload
 seam, the engine, emission, and the backends — and is governed by the
-nine invariants and the own-the-competence bar. A *facade* is a
+design invariants and the own-the-competence bar. A *facade* is a
 convenience composed on the public surface alone: the neural tier
 (activations, layers, losses, optimizers, initializers) and the
 notebook displays. A facade has no privileged engine access, so a
 hand-rolled equivalent behaves identically and internals may change
 their spelling freely underneath; a facade earns its place with a
 real in-repo consumer and is retired when the consumer disappears —
-invariant 9 cuts both ways, as the 2026-08-18 consumer audit's
+the consumer rule cuts both ways, as the 2026-08-18 consumer audit's
 retirements record. Distinct from the *documentation surfaces*
 (`topos::model`, `topos::compiler`), which split the same public API
 by reader, not by tier. In topos: `src/neural/` and `src/notebook/`
