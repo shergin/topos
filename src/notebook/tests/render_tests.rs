@@ -125,8 +125,9 @@ fn the_theme_changes_the_card_and_nothing_else() {
 }
 
 #[test]
-fn f32_and_bf16_payloads_name_their_element_type() {
-    assert_eq!(<f32 as Scalar>::type_name(), "f32");
-    assert_eq!(<f64 as Scalar>::type_name(), "f64");
-    assert_eq!(<crate::Bf16 as Scalar>::type_name(), "bf16");
+fn payload_cards_name_the_element_through_the_emission_vocabulary() {
+    let single = Tensor::new([1], vec![1.0_f32]);
+    assert!(payload_card(Theme::DARK, "value", &single).contains("f32"));
+    let wide = Tensor::from(crate::Bf16::from(1.0));
+    assert!(payload_card(Theme::DARK, "value", &wide).contains("bf16"));
 }

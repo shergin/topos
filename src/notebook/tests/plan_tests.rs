@@ -46,9 +46,9 @@ fn the_live_series_follows_the_schedule_it_describes() {
     assert!(!series.is_empty());
     // Live volume only ever grows by the node just evaluated, so the
     // peak of the series is the peak the summary reports.
-    let peak = series.iter().copied().fold(0.0_f64, f64::max);
-    assert!(peak > 0.0);
-    assert!(plan.describe().contains(&format!("{}", peak as usize)));
+    let peak = series.iter().copied().max().unwrap_or(0);
+    assert!(peak > 0);
+    assert!(plan.describe().contains(&format!("{peak}")));
 }
 
 #[test]

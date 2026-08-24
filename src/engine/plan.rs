@@ -472,11 +472,10 @@ impl<E: Element> Plan<E> {
         (peak, peak_at, total)
     }
 
-    /// Returns the live volume after every evaluated node under the
-    /// analysis floor: the curve whose peak [`describe`](Plan::describe)
-    /// reports as one number.
-    #[cfg(feature = "evcxr")]
-    pub(crate) fn live_series(&self) -> Vec<f64> {
+    /// Returns the live volume, in elements, after every evaluated
+    /// node under the analysis floor: the curve whose peak
+    /// [`describe`](Plan::describe) reports as one number.
+    pub fn live_series(&self) -> Vec<usize> {
         let mut live: usize = 0;
         let mut series = Vec::new();
         for (index, slots) in self.releases.iter().enumerate() {
@@ -484,7 +483,7 @@ impl<E: Element> Plan<E> {
                 continue;
             }
             live += self.structure.shapes[index].volume();
-            series.push(live as f64);
+            series.push(live);
             for &slot in slots {
                 if self.home.interior(slot) {
                     continue;

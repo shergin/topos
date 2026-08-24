@@ -21,7 +21,11 @@ impl<E: Element> Plan<E> {
             "<pre style=\"margin:0;white-space:pre;overflow-x:auto\">{}</pre>",
             html::escape(&self.describe())
         );
-        let series = self.live_series();
+        let series: Vec<f64> = self
+            .live_series()
+            .iter()
+            .map(|&elements| elements as f64)
+            .collect();
         if series.len() < 2 {
             return html::card(theme, "plan", &schedule);
         }

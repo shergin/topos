@@ -8,12 +8,14 @@
 
 use malevich::{Frame, Line, Plot, Theme};
 
-use super::render::Scalar;
 use super::{html, render};
 use crate::{Element, Field};
 
 /// The Euclidean norm of every node's payload, in tape order.
-fn norms<E: Element + Scalar>(field: &Field<E>) -> Vec<f64> {
+fn norms<E: Element>(field: &Field<E>) -> Vec<f64>
+where
+    f64: From<E>,
+{
     field
         .payloads()
         .iter()
@@ -54,11 +56,10 @@ fn summary(label: &str, norms: &[f64]) -> String {
 }
 
 /// Renders a per-node magnitude profile as a self-contained HTML card.
-pub(crate) fn profile_card<E: Element + Scalar>(
-    theme: Theme,
-    label: &str,
-    field: &Field<E>,
-) -> String {
+pub(crate) fn profile_card<E: Element>(theme: Theme, label: &str, field: &Field<E>) -> String
+where
+    f64: From<E>,
+{
     let norms = norms(field);
     let header = html::escape(&summary(label, &norms));
     if norms.len() < 2 {
@@ -78,7 +79,10 @@ pub(crate) fn profile_card<E: Element + Scalar>(
 }
 
 /// Renders a per-node magnitude profile as plain text.
-pub(crate) fn profile_text<E: Element + Scalar>(label: &str, field: &Field<E>) -> String {
+pub(crate) fn profile_text<E: Element>(label: &str, field: &Field<E>) -> String
+where
+    f64: From<E>,
+{
     let norms = norms(field);
     let header = summary(label, &norms);
     if norms.len() < 2 {
@@ -91,14 +95,10 @@ pub(crate) fn profile_text<E: Element + Scalar>(label: &str, field: &Field<E>) -
     format!("{header}\n{}", plot.render(&Frame::plain(72, 18)))
 }
 
-// `Renderable` is deliberately crate private: it names the closed set of
-// payload types a card can draw, and it is a rendering detail rather
-// than something a caller should bound its own code on. The lint fires
-// because these inherent methods are public; nothing outside the crate
-// can name the trait, so there is no leak to close. Silencing it also
-// keeps `cargo check` warning-free, which Evcxr requires.
-#[allow(private_bounds)]
-impl<E: Element + Scalar> Field<E> {
+impl<E: Element> Field<E>
+where
+    f64: From<E>,
+{
     /// Renders the field as a self-contained HTML card: one Euclidean
     /// norm per recorded node, plotted along the tape.
     ///

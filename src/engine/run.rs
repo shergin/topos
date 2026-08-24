@@ -152,10 +152,14 @@ impl<E: Element> Run<E> {
         &self.field.payloads()[index]
     }
 
-    /// Returns the run's computed values as a field, for the displays
-    /// that plot a whole pass rather than read one value out of it.
-    #[cfg(feature = "evcxr")]
-    pub(crate) fn field(&self) -> &Field<E> {
+    /// Returns the run's values as a field, for the displays and
+    /// analyses that walk a whole pass rather than read one value out
+    /// of it.
+    ///
+    /// Slots this run did not compute — the ones a target-sliced
+    /// interpretation skipped — hold placeholders, not results;
+    /// [`Run::of`] is the asserting read that refuses them.
+    pub fn field(&self) -> &Field<E> {
         &self.field
     }
 

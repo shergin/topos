@@ -104,10 +104,12 @@ impl<E: Element> Field<E> {
         }
     }
 
-    /// Returns every node's payload in tape order, for engine scans
-    /// and the displays that plot a whole field rather than read one
-    /// value out of it.
-    pub(crate) fn payloads(&self) -> &[Tensor<E>] {
+    /// Returns every node's payload in tape order: the aligned buffer
+    /// itself, for scans and displays that walk a whole field rather
+    /// than read one value out of it.
+    ///
+    /// [`Field::of`] remains the symbol-typed read for a single value.
+    pub fn payloads(&self) -> &[Tensor<E>] {
         &self.payloads
     }
 

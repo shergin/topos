@@ -10,7 +10,7 @@
 use malevich::{Frame, Theme};
 
 use super::html;
-use crate::{Bf16, Shape, Tensor};
+use crate::{Element, Emittable, Shape, Tensor};
 
 /// The largest payload rendered as an exact table rather than a chart.
 const TABLE_LIMIT: usize = 144;
@@ -26,54 +26,18 @@ fn chart_frame(theme: Theme) -> Frame {
     frame
 }
 
-/// An element that a chart or table can show as a number.
-///
-/// It exists so the displays can be generic over the payload types the
-/// crate actually has without widening any public trait: rendering
-/// needs a real number, and `Differentiable` deliberately does not
-/// promise one.
-pub(crate) trait Scalar: Copy {
-    /// Returns this element as an `f64`, the type every renderer works in.
-    fn to_f64(self) -> f64;
-
-    /// Returns the element type's name, for the card header.
-    fn type_name() -> &'static str;
-}
-
-impl Scalar for f32 {
-    fn to_f64(self) -> f64 {
-        f64::from(self)
-    }
-
-    fn type_name() -> &'static str {
-        "f32"
-    }
-}
-
-impl Scalar for f64 {
-    fn to_f64(self) -> f64 {
-        self
-    }
-
-    fn type_name() -> &'static str {
-        "f64"
-    }
-}
-
-impl Scalar for Bf16 {
-    fn to_f64(self) -> f64 {
-        f64::from(f32::from(self))
-    }
-
-    fn type_name() -> &'static str {
-        "bf16"
-    }
-}
-
 /// Returns a tensor's elements in row-major order as the `f64` cells
 /// every renderer works in.
-pub(crate) fn cells<Element: Scalar>(tensor: &Tensor<Element>) -> Vec<f64> {
-    tensor.iter().map(Scalar::to_f64).collect()
+///
+/// The displays are generic over the public element contracts alone:
+/// `f64: From<E>` is the widening every built-in element already
+/// offers, and [`Emittable::ELEMENT`] is the one vocabulary that
+/// names an element wherever it is printed.
+pub(crate) fn cells<E: Element>(tensor: &Tensor<E>) -> Vec<f64>
+where
+    f64: From<E>,
+{
+    tensor.iter().map(f64::from).collect()
 }
 
 /// Formats one number at a width a table can align, without trailing
@@ -125,8 +89,8 @@ fn extremes(cells: &[f64]) -> Option<(f64, f64, f64)> {
 
 /// The card header for a payload: shape, element type, and the
 /// summary statistics that say whether the numbers are sane.
-pub(crate) fn header<Element: Scalar>(shape: &Shape, cells: &[f64]) -> String {
-    let mut parts = vec![shape_text(shape), Element::type_name().to_string()];
+pub(crate) fn header<E: Emittable>(shape: &Shape, cells: &[f64]) -> String {
+    let mut parts = vec![shape_text(shape), E::ELEMENT.to_string()];
     if let Some((minimum, maximum, mean)) = extremes(cells) {
         parts.push(format!(
             "min {} max {} mean {}",
@@ -206,7 +170,10 @@ fn columns_of(shape: &Shape) -> usize {
 
 /// Renders a payload's body: the exact values when they are few, and a
 /// chart of them when they are many.
-pub(crate) fn body<Element: Scalar>(theme: Theme, data: &Tensor<Element>) -> (String, String) {
+pub(crate) fn body<E: Element>(theme: Theme, data: &Tensor<E>) -> (String, String)
+where
+    f64: From<E>,
+{
     let shape = data.shape();
     let cells = cells(data);
     let columns = columns_of(&shape);
@@ -235,28 +202,34 @@ pub(crate) fn body<Element: Scalar>(theme: Theme, data: &Tensor<Element>) -> (St
 }
 
 /// Renders a complete payload card: header, then body.
-pub(crate) fn payload_card<Element: Scalar>(
+pub(crate) fn payload_card<E: Element + Emittable>(
     theme: Theme,
     label: &str,
-    data: &Tensor<Element>,
-) -> String {
+    data: &Tensor<E>,
+) -> String
+where
+    f64: From<E>,
+{
     let shape = data.shape();
     let cells = cells(data);
     let (body_html, _) = body(theme, data);
     let head = format!(
         "{}  \u{b7}  {}",
         html::escape(label),
-        header::<Element>(&shape, &cells)
+        header::<E>(&shape, &cells)
     );
     html::card(theme, &head, &body_html)
 }
 
 /// Renders a complete payload as plain text: header, then body.
-pub(crate) fn payload_text<Element: Scalar>(label: &str, data: &Tensor<Element>) -> String {
+pub(crate) fn payload_text<E: Element + Emittable>(label: &str, data: &Tensor<E>) -> String
+where
+    f64: From<E>,
+{
     let shape = data.shape();
     let cells = cells(data);
     let (_, body_text) = body(Theme::DARK, data);
-    let mut parts = vec![shape_text(&shape), Element::type_name().to_string()];
+    let mut parts = vec![shape_text(&shape), E::ELEMENT.to_string()];
     if let Some((minimum, maximum, mean)) = extremes(&cells) {
         parts.push(format!(
             "min {} max {} mean {}",

@@ -7,17 +7,13 @@
 
 use malevich::Theme;
 
-use super::render::Scalar;
 use super::{html, render};
-use crate::Tensor;
+use crate::{Element, Emittable, Tensor};
 
-// `Scalar` is crate private on purpose: it names the closed set of
-// element types a card can draw and is a rendering detail rather than
-// something a caller should bound its own code on. Nothing outside the
-// crate can name it, so the lint has no leak to close, and silencing it
-// keeps `cargo check` warning-free, which Evcxr requires.
-#[allow(private_bounds)]
-impl<Element: Scalar> Tensor<Element> {
+impl<E: Element + Emittable> Tensor<E>
+where
+    f64: From<E>,
+{
     /// Renders the tensor as a self-contained HTML card: shape, element
     /// type, and extremes, then the values — an exact table while they
     /// are few, a chart once they are many.
