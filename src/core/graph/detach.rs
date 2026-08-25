@@ -100,8 +100,8 @@ detach_tuples! {
     (A, B)
     (A, B, C)
     (A, B, C, D)
-    (A, B, C, D, E2)
-    (A, B, C, D, E2, F)
+    (A, B, C, D, E)
+    (A, B, C, D, E, F)
 }
 
 #[cfg(test)]
