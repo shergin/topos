@@ -120,24 +120,27 @@
 )]
 #![deny(unsafe_code)]
 
+// The tiers are folders; the modules keep their flat crate paths, so
+// `crate::graph` reads the same wherever the files sit. `core` is
+// never re-exported publicly: `topos::Tape` is the only spelling.
+
 // Core: the spec and its named readings. What the crate exists to
 // do -- record a spec, then read it.
-mod engine;
-mod function;
-mod graph;
-mod payload;
+mod core;
+pub(crate) use core::{engine, function, graph, payload};
 
 // Derived: faster or foreign readings of the same spec. A backend may
 // decline and the interpreter remains the truth; emission writes the
 // plan as text and is a sibling of `describe`, not a second compiler.
-mod backend;
-mod emission;
+mod derived;
+pub(crate) use derived::{backend, emission};
 
 // Facades: convenience on the public surface, composed through it
 // alone, with no privileged engine access.
-mod neural;
+mod facade;
+pub(crate) use facade::neural;
 #[cfg(feature = "evcxr")]
-mod notebook;
+pub(crate) use facade::notebook;
 
 // Tools: the bitwise references a new element is graded against.
 pub mod reference;

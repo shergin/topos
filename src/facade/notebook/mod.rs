@@ -3,7 +3,7 @@
 //! The module adds no types and no vocabulary. It implements
 //! `to_html` and `evcxr_display` on the types the crate already
 //! has. Setup, training loops, and the cell-output table live in
-//! [`docs/notebooks.md`](../../docs/notebooks.md).
+//! [`docs/notebooks.md`](../../../docs/notebooks.md).
 //!
 //! These methods exist only with the `evcxr` feature: they need
 //! `malevich` for charts, and the default build does not take that

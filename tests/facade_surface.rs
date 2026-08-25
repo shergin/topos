@@ -1,4 +1,4 @@
-//! The facade tier gate: `src/neural/` and `src/notebook/` compose
+//! The facade tier gate: everything under `src/facade/` composes
 //! through the public surface alone.
 //!
 //! The tier doctrine ([terminology](../docs/terminology.md): Facades)
@@ -24,14 +24,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// The directories holding the facade tier.
-const FACADE_DIRECTORIES: [&str; 2] = ["src/neural", "src/notebook"];
+const FACADE_DIRECTORIES: [&str; 2] = ["src/facade/neural", "src/facade/notebook"];
 
 /// The crate's private modules: naming one from a facade is privileged
-/// access, whatever the item behind it. The public roads are the crate
+/// access, whatever the item behind it. Both spellings count -- the
+/// flat re-export (`crate::graph`) and the tier folder it lives in
+/// (`crate::core`) -- because a private module at the crate root is
+/// reachable from every descendant. The public roads are the crate
 /// root's re-exports and the `reference`, `model`, and `compiler`
 /// modules.
-const INTERNAL_MODULES: [&str; 8] = [
-    "backend", "emission", "engine", "function", "graph", "neural", "notebook", "payload",
+const INTERNAL_MODULES: [&str; 11] = [
+    "backend", "core", "derived", "emission", "engine", "facade", "function", "graph", "neural",
+    "notebook", "payload",
 ];
 
 /// The lint suppressions that would let a crate-private item hide
