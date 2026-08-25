@@ -25,7 +25,7 @@ use super::{Elementary, Shape, Tensor};
 /// Those live as inherent methods on [`Tensor`] alone, which is what
 /// lets both interpretations implement this trait without a single
 /// panicking member.
-pub trait Tensorial:
+pub trait Recordable:
     Clone
     + Debug
     + Send
@@ -122,7 +122,7 @@ pub trait Tensorial:
 
     /// Returns `self` placed into zeros whose `axis` has extent
     /// `full_extent`, at `start ..`: the adjoint of
-    /// [`narrow`](Tensorial::narrow).
+    /// [`narrow`](Recordable::narrow).
     fn pad(&self, axis: usize, start: usize, full_extent: usize) -> Self;
 
     /// Returns the sliding windows of `self` along `axis`: the axis
@@ -131,7 +131,7 @@ pub trait Tensorial:
 
     /// Returns the `(count, size)` window pair at `axis`, `axis + 1`
     /// folded back onto an axis of `extent`: the adjoint of
-    /// [`unfold`](Tensorial::unfold).
+    /// [`unfold`](Recordable::unfold).
     fn fold(&self, axis: usize, size: usize, step: usize, dilation: usize, extent: usize) -> Self;
 
     /// Returns the rows of `self` selected by the one-hot `selection`.
@@ -139,7 +139,7 @@ pub trait Tensorial:
 
     /// Scatter-adds the rows of `self` into one row per entry of
     /// `selection`'s vocabulary, by its indices: the adjoint of
-    /// [`gather`](Tensorial::gather).
+    /// [`gather`](Recordable::gather).
     fn scatter(&self, selection: &Self) -> Self;
 }
 

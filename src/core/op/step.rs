@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -45,7 +45,7 @@ impl Step {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Step {
+impl<Rule: Recordable> Operation<Rule> for Step {
     fn backward(&self, _operands: &[&Rule], _output: &Rule, _gradient: &Rule) -> Cotangents<Rule> {
         smallvec![None, None]
     }

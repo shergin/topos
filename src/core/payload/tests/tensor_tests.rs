@@ -1243,7 +1243,7 @@ fn elementwise_lanes_agree_bitwise() {
 fn windowed_product_matches_the_composed_reference() {
     // The fast patch fill against the composed formula, bitwise, over
     // padding and stride variants.
-    use crate::payload::tensorial::composed_windowed_patches;
+    use crate::payload::recordable::composed_windowed_patches;
 
     let input = Tensor::new(
         [2, 3, 5, 4],
@@ -1273,7 +1273,7 @@ fn windowed_product_matches_the_composed_reference() {
 
 #[test]
 fn windowed_product_falls_back_for_strided_views() {
-    use crate::payload::tensorial::composed_windowed_patches;
+    use crate::payload::recordable::composed_windowed_patches;
 
     let base = Tensor::new(
         [2, 3, 5, 6],

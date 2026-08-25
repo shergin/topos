@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::Tensorial;
+use crate::Recordable;
 
 /// One cotangent per operand, in the operation's positional order.
 ///
@@ -38,7 +38,7 @@ impl Reads {
 
 /// A derivative rule: the cotangent an operation hands back to each
 /// operand, written against the recordable vocabulary
-/// ([`Tensorial`]) so one body serves two interpretations — the
+/// ([`Recordable`]) so one body serves two interpretations — the
 /// engine computes it over payload buffers, and `differentiate`
 /// records it through `Trace` handles.
 ///
@@ -55,7 +55,7 @@ impl Reads {
 /// sibling inherent method over `Tensor<E>`: computing a payload is
 /// engine business, not part of the rule, which is why the recording
 /// interpretation never needs it.
-pub(crate) trait Operation<Rule: Tensorial> {
+pub(crate) trait Operation<Rule: Recordable> {
     /// Computes one cotangent per operand, given this node's computed
     /// `output` and its own `gradient`.
     fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule>;

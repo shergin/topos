@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::Value;
 
@@ -9,7 +9,7 @@ use super::Value;
 /// interpretation of the derivative rules.
 ///
 /// Every derivative rule is written against the recordable
-/// vocabulary ([`Tensorial`]), not against a concrete payload.
+/// vocabulary ([`Recordable`]), not against a concrete payload.
 /// `Trace` implements that trait by appending
 /// the corresponding node to the tape and answering with a handle, so
 /// running a rule with `Data = Trace` emits the rule's computation as
@@ -30,7 +30,7 @@ use super::Value;
 /// checkpointed reverse) are in-crate transforms until a read surface
 /// over the spec lands.
 ///
-/// Every member of [`Tensorial`] records honestly: the trait was cut
+/// Every member of [`Recordable`] records honestly: the trait was cut
 /// along the recordable vocabulary, so nothing a trace implements
 /// can panic by construction. Operations outside that vocabulary —
 /// `max_along`, the fused executors, the `counted` constructor —
@@ -115,7 +115,7 @@ impl<'tape, E: Element> Neg for Trace<'tape, E> {
 /// The recording interpretation of the recordable vocabulary: every
 /// operation appends its node and answers the handle, so a derivative
 /// rule run over traces emits itself as graph.
-impl<'tape, E: Element> Tensorial for Trace<'tape, E> {
+impl<'tape, E: Element> Recordable for Trace<'tape, E> {
     fn shape(&self) -> Shape {
         self.value.shape()
     }

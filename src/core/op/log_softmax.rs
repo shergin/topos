@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -65,7 +65,7 @@ impl LogSoftmax {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for LogSoftmax {
+impl<Rule: Recordable> Operation<Rule> for LogSoftmax {
     fn backward(&self, _operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let extent = gradient.shape().axes()[self.axis];
         let total = gradient

@@ -12,6 +12,6 @@
 //! behind the fused executors on [`Tensor`](crate::Tensor).
 
 pub use crate::payload::gemm::multiply;
-pub use crate::payload::tensorial::{
+pub use crate::payload::recordable::{
     composed_batch_norm, composed_max_pool, composed_windowed_patches,
 };

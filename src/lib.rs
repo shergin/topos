@@ -1,11 +1,12 @@
-//! `topos` is a tiny autograd engine for the GPU-poor.
+//! `topos` is an autodiff compiler stack. Record a graph, inspect
+//! it, differentiate it, compile it, emit it. The spec is an
+//! immutable [`Network`]; the state is a caller-owned
+//! [`Parameters`].
 //!
-//! Expressions record a static computation graph onto a [`Tape`];
-//! sealing it yields an immutable [`Network`] (the spec) and a
-//! caller-owned [`Parameters`] value (the state). `forward`
-//! materializes every value, `backward` differentiates one scalar
-//! target, and `step` is a pure data transformation of the
-//! parameters — training never touches the graph:
+//! Expressions record onto a [`Tape`]. Sealing yields the network.
+//! `forward` materializes every value, `backward` differentiates one
+//! scalar target, and `step` is a pure data transform of the
+//! parameters. Training never touches the graph:
 //!
 //! ```
 //! use topos::{Keep, Tape, Tensor};
@@ -54,7 +55,7 @@
 //!
 //! # The stack: one spec, named interpretations
 //!
-//! The tape is the spec (rule 1); everything after it is a derived
+//! The tape is the spec; everything after it is a derived
 //! interpretation of the same columns, each with a printable
 //! artifact, and the whole compiler is this list:
 //!
@@ -71,7 +72,7 @@
 //!
 //! The value and cotangent rows compute over [`Tensor`]; the trace
 //! row records over [`Trace`] — one derivative-rule body, two
-//! interpretations of the recordable vocabulary ([`Tensorial`]).
+//! interpretations of the recordable vocabulary ([`Recordable`]).
 //! A new idea plugs in at a named seam, costed like an opcode: an
 //! element type at [`Element`], a transcendental at [`MapOperation`],
 //! a fusion as a pattern plus matcher, an AD mode as a recording
@@ -162,7 +163,7 @@ pub use neural::{
 };
 pub use payload::{
     BatchNormTask, Bf16, Differentiable, Element, Elementary, GemmTask, MapOperation, Normalized,
-    Shape, Tensor, Tensorial,
+    Recordable, Shape, Tensor,
 };
 
 /// The model surface: write a network, train it, checkpoint it.
@@ -192,7 +193,7 @@ pub mod compiler {
         Adjoints, Backend, BackendUnavailable, BatchNormTask, Bf16, BoundEntry, Coverage,
         Differentiable, Dispatch, Element, Elementary, EmitError, Emittable, Entry, Fidelity,
         Formula, GemmTask, Keep, MapOperation, MapTask, Network, Node, Normalized, Numerics,
-        Opcode, Parameters, PatternKind, PatternMatch, Plan, Precision, Run, Shape, Symbol, Tape,
-        Tensor, Tensorial, Trace,
+        Opcode, Parameters, PatternKind, PatternMatch, Plan, Precision, Recordable, Run, Shape,
+        Symbol, Tape, Tensor, Trace,
     };
 }

@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -8,7 +8,7 @@ use super::{Cotangents, Operation, Reads, unary};
 ///
 /// The forward is an O(1) view; the gradient of the operand is the incoming
 /// gradient scattered back into a zero payload of the operand's shape at the
-/// window, which is what [`Tensorial::pad`] computes.
+/// window, which is what [`Recordable::pad`] computes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Narrow {
     pub(crate) axis: usize,
@@ -68,7 +68,7 @@ impl Narrow {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Narrow {
+impl<Rule: Recordable> Operation<Rule> for Narrow {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         let full_extent = operand.shape().axes()[self.axis];

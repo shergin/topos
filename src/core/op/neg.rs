@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -36,7 +36,7 @@ impl Neg {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Neg {
+impl<Rule: Recordable> Operation<Rule> for Neg {
     fn backward(&self, _operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         smallvec![Some(-gradient.clone())]
     }

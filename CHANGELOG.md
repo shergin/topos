@@ -44,6 +44,14 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Changed
 
+- `Tensorial` is `Recordable`. The docs always called it the
+  recordable vocabulary -- the operations a derivative rule may call,
+  and nothing else -- while the name suggested a third payload kind
+  beside `Tensor` and `Trace`, which is exactly the confusion the
+  element seam forbids. The trait's members are unchanged; every
+  `E: Tensorial` bound and `use topos::Tensorial` becomes
+  `Recordable`.
+
 - The pattern layer split into discovery and election: compilation
   pools every closed candidate once, posture-blind, and each consumer
   elects the entries its repertoire supports, so a partial-support

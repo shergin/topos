@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, MapOperation, Shape, Tensor, Tensorial};
+use crate::{Element, MapOperation, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -78,7 +78,7 @@ impl Map {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Map {
+impl<Rule: Recordable> Operation<Rule> for Map {
     fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let cotangent = match self.op {
             // The derivative of `e^x` is `e^x` itself: the canonical

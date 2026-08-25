@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -53,7 +53,7 @@ impl BroadcastAlong {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for BroadcastAlong {
+impl<Rule: Recordable> Operation<Rule> for BroadcastAlong {
     fn backward(&self, _operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         smallvec![Some(gradient.sum_along(self.axis))]
     }

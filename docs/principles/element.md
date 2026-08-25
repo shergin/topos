@@ -72,7 +72,7 @@ vocabulary.
 
 `Tape<E>` / `Network<E>` for `E: Element`. `Element` is
 `Differentiable` plus `Elementary`. Built-ins: `f32`, `f64`,
-`Bf16`. `Tensorial` is the recordable vocabulary (`Tensor`
+`Bf16`. `Recordable` is the vocabulary a rule may call (`Tensor`
 computes, `Trace` records). `Emittable` and `Sample` are further
 element contracts. `reference` is how an out-of-tree element
 grades a kernel. This section may rot; the rest must not.

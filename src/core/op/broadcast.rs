@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -49,7 +49,7 @@ impl Broadcast {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Broadcast {
+impl<Rule: Recordable> Operation<Rule> for Broadcast {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         // The reduced gradient is rank 0, but the operand may be any

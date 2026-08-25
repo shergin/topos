@@ -10,9 +10,9 @@ use super::elementary::MapOperation;
 use super::gemm;
 use super::layout::{Layout, Strides};
 use super::normalized::BatchNormTask;
+use super::recordable::{composed_batch_norm, composed_max_pool, composed_windowed_patches};
 use super::storage::Storage;
-use super::tensorial::{composed_batch_norm, composed_max_pool, composed_windowed_patches};
-use super::{Differentiable, Element, Elementary, Shape, Tensorial};
+use super::{Differentiable, Element, Elementary, Recordable, Shape};
 
 // Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
@@ -344,7 +344,7 @@ impl<Element: Differentiable> Tensor<Element> {
     /// its indices rather than a dense buffer.
     ///
     /// It carries the token indices of an embedding lookup: feed it as a
-    /// per-run input and read it with [`Tensorial::gather`](super::Tensorial::gather).
+    /// per-run input and read it with [`Recordable::gather`](super::Recordable::gather).
     /// `one` is the value placed at each selected position (the
     /// multiplicative identity, e.g. `1.0`); the zero is derived from it.
     ///
@@ -1230,7 +1230,7 @@ impl<Element: Elementary> Tensor<Element> {
     /// Returns the tensor with `axis` reduced to its largest element by the
     /// elementwise [`Elementary::maximum`].
     ///
-    /// The reduction is rank-general and mirrors [`Tensorial::sum_along`]:
+    /// The reduction is rank-general and mirrors [`Recordable::sum_along`]:
     /// the elements are viewed as `[outer, axis, inner]` in logical order
     /// and folded over the middle extent.
     ///
@@ -1538,7 +1538,7 @@ impl<Element: Elementary> Tensor<Element> {
 
     /// Returns the `(count, size)` window pair at `axis`, `axis + 1`
     /// folded back onto an axis of `extent`: the adjoint of
-    /// [`unfold`](Tensorial::unfold) and its gradient rule.
+    /// [`unfold`](Recordable::unfold) and its gradient rule.
     ///
     /// The accumulation is output-centric: each source position sums,
     /// in window order, the window elements that were read from it, so
@@ -1745,7 +1745,7 @@ impl<Element: Elementary> Tensor<Element> {
 
     /// Scatter-adds the rows of `self` (a `[count, ...]` gradient) into a
     /// zero payload with one row per entry of `selection`'s vocabulary,
-    /// by its indices: the adjoint of [`gather`](Tensorial::gather) and
+    /// by its indices: the adjoint of [`gather`](Recordable::gather) and
     /// its gradient rule. Rows selected more than once accumulate.
     pub fn scatter(&self, selection: &Self) -> Self {
         let gradient = self.logical_shape();
@@ -1807,7 +1807,7 @@ impl<Element: Elementary> Tensor<Element> {
 /// rule operation is the inherent tensor method of the same name, so
 /// running a derivative rule over tensors is running it over the
 /// engine's one payload.
-impl<E: Element> Tensorial for Tensor<E> {
+impl<E: Element> Recordable for Tensor<E> {
     fn shape(&self) -> Shape {
         Tensor::shape(self)
     }

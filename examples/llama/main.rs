@@ -212,7 +212,7 @@ where
 fn main() {
     let prompt = std::env::args()
         .nth(1)
-        .unwrap_or_else(|| "The library of the poor holds one book".to_string());
+        .unwrap_or_else(|| "The library of this place holds one book".to_string());
     let count: usize = std::env::args()
         .nth(2)
         .map(|argument| argument.parse().expect("a token count"))

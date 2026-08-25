@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -63,7 +63,7 @@ impl LogSumExp {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for LogSumExp {
+impl<Rule: Recordable> Operation<Rule> for LogSumExp {
     fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         // The derivative of log-sum-exp is the softmax; the shift

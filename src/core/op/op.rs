@@ -1,6 +1,6 @@
 use super::SlotId;
 use crate::graph::Opcode;
-use crate::{Element, MapOperation, Shape, Tensor, Tensorial};
+use crate::{Element, MapOperation, Recordable, Shape, Tensor};
 
 use static_assertions::assert_impl_all;
 
@@ -462,7 +462,7 @@ impl<Data> Op<Data> {
     /// applies them over payload buffers, and `differentiate` applies
     /// the very same rules over recording `Trace`
     /// handles — one source of derivative truth, two interpretations.
-    pub(crate) fn backward<Rule: Tensorial>(
+    pub(crate) fn backward<Rule: Recordable>(
         &self,
         operands: &[&Rule],
         output: &Rule,

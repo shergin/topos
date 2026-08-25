@@ -8,7 +8,7 @@ use super::pattern::Pattern;
 use super::view::View;
 
 /// A matched window-GEMM group: the `matmul` node computes
-/// [`Tensorial::windowed_product`](crate::Tensorial::windowed_product)
+/// [`Recordable::windowed_product`](crate::Recordable::windowed_product)
 /// directly from the source, and the im2col chain between them —
 /// pads, unfolds, permute, reshape — is never materialized.
 ///

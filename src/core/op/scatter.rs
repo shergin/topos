@@ -1,12 +1,12 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, binary};
 
 /// The rows of a gradient scatter-added into a table by a one-hot
 /// selection, with operands `[gradient, selection]`:
-/// [`Gather`](super::Gather)'s adjoint, [`Tensorial::scatter`] as a
+/// [`Gather`](super::Gather)'s adjoint, [`Recordable::scatter`] as a
 /// node. The result's row count is the selection's vocabulary — its
 /// second axis — so the operation carries no parameters.
 ///
@@ -69,7 +69,7 @@ impl Scatter {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Scatter {
+impl<Rule: Recordable> Operation<Rule> for Scatter {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (_, &selection) = binary(operands);
         smallvec![Some(gradient.gather(selection)), None]

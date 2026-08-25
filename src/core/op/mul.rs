@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -44,7 +44,7 @@ impl Mul {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Mul {
+impl<Rule: Recordable> Operation<Rule> for Mul {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&left, &right) = binary(operands);
         smallvec![

@@ -120,11 +120,11 @@ product.
 `adjoints.roots()` is the training root list.
 
 **Trace.** The payload that records instead of computing. Rules
-are written against `Tensorial`; `Tensor` computes, `Trace`
+are written against `Recordable`; `Tensor` computes, `Trace`
 appends nodes. One rule body, two readings.
 
 **Operation.** A primitive's forward (inherent on `Tensor`) and
-backward (the `Operation` trait over `Tensorial`). Rules never
+backward (the `Operation` trait over `Recordable`). Rules never
 see the tape or the gradient buffer.
 
 ## Payload
@@ -142,8 +142,11 @@ Immutable; views and broadcasts share the buffer.
 kind, carrying a `MapOperation` (`Exp`, `Ln`, `Tanh`, …). Binary
 elementwise ops (`Maximum`, `Step`, `Powf`) are not maps.
 
-**Tensorial.** The recordable vocabulary. Everything a
-derivative rule may call; nothing else.
+**Recordable.** The recordable vocabulary: everything a
+derivative rule may call, and nothing else. Every method on it
+corresponds to something a tape can record, which is what lets
+both `Tensor` and `Trace` implement it without a panicking
+member.
 
 **Bf16.** Brain float 16. Arithmetic in `f32`, round to
 nearest-even. Accumulations stay in `f32` until the final total.

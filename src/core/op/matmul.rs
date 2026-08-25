@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -74,7 +74,7 @@ impl MatMul {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for MatMul {
+impl<Rule: Recordable> Operation<Rule> for MatMul {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&left, &right) = binary(operands);
         smallvec![
@@ -87,7 +87,7 @@ impl<Rule: Tensorial> Operation<Rule> for MatMul {
 /// Returns `value` with its trailing two axes swapped through
 /// `permute` — matmul operands are rank two or higher by its own
 /// contract, so the adjoint closes inside the existing op set.
-fn swapped<Rule: Tensorial>(value: &Rule) -> Rule {
+fn swapped<Rule: Recordable>(value: &Rule) -> Rule {
     let rank = value.shape().rank();
     let mut order: Vec<usize> = (0..rank).collect();
     order.swap(rank - 2, rank - 1);

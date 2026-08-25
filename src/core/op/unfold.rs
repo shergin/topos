@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -8,10 +8,10 @@ use super::{Cotangents, Operation, Reads, unary};
 /// `(count, size)` pair where window `w` starts at `w * step` and takes
 /// every `dilation`-th element.
 ///
-/// The forward is the [`Tensorial::unfold`] strided view; the gradient
+/// The forward is the [`Recordable::unfold`] strided view; the gradient
 /// of the operand is the incoming gradient with every window
 /// contribution summed back onto its source position, which is what
-/// [`Tensorial::fold`] computes — the two operations are adjoint. The
+/// [`Recordable::fold`] computes — the two operations are adjoint. The
 /// `dilation` slot ships ahead of any consumer so dilated convolution
 /// later is a formula parameter, not a variant change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,7 +75,7 @@ impl Unfold {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Unfold {
+impl<Rule: Recordable> Operation<Rule> for Unfold {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         let extent = operand.shape().axes()[self.axis];

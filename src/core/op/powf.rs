@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -46,7 +46,7 @@ impl Powf {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Powf {
+impl<Rule: Recordable> Operation<Rule> for Powf {
     fn backward(&self, operands: &[&Rule], output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&base, &exponent) = binary(operands);
         let lowered = exponent.clone() - exponent.one_like();

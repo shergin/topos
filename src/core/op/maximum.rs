@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, binary};
 
@@ -43,7 +43,7 @@ impl Maximum {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Maximum {
+impl<Rule: Recordable> Operation<Rule> for Maximum {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let (&left, &right) = binary(operands);
         let winners = left.step(right);

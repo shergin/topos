@@ -1,13 +1,13 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
 /// The `(count, size)` window pair at `axis`, `axis + 1` folded back
 /// onto an axis of `extent`: [`Unfold`](super::Unfold)'s adjoint,
 /// with the output-centric deterministic semantics of
-/// [`Tensorial::fold`].
+/// [`Recordable::fold`].
 ///
 /// It exists as an opcode because `unfold`'s derivative rule speaks
 /// `fold`, so recorded gradients of windowed values need it on the
@@ -89,7 +89,7 @@ impl Fold {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Fold {
+impl<Rule: Recordable> Operation<Rule> for Fold {
     fn backward(&self, _operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         smallvec![Some(gradient.unfold(
             self.axis,

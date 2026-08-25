@@ -1,15 +1,15 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
 /// A value placed at `start ..` along one axis inside zeros of
 /// `full_extent`.
 ///
-/// The forward is [`Tensorial::pad`]; the gradient of the operand is the
+/// The forward is [`Recordable::pad`]; the gradient of the operand is the
 /// incoming gradient with the window read back out, which is what
-/// [`Tensorial::narrow`] computes — the two operations are adjoint, each
+/// [`Recordable::narrow`] computes — the two operations are adjoint, each
 /// the other's gradient rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Pad {
@@ -66,7 +66,7 @@ impl Pad {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Pad {
+impl<Rule: Recordable> Operation<Rule> for Pad {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         let len = operand.shape().axes()[self.axis];

@@ -1,6 +1,6 @@
 use smallvec::smallvec;
 
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::{Cotangents, Operation, Reads, unary};
 
@@ -36,7 +36,7 @@ impl Sum {
     }
 }
 
-impl<Rule: Tensorial> Operation<Rule> for Sum {
+impl<Rule: Recordable> Operation<Rule> for Sum {
     fn backward(&self, operands: &[&Rule], _output: &Rule, gradient: &Rule) -> Cotangents<Rule> {
         let &operand = unary(operands);
         smallvec![Some(gradient.broadcast(operand.shape()))]

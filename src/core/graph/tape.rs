@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 use static_assertions::assert_impl_all;
 
 use crate::op::Op;
-use crate::{Element, Shape, Tensor, Tensorial};
+use crate::{Element, Recordable, Shape, Tensor};
 
 use super::trace::Trace;
 use super::{

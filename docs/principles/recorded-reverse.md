@@ -73,7 +73,7 @@ theorem, not an implementation trick.
 
 `Tape::differentiate` / `Tape::vjp` append nodes and answer
 `Adjoints`. `Run::backward` is the oracle. `Trace` is the
-recording payload of `Tensorial`; `Operation` is the one rule
+recording payload of `Recordable`; `Operation` is the one rule
 body. `Entry::backward` is the retain-buffers posture.
 `Run::recorded_gradients` is the bridge from recorded adjoints
 to `Parameters::step`. This section may rot; the rest must not.

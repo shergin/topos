@@ -35,7 +35,7 @@ cargo run --release --features accelerate --example gpt2 -- [PROMPT] [COUNT] [EN
 
 | position | meaning | default |
 |---|---|---|
-| 1 | the prompt | `The library of the poor holds one book` |
+| 1 | the prompt | `The library of this place holds one book` |
 | 2 | how many tokens to generate | `40` |
 | 3 | the engine: `tape`, `full`, `bf16`, or `xla` | `tape` |
 
