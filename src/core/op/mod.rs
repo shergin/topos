@@ -7,11 +7,8 @@ mod add;
 mod broadcast;
 mod broadcast_along;
 mod div;
-mod gather;
-// The module convention names each file after its main concept, and this
-// module's main concept is the `Op` enum itself; the inception is
-// deliberate.
 mod fold;
+mod gather;
 mod input;
 mod leaf;
 mod log_softmax;
@@ -22,6 +19,9 @@ mod maximum;
 mod mul;
 mod narrow;
 mod neg;
+// The module convention names each file after its main concept, and this
+// module's main concept is the `Op` enum itself; the inception is
+// deliberate.
 #[allow(clippy::module_inception)]
 mod op;
 mod operation;
