@@ -120,15 +120,26 @@
 )]
 #![deny(unsafe_code)]
 
-mod backend;
-mod emission;
+// Core: the spec and its named readings. What the crate exists to
+// do -- record a spec, then read it.
 mod engine;
 mod function;
 mod graph;
+mod payload;
+
+// Derived: faster or foreign readings of the same spec. A backend may
+// decline and the interpreter remains the truth; emission writes the
+// plan as text and is a sibling of `describe`, not a second compiler.
+mod backend;
+mod emission;
+
+// Facades: convenience on the public surface, composed through it
+// alone, with no privileged engine access.
 mod neural;
 #[cfg(feature = "evcxr")]
 mod notebook;
-mod payload;
+
+// Tools: the bitwise references a new element is graded against.
 pub mod reference;
 
 pub use backend::{
