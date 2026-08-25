@@ -1,8 +1,9 @@
 //! The facade tier gate: `src/neural/` and `src/notebook/` compose
 //! through the public surface alone.
 //!
-//! The tier doctrine (TERMINOLOGY: "Facade tier") promises that every
-//! facade is an ordinary consumer — no privileged engine access — so a
+//! The tier doctrine ([terminology](../docs/terminology.md): Facades)
+//! promises that every facade is an ordinary consumer — no privileged
+//! engine access — so a
 //! hand-rolled equivalent behaves identically and internals may change
 //! their spelling freely underneath. The compiler cannot police this
 //! inside one crate, so this test does: it scans the facade sources for

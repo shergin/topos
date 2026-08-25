@@ -85,8 +85,9 @@ opcode set, fusions, and backends stay in the crate — the core is
 closed on purpose.
 
 Opt-in backends (`accelerate`, `simd`, `metal`, `cuda`) are
-documented in [`ACCELERATION.md`](ACCELERATION.md). Notebooks:
-[`NOTEBOOKS.md`](NOTEBOOKS.md). API:
+documented in [`docs/acceleration.md`](docs/acceleration.md).
+Vocabulary: [`docs/terminology.md`](docs/terminology.md).
+Notebooks: [`docs/notebooks.md`](docs/notebooks.md). API:
 [docs.rs/topos](https://docs.rs/topos).
 
 ## Examples

@@ -138,4 +138,4 @@ design: a KV cache inside the fixed-shape plan and quantized
 payloads are engine-tier conversations, not example-tier ones. The
 backend ladder this example rides — and the emission road the GPT-2
 example takes further — is told in
-[ACCELERATION.md](../../ACCELERATION.md).
+[docs/acceleration.md](../../docs/acceleration.md).

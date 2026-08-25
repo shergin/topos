@@ -189,4 +189,4 @@ self-check.
 
 Where this sits in the larger design — emission, the conformance
 tiers, and the measured serving numbers — is told in
-[ACCELERATION.md](../../ACCELERATION.md).
+[docs/acceleration.md](../../docs/acceleration.md).
