@@ -11,6 +11,23 @@ fn escaping_leaves_ordinary_text_untouched() {
 }
 
 #[test]
+fn a_short_dump_is_kept_whole() {
+    assert_eq!(truncate_dump("a\nb\nc"), "a\nb\nc");
+}
+
+#[test]
+fn a_long_dump_keeps_the_head_and_the_summary() {
+    let mut lines: Vec<String> = (0..100).map(|index| format!("line {index}")).collect();
+    lines.push("summary".to_string());
+    let text = lines.join("\n");
+    let truncated = truncate_dump(&text);
+    assert!(truncated.starts_with("line 0\n"));
+    assert!(truncated.contains("more lines"));
+    assert!(truncated.ends_with("summary"));
+    assert!(!truncated.contains("line 99\n"));
+}
+
+#[test]
 fn a_mime_bundle_matches_the_evcxr_protocol() {
     // The protocol emitter is `malevich`'s; this pins the shape topos
     // relies on rather than restating its unit tests.

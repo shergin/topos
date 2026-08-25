@@ -20,11 +20,7 @@ impl<E: Element> Network<E> {
             .last()
             .unwrap_or("network: 0 nodes")
             .to_string();
-        let spec = format!(
-            "<pre style=\"margin:0;white-space:pre;overflow-x:auto\">{}</pre>",
-            html::escape(&described)
-        );
-        html::card(theme, &html::escape(&summary), &spec)
+        html::card(theme, &html::escape(&summary), &html::dump_pre(&described))
     }
 
     /// Displays the network when it is the last expression in an

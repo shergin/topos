@@ -28,6 +28,13 @@ fn filled_rejects_empty_tensors() {
 }
 
 #[test]
+fn filled_is_a_constant_fill() {
+    let tensor = Tensor::filled([4], 2.5_f64);
+    assert_eq!(tensor.as_constant().copied(), Some(2.5));
+    assert_eq!(Tensor::new([2], [1.0_f64, 2.0]).as_constant(), None);
+}
+
+#[test]
 fn clone_shares_storage() {
     let tensor = Tensor::new([2], [1.0_f64, 2.0]);
     let clone = tensor.clone();

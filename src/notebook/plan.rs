@@ -17,10 +17,7 @@ impl<E: Element> Plan<E> {
     ///
     /// Rendering is pure and deterministic for a given plan and theme.
     pub fn to_html(&self, theme: Theme) -> String {
-        let schedule = format!(
-            "<pre style=\"margin:0;white-space:pre;overflow-x:auto\">{}</pre>",
-            html::escape(&self.describe())
-        );
+        let schedule = html::dump_pre(&self.describe());
         let series: Vec<f64> = self
             .live_series()
             .iter()

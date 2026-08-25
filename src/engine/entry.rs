@@ -118,7 +118,7 @@ impl Entry {
 #[derive(Debug)]
 pub struct BoundEntry<'network, E> {
     network: &'network Network<E>,
-    entry: Entry,
+    pub(crate) entry: Entry,
 }
 
 impl<'network, E: Element> BoundEntry<'network, E> {

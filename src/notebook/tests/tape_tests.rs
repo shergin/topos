@@ -1,21 +1,26 @@
-use super::*;
+use crate::Tape;
+use malevich::Theme;
 
 #[test]
-fn the_card_reports_the_recorded_node_count() {
+fn the_card_renders_the_ir_dump() {
     let tape: Tape<f64> = Tape::new();
-    assert!(tape.to_html(Theme::DARK).contains("0 recorded nodes"));
-
     let a = tape.parameter(1.0);
     let b = tape.parameter(2.0);
     let _sum = a + b;
-    assert!(tape.to_html(Theme::DARK).contains("3 recorded nodes"));
+    let html = tape.to_html(Theme::DARK);
+    for line in tape.describe().lines() {
+        assert!(
+            html.contains(line.trim_end()),
+            "card is missing the spec line {line:?}"
+        );
+    }
+    assert!(html.contains("3 nodes"));
 }
 
 #[test]
-fn one_node_reads_in_the_singular() {
+fn an_empty_tape_still_has_a_summary() {
     let tape: Tape<f64> = Tape::new();
-    let _only = tape.parameter(1.0);
-    assert!(tape.to_html(Theme::DARK).contains("1 recorded node<"));
+    assert!(tape.to_html(Theme::DARK).contains("0 nodes"));
 }
 
 #[test]

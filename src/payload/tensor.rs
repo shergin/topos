@@ -63,6 +63,14 @@ impl<Element> Tensor<Element> {
         }
     }
 
+    /// Returns the repeated value when this tensor is a constant fill.
+    pub(crate) fn as_constant(&self) -> Option<&Element> {
+        match &self.storage {
+            Storage::Constant { value, .. } => Some(value),
+            _ => None,
+        }
+    }
+
     /// Returns the row indices of a `Selection` payload.
     ///
     /// # Panics

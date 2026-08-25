@@ -19,6 +19,10 @@ const TABLE_LIMIT: usize = 144;
 /// becomes a chart instead.
 const ROW_LIMIT: usize = 24;
 
+/// Most points a chart will hold. Larger payloads are subsampled
+/// so a weight tensor cannot clone itself into `f64`.
+const CHART_SAMPLE: usize = 2048;
+
 /// The frame every chart in a notebook card is drawn into.
 fn chart_frame(theme: Theme) -> Frame {
     let mut frame = Frame::plain(72, 20);
@@ -27,17 +31,103 @@ fn chart_frame(theme: Theme) -> Frame {
 }
 
 /// Returns a tensor's elements in row-major order as the `f64` cells
-/// every renderer works in.
+/// a small table prints.
 ///
-/// The displays are generic over the public element contracts alone:
-/// `f64: From<E>` is the widening every built-in element already
-/// offers, and [`Emittable::ELEMENT`] is the one vocabulary that
-/// names an element wherever it is printed.
+/// Callers must only use this when the payload is small enough to
+/// tabulate; large payloads stream through [`extrema`] and
+/// [`chart_cells`] instead.
 pub(crate) fn cells<E: Element>(tensor: &Tensor<E>) -> Vec<f64>
 where
     f64: From<E>,
 {
     tensor.iter().map(f64::from).collect()
+}
+
+/// Minimum, maximum, and mean of the finite elements, plus how many
+/// were not finite. A constant fill is O(1); a dense payload streams
+/// without an extra buffer.
+pub(crate) fn extrema<E: Element>(tensor: &Tensor<E>) -> (Option<(f64, f64, f64)>, usize)
+where
+    f64: From<E>,
+{
+    let volume = tensor.shape().volume();
+    if volume == 0 {
+        return (None, 0);
+    }
+    if let Some(value) = tensor.as_constant() {
+        let cell = f64::from(value.clone());
+        return if cell.is_finite() {
+            (Some((cell, cell, cell)), 0)
+        } else {
+            (None, volume)
+        };
+    }
+    let mut minimum = f64::INFINITY;
+    let mut maximum = f64::NEG_INFINITY;
+    let mut sum = 0.0;
+    let mut finite = 0usize;
+    let mut unusual = 0usize;
+    for element in tensor.iter() {
+        let cell = f64::from(element);
+        if cell.is_finite() {
+            minimum = minimum.min(cell);
+            maximum = maximum.max(cell);
+            sum += cell;
+            finite += 1;
+        } else {
+            unusual += 1;
+        }
+    }
+    let summary = (finite > 0).then_some((minimum, maximum, sum / finite as f64));
+    (summary, unusual)
+}
+
+/// Euclidean norm of a payload, streamed. A constant fill is O(1).
+pub(crate) fn euclidean_norm<E: Element>(tensor: &Tensor<E>) -> f64
+where
+    f64: From<E>,
+{
+    if let Some(value) = tensor.as_constant() {
+        let cell = f64::from(value.clone());
+        if !cell.is_finite() {
+            return cell.abs();
+        }
+        return cell.abs() * (tensor.shape().volume() as f64).sqrt();
+    }
+    tensor
+        .iter()
+        .map(|element| {
+            let cell = f64::from(element);
+            cell * cell
+        })
+        .sum::<f64>()
+        .sqrt()
+}
+
+/// Points for a chart: the full payload when it is small, an even
+/// subsample when it is not.
+fn chart_cells<E: Element>(tensor: &Tensor<E>) -> Vec<f64>
+where
+    f64: From<E>,
+{
+    let volume = tensor.shape().volume();
+    if volume == 0 {
+        return Vec::new();
+    }
+    if let Some(value) = tensor.as_constant() {
+        return vec![f64::from(value.clone())];
+    }
+    if volume <= CHART_SAMPLE {
+        return tensor.iter().map(f64::from).collect();
+    }
+    let step = volume.div_ceil(CHART_SAMPLE).max(1);
+    if let Some(slice) = tensor.as_slice() {
+        return (0..volume)
+            .step_by(step)
+            .map(|index| f64::from(slice[index].clone()))
+            .collect();
+    }
+    tensor.iter().step_by(step).map(f64::from).collect()
 }
 
 /// Formats one number at a width a table can align, without trailing
@@ -67,12 +157,8 @@ pub(crate) fn shape_text(shape: &Shape) -> String {
     format!("[{}]", axes.join(", "))
 }
 
-/// The minimum, maximum, and mean of a payload's elements.
-///
-/// Non-finite elements are excluded from all three, so a single `NaN`
-/// does not erase the rest of the summary; the header reports their
-/// presence separately.
-fn extremes(cells: &[f64]) -> Option<(f64, f64, f64)> {
+/// Extremes of an already-materialized cell list, for table tinting.
+fn extremes_of(cells: &[f64]) -> Option<(f64, f64, f64)> {
     let finite: Vec<f64> = cells
         .iter()
         .copied()
@@ -89,9 +175,13 @@ fn extremes(cells: &[f64]) -> Option<(f64, f64, f64)> {
 
 /// The card header for a payload: shape, element type, and the
 /// summary statistics that say whether the numbers are sane.
-pub(crate) fn header<E: Emittable>(shape: &Shape, cells: &[f64]) -> String {
+pub(crate) fn header<E: Emittable>(
+    shape: &Shape,
+    summary: Option<(f64, f64, f64)>,
+    unusual: usize,
+) -> String {
     let mut parts = vec![shape_text(shape), E::ELEMENT.to_string()];
-    if let Some((minimum, maximum, mean)) = extremes(cells) {
+    if let Some((minimum, maximum, mean)) = summary {
         parts.push(format!(
             "min {} max {} mean {}",
             number(minimum),
@@ -99,7 +189,6 @@ pub(crate) fn header<E: Emittable>(shape: &Shape, cells: &[f64]) -> String {
             number(mean)
         ));
     }
-    let unusual = cells.iter().filter(|cell| !cell.is_finite()).count();
     if unusual > 0 {
         parts.push(format!("{unusual} non-finite"));
     }
@@ -111,7 +200,7 @@ pub(crate) fn header<E: Emittable>(shape: &Shape, cells: &[f64]) -> String {
 fn table(theme: Theme, cells: &[f64], columns: usize) -> String {
     use std::fmt::Write as _;
 
-    let (low, high) = match extremes(cells) {
+    let (low, high) = match extremes_of(cells) {
         Some((minimum, maximum, _)) => (minimum, maximum),
         None => (0.0, 0.0),
     };
@@ -175,28 +264,38 @@ where
     f64: From<E>,
 {
     let shape = data.shape();
-    let cells = cells(data);
+    let volume = shape.volume();
     let columns = columns_of(&shape);
 
-    if cells.len() == 1 {
-        let value = html::escape(&number(cells[0]));
+    if volume == 1 {
+        let value = match data.as_constant() {
+            Some(element) => f64::from(element.clone()),
+            None => data.iter().next().map(f64::from).unwrap_or(0.0),
+        };
+        let text = number(value);
         return (
-            format!("<div style=\"font-size:20px\">{value}</div>"),
-            number(cells[0]),
+            format!(
+                "<div style=\"font-size:20px\">{}</div>",
+                html::escape(&text)
+            ),
+            text,
         );
     }
 
-    let small_row = shape.rank() <= 1 && cells.len() <= ROW_LIMIT;
-    let small_grid = shape.rank() >= 2 && cells.len() <= TABLE_LIMIT;
+    let small_row = shape.rank() <= 1 && volume <= ROW_LIMIT;
+    let small_grid = shape.rank() >= 2 && volume <= TABLE_LIMIT;
     if small_row || small_grid {
+        let cells = cells(data);
         return (table(theme, &cells, columns), table_text(&cells, columns));
     }
 
+    let sampled = chart_cells(data);
     let frame = chart_frame(theme);
-    let plot = if shape.rank() >= 2 {
-        malevich::heatmap(columns, &cells[..])
+    let full_heatmap = shape.rank() >= 2 && volume <= CHART_SAMPLE;
+    let plot = if full_heatmap {
+        malevich::heatmap(columns, &sampled[..])
     } else {
-        malevich::Plot::new().layer(malevich::Line::y(&cells[..]))
+        malevich::Plot::new().layer(malevich::Line::y(&sampled[..]))
     };
     (plot.to_html(&frame), plot.render(&frame))
 }
@@ -211,12 +310,12 @@ where
     f64: From<E>,
 {
     let shape = data.shape();
-    let cells = cells(data);
+    let (summary, unusual) = extrema(data);
     let (body_html, _) = body(theme, data);
     let head = format!(
         "{}  \u{b7}  {}",
         html::escape(label),
-        header::<E>(&shape, &cells)
+        header::<E>(&shape, summary, unusual)
     );
     html::card(theme, &head, &body_html)
 }
@@ -227,10 +326,10 @@ where
     f64: From<E>,
 {
     let shape = data.shape();
-    let cells = cells(data);
+    let (summary, _) = extrema(data);
     let (_, body_text) = body(Theme::DARK, data);
     let mut parts = vec![shape_text(&shape), E::ELEMENT.to_string()];
-    if let Some((minimum, maximum, mean)) = extremes(&cells) {
+    if let Some((minimum, maximum, mean)) = summary {
         parts.push(format!(
             "min {} max {} mean {}",
             number(minimum),

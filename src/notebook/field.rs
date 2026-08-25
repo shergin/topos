@@ -19,13 +19,7 @@ where
     field
         .payloads()
         .iter()
-        .map(|payload| {
-            render::cells(payload)
-                .iter()
-                .map(|cell| cell * cell)
-                .sum::<f64>()
-                .sqrt()
-        })
+        .map(render::euclidean_norm)
         .collect()
 }
 
@@ -104,16 +98,13 @@ where
     ///
     /// Rendering is pure and deterministic for a given field and theme.
     pub fn to_html(&self, theme: Theme) -> String {
-        profile_card(theme, "gradients", self)
+        profile_card(theme, "field", self)
     }
 
     /// Displays the field when it is the last expression in an Evcxr
     /// cell.
     pub fn evcxr_display(&self) {
-        html::show(
-            &self.to_html(Theme::detect()),
-            &profile_text("gradients", self),
-        );
+        html::show(&self.to_html(Theme::detect()), &profile_text("field", self));
     }
 }
 

@@ -35,6 +35,41 @@ pub(crate) fn escape(text: &str) -> String {
     escaped
 }
 
+/// Longest spec dump placed in a card before the middle is elided.
+pub(crate) const DUMP_LINE_LIMIT: usize = 80;
+
+/// The CSS for a spec or schedule `<pre>` block.
+const DUMP_PRE_STYLE: &str = "margin:0;white-space:pre;overflow-x:auto";
+
+/// Elides the middle of a multi-line dump so a large spec cannot
+/// freeze a notebook cell. The last line (the summary) is kept.
+pub(crate) fn truncate_dump(text: &str) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+    if lines.len() <= DUMP_LINE_LIMIT {
+        return text.to_string();
+    }
+    let keep_head = DUMP_LINE_LIMIT.saturating_sub(1);
+    let omitted = lines.len().saturating_sub(keep_head + 1);
+    let mut out = String::new();
+    for line in lines.iter().take(keep_head) {
+        out.push_str(line);
+        out.push('\n');
+    }
+    out.push_str(&format!("... {omitted} more lines\n"));
+    if let Some(last) = lines.last() {
+        out.push_str(last);
+    }
+    out
+}
+
+/// Escapes `text` into a scrollable `<pre>` block, eliding a long dump.
+pub(crate) fn dump_pre(text: &str) -> String {
+    format!(
+        "<pre style=\"{DUMP_PRE_STYLE}\">{}</pre>",
+        escape(&truncate_dump(text))
+    )
+}
+
 /// Wraps `body` in a themed card carrying `header` as its caption.
 ///
 /// The body is placed verbatim, so callers pass either escaped text or

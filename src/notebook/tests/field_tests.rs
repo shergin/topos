@@ -10,7 +10,7 @@ fn a_gradient_card_reports_the_node_count_and_norms() {
     let gradients = network.forward(&network.parameters(), []).backward(squared);
 
     let html = gradients.to_html(Theme::DARK);
-    assert!(html.contains("gradients"));
+    assert!(html.contains("field"));
     assert!(html.contains("nodes"));
     // d(w^2)/dw is 2w, so the largest gradient norm on this tape is 6.
     assert!(html.contains("max norm 6"));
@@ -47,8 +47,8 @@ fn the_plain_text_form_carries_the_same_header_as_the_card() {
     let squared = (w * w).symbol();
     let network = tape.into_network();
     let gradients = network.forward(&network.parameters(), []).backward(squared);
-    let text = profile_text("gradients", &gradients);
-    assert!(text.contains("gradients"));
+    let text = profile_text("field", &gradients);
+    assert!(text.contains("field"));
     assert!(text.contains("max norm 6"));
 }
 
