@@ -44,6 +44,14 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Changed
 
+- The `Keep` trait is `Detach`: `[w, x, loss].detach()`, the
+  associated type `Detached`, and `Tape::record` bounding its closure
+  on `Detach`. Construction's "names that leave the tape" and a plan's
+  keep-set are different declarations, and one word for both was the
+  observability muddle -- the execution keep-set keeps the name, and
+  what construction does is detach. `use topos::Keep` becomes
+  `use topos::Detach`.
+
 - `Tensorial` is `Recordable`. The docs always called it the
   recordable vocabulary -- the operations a derivative rule may call,
   and nothing else -- while the name suggested a third payload kind

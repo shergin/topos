@@ -13,9 +13,9 @@ starts meaning too many things: same node, same family, same
 prefix, same writer.
 
 The fat name also fights the one property a node handle must have.
-Names are copied constantly — into keep-sets, into entries, across
-threads, across notebook cells. They have to stay cheap. A witness
-of graph structure does not.
+Names are copied constantly — into detached sets, into entries,
+across threads, across notebook cells. They have to stay cheap. A
+witness of graph structure does not.
 
 ## The idea
 
@@ -78,5 +78,5 @@ as spec.
 `Symbol` is origin plus index, `Copy`. `Value` borrows the
 `Tape` and dies at `into_network`. `Origin` is crate-private;
 dependents see `"belongs to a different network"` and coverage
-panics. `Keep` is how names leave construction. This section
+panics. `Detach` is how names leave construction. This section
 may rot; the rest must not.

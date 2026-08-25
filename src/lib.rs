@@ -9,19 +9,19 @@
 //! parameters. Training never touches the graph:
 //!
 //! ```
-//! use topos::{Keep, Tape, Tensor};
+//! use topos::{Detach, Tape, Tensor};
 //!
-//! // Record the graph in one closure; the return value is the
-//! // keep-set, detached to symbols in one call. Operators record as
-//! // they run; values are `Copy` and never consumed. A scalar is a
-//! // rank-0 tensor: the graph is always tensors, and the element
-//! // type (`f64` here) is the open seam.
+//! // Record the graph in one closure; the return value is the set
+//! // of names that leave the tape, detached to symbols in one call.
+//! // Operators record as they run; values are `Copy` and never
+//! // consumed. A scalar is a rank-0 tensor: the graph is always
+//! // tensors, and the element type (`f64` here) is the open seam.
 //! let (network, [w, x, y, loss]) = Tape::record(|tape| {
 //!     let w = tape.parameter(0.0_f64);
 //!     let x = tape.input(0.0);
 //!     let y = tape.input(0.0);
 //!     let error = w * x - y;
-//!     [w, x, y, error * error].keep()
+//!     [w, x, y, error * error].detach()
 //! });
 //! let mut parameters = network.parameters();
 //!
@@ -96,10 +96,10 @@
 //!   kernels.
 //!
 //! ```no_run
-//! # use topos::{Keep, Tape};
+//! # use topos::{Detach, Tape};
 //! # let (network, [loss]) = Tape::record(|tape| {
 //! #     let w = tape.parameter(1.0_f64);
-//! #     [w * w].keep()
+//! #     [w * w].detach()
 //! # });
 //! // The compiler surface in three lines: print the spec, lower an
 //! // entry, emit the schedule.
@@ -153,7 +153,7 @@ pub use backend::{
 pub use emission::{EmitError, Emittable};
 pub use engine::{BoundEntry, Entry, PatternKind, PatternMatch, Plan, Run};
 pub use graph::{
-    Adjoints, Field, Gradients, Keep, Network, Node, Opcode, Parameters, Symbol, Tape, Trace,
+    Adjoints, Detach, Field, Gradients, Network, Node, Opcode, Parameters, Symbol, Tape, Trace,
     Value, concat, stack,
 };
 pub use neural::{
@@ -173,8 +173,8 @@ pub use payload::{
 /// imports keep working unchanged.
 pub mod model {
     pub use crate::{
-        Activation, Adam, AdamW, Adjoints, BatchNorm, BoundEntry, Conv2d, Dropout, Entry, Field,
-        Gradients, Keep, LayerNorm, Linear, Mlp, Module, Network, Normalization, Optimizer,
+        Activation, Adam, AdamW, Adjoints, BatchNorm, BoundEntry, Conv2d, Detach, Dropout, Entry,
+        Field, Gradients, LayerNorm, Linear, Mlp, Module, Network, Normalization, Optimizer,
         Parameters, Path, Plan, RmsNorm, Run, Segment, Sequential, Sgd, Shape, Symbol, Tape,
         Tensor, Value, Visitor, checkpoint, concat, conv2d, cross_entropy, init, max_pool,
         named_parameters, parameters, stack,
@@ -190,10 +190,10 @@ pub mod model {
 /// kernels live in [`crate::reference`].
 pub mod compiler {
     pub use crate::{
-        Adjoints, Backend, BackendUnavailable, BatchNormTask, Bf16, BoundEntry, Coverage,
+        Adjoints, Backend, BackendUnavailable, BatchNormTask, Bf16, BoundEntry, Coverage, Detach,
         Differentiable, Dispatch, Element, Elementary, EmitError, Emittable, Entry, Fidelity,
-        Formula, GemmTask, Keep, MapOperation, MapTask, Network, Node, Normalized, Numerics,
-        Opcode, Parameters, PatternKind, PatternMatch, Plan, Precision, Recordable, Run, Shape,
-        Symbol, Tape, Tensor, Trace,
+        Formula, GemmTask, MapOperation, MapTask, Network, Node, Normalized, Numerics, Opcode,
+        Parameters, PatternKind, PatternMatch, Plan, Precision, Recordable, Run, Shape, Symbol,
+        Tape, Tensor, Trace,
     };
 }

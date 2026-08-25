@@ -21,14 +21,14 @@ it assumes live in [`docs/principles/`](docs/principles/).
 ## Record and train
 
 ```rust
-use topos::{Keep, Tape, Tensor};
+use topos::{Detach, Tape, Tensor};
 
 let (network, [w, x, y, loss]) = Tape::record(|tape| {
     let w = tape.parameter(0.0_f64);
     let x = tape.input(0.0);
     let y = tape.input(0.0);
     let error = w * x - y;
-    [w, x, y, error * error].keep()
+    [w, x, y, error * error].detach()
 });
 let mut parameters = network.parameters();
 
@@ -54,11 +54,11 @@ the parameters. Training never touches the network.
 ## Inspect, compile, emit
 
 ```rust
-use topos::{Keep, Tape};
+use topos::{Detach, Tape};
 
 let (network, [loss]) = Tape::record(|tape| {
     let w = tape.parameter(1.0_f64);
-    [w * w].keep()
+    [w * w].detach()
 });
 
 println!("{}", network.describe());

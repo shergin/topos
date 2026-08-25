@@ -9,8 +9,8 @@
 
 mod adjoints;
 mod composite;
+mod detach;
 mod field;
-mod keep;
 mod literal;
 // The module convention names each file after its main concept, and this
 // module's main concept is the `Network` itself; the inception is
@@ -30,8 +30,8 @@ mod value;
 
 pub use adjoints::Adjoints;
 pub use composite::{concat, stack};
+pub use detach::Detach;
 pub use field::{Field, Gradients};
-pub use keep::Keep;
 pub use network::Network;
 pub use opcode::{Node, Opcode};
 pub use parameters::Parameters;

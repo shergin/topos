@@ -27,10 +27,10 @@ seal; take a `Symbol` first.
 of every phase after recording. Reads go through
 `Parameters::of`, `Run::of`, `Field::of`.
 
-**Keep.** How names leave construction: `[w, x, loss].keep()`.
-`Tape::record` returns that keep-set and seals. Construction's
-names are not the run's keep-set — see
-[Observability](principles/observability.md).
+**Detach.** How names leave construction: `[w, x, loss].detach()`.
+`Tape::record` detaches and seals. What construction detaches is
+the vocabulary later phases may mention, not a run's keep-set —
+see [Observability](principles/observability.md).
 
 **Network.** The sealed spec: structure, shapes, initials, input
 defaults. No live weights, no lock, not `Clone`. Shared with

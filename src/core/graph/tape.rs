@@ -8,7 +8,7 @@ use crate::{Element, Recordable, Shape, Tensor};
 
 use super::trace::Trace;
 use super::{
-    Adjoints, Keep, Network, Node, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId,
+    Adjoints, Detach, Network, Node, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId,
 };
 
 // Entry-time thread-safety contract; the anchor rationale is documented
@@ -55,11 +55,11 @@ pub struct Tape<E> {
 
 impl<E: Element> Tape<E> {
     /// Records a whole graph in one closure and seals it: the
-    /// default construction path, whose return value *is* the
-    /// construction keep-set.
+    /// default construction path, whose return value *is* the set of
+    /// names that leave the recording.
     ///
-    /// The closure builds on a fresh tape and returns its keep-set
-    /// in detached form — one [`Keep::keep`] call turns any array,
+    /// The closure builds on a fresh tape and returns those names in
+    /// detached form — one [`Detach::detach`] call turns any array,
     /// `Vec`, or tuple of values into symbols — and the seal follows
     /// immediately, so no proxy can escape the phase and the names
     /// later phases read are a value, not a pile of `.symbol()`
@@ -68,20 +68,20 @@ impl<E: Element> Tape<E> {
     ///
     /// # Examples
     /// ```
-    /// use topos::{Keep, Tape};
+    /// use topos::{Detach, Tape};
     ///
     /// let (network, [w, loss]) = Tape::record(|tape| {
     ///     let w = tape.parameter(3.0_f64);
     ///     let loss = w * w;
-    ///     [w, loss].keep()
+    ///     [w, loss].detach()
     /// });
     /// assert_eq!(network.parameters().of(w).scalar(), 3.0);
     /// # let _ = loss;
     /// ```
-    pub fn record<Out: Keep>(build: impl FnOnce(&Self) -> Out) -> (Network<E>, Out::Kept) {
+    pub fn record<Out: Detach>(build: impl FnOnce(&Self) -> Out) -> (Network<E>, Out::Detached) {
         let tape = Self::new();
-        let kept = build(&tape).keep();
-        (tape.into_network(), kept)
+        let detached = build(&tape).detach();
+        (tape.into_network(), detached)
     }
 
     /// Creates an empty `Tape`.

@@ -14,11 +14,11 @@ use std::time::Instant;
 use rayon::prelude::*;
 
 use malevich::{Frame, Line, Plot};
-use topos::model::{Keep, Tape, Tensor};
+use topos::model::{Detach, Tape, Tensor};
 
 fn main() {
     // The whole recording is one closure; its return value is the
-    // keep-set, detached to symbols in one `keep` call.
+    // set of names that leave the tape, detached in one `detach` call.
     let (network, (w, b, loss, sample_losses)) = Tape::record(|tape| {
         // Learnable parameters, starting from zero.
         let w = tape.parameter(0.0_f64);
@@ -42,7 +42,7 @@ fn main() {
             .copied()
             .reduce(|total, squared| total + squared)
             .expect("at least one sample");
-        (w, b, loss, sample_losses).keep()
+        (w, b, loss, sample_losses).detach()
     });
     let parameters = network.parameters();
 

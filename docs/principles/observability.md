@@ -36,9 +36,9 @@ inside a would-be fused chain is a barrier. Fusion is an offer
 over the unobserved; it is not a rewrite of something the caller
 named.
 
-Construction has a keep-set too, and it is a different
-declaration. The names you take out of recording are the ones
-later phases can mention. They are not "the only entry." Twins
+Construction declares something too, and it is a different
+thing. The names you detach from recording are the ones later
+phases can mention. They are not "the only entry." Twins
 record together; later declarations pick which export to run.
 Rule 2 at record time means "names you will mention later," not
 "compute everything you named on every run."
@@ -52,8 +52,9 @@ Rule 2 at record time means "names you will mention later," not
   values in exactly that order.
 - Whole-spec evaluation is a debug path for when you really do
   want every node. It is not the training API.
-- Two keep-sets stay distinct: construction names the vocabulary
-  of later mentions; an entry names what this run may read.
+- The two declarations stay distinct: construction detaches the
+  vocabulary of later mentions; an entry names what this run may
+  read. Only the second is a keep-set.
 
 ## Not this
 
@@ -61,7 +62,7 @@ Rule 2 at record time means "names you will mention later," not
 - A fusion that claims a node the caller asked to observe.
 - One implied function per spec. Twins are several exports, one
   architecture.
-- Making construction's keep-set the execution keep-set. You may
+- Making the detached names the execution keep-set. You may
   name a sampling head you do not compute on the training entry.
 
 See [Vision](../vision.md) rule 2, [Names](names.md) for how names
@@ -73,6 +74,6 @@ why several entries can share one frozen architecture.
 `Entry` is the declared reading: roots, observes, memory posture,
 numerics. `BoundEntry::interpret` and `BoundEntry::lower` are the
 two executors. `Run::of` panics outside the mask.
-`Tape::record`'s return is `Keep`. `Network::forward` still
+`Tape::record`'s return is `Detach`. `Network::forward` still
 evaluates the whole spec. A keep-set node inside a pattern is a
 fusion barrier. This section may rot; the rest must not.
