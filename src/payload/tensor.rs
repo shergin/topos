@@ -64,6 +64,10 @@ impl<Element> Tensor<Element> {
     }
 
     /// Returns the repeated value when this tensor is a constant fill.
+    ///
+    /// Only the notebook displays read this today, so the default
+    /// build sees an unused method.
+    #[cfg_attr(not(any(test, feature = "evcxr")), allow(dead_code))]
     pub(crate) fn as_constant(&self) -> Option<&Element> {
         match &self.storage {
             Storage::Constant { value, .. } => Some(value),
