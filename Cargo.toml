@@ -1,8 +1,8 @@
 [package]
 name = "topos"
-version = "0.11.0"
+version = "0.12.0"
 edition = "2024"
-description = "A tiny autograd engine for the GPU-poor, written in idiomatic Rust."
+description = "An autodiff compiler stack in Rust."
 readme = "README.md"
 repository = "https://github.com/shergin/topos"
 documentation = "https://docs.rs/topos"
