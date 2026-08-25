@@ -2,7 +2,7 @@ use cow_vec::CowVec;
 use smallvec::SmallVec;
 
 use crate::Shape;
-use crate::function::Function;
+use crate::op::Op;
 
 use super::opcode::Node;
 use super::{Origin, Symbol, ValueId};
@@ -13,7 +13,7 @@ use super::Operands;
 ///
 /// Three equal-length columns describe every recorded node: what it
 /// computes, which earlier nodes it reads, and the shape inferred when
-/// it was recorded. Runs replay functions and operands; shapes are the
+/// it was recorded. Runs replay ops and operands; shapes are the
 /// cold column used at record time and by structure consumers (plans,
 /// zero placeholders). Parameter and input payloads live outside this
 /// type: initials and defaults in the spec's stores, live state in the
@@ -23,7 +23,7 @@ use super::Operands;
 /// plans and `differentiate` freeze the structure they read.
 #[derive(Debug, Clone)]
 pub(crate) struct Structure<Data> {
-    pub(crate) functions: CowVec<Function<Data>>,
+    pub(crate) ops: CowVec<Op<Data>>,
     pub(crate) operands: CowVec<Operands>,
     pub(crate) shapes: CowVec<Shape>,
 }
@@ -32,7 +32,7 @@ impl<Data> Structure<Data> {
     /// Creates empty columns.
     pub(crate) fn new() -> Self {
         Self {
-            functions: CowVec::new(),
+            ops: CowVec::new(),
             operands: CowVec::new(),
             shapes: CowVec::new(),
         }
@@ -40,25 +40,20 @@ impl<Data> Structure<Data> {
 
     /// Returns the number of recorded nodes.
     pub(crate) fn len(&self) -> usize {
-        self.functions.len()
+        self.ops.len()
     }
 
     /// Appends one node and returns its handle.
     ///
     /// The three columns stay equal length; callers supply a shape that
     /// has already been inferred and validated against the operands.
-    pub(crate) fn push(
-        &mut self,
-        function: Function<Data>,
-        operands: Operands,
-        shape: Shape,
-    ) -> ValueId {
-        self.functions.push(function);
+    pub(crate) fn push(&mut self, op: Op<Data>, operands: Operands, shape: Shape) -> ValueId {
+        self.ops.push(op);
         self.operands.push(operands);
         self.shapes.push(shape);
-        debug_assert_eq!(self.functions.len(), self.operands.len());
-        debug_assert_eq!(self.functions.len(), self.shapes.len());
-        ValueId(self.functions.len() - 1)
+        debug_assert_eq!(self.ops.len(), self.operands.len());
+        debug_assert_eq!(self.ops.len(), self.shapes.len());
+        ValueId(self.ops.len() - 1)
     }
 }
 
@@ -95,8 +90,8 @@ impl<Data> Structure<Data> {
     /// # Panics
     /// Panics if `index` is out of bounds.
     pub(crate) fn node_at(&self, origin: Origin, index: usize) -> Node {
-        let function = self
-            .functions
+        let op = self
+            .ops
             .get(index)
             .expect("`node_at` index is in bounds for its columns");
         let operands: SmallVec<[Symbol; 2]> = self
@@ -112,7 +107,7 @@ impl<Data> Structure<Data> {
                 origin,
                 id: ValueId(index),
             },
-            opcode: function.opcode(),
+            opcode: op.opcode(),
             shape: self
                 .shapes
                 .get(index)

@@ -1,5 +1,5 @@
-use crate::function::Function;
 use crate::graph::Network;
+use crate::op::Op;
 use crate::{BatchNorm, Tape, Tensor};
 
 use super::super::candidates::Candidates;
@@ -43,7 +43,7 @@ fn the_training_formula_matches_with_observed_statistics() {
     // Observing the mean and variance does not bar the match: they
     // are named results of the raise, allowed in the keep-set.
     let (network, root, mean, variance) = training_network();
-    let length = network.structure().functions.len();
+    let length = network.structure().ops.len();
     let wanted = vec![true; length];
     let mut readable = vec![false; length];
     readable[root] = true;
@@ -70,9 +70,9 @@ fn an_observed_centering_bars_the_training_match() {
     // sits inside the diamond, so no closed candidate can hold it.
     let (network, root, _mean, _variance) = training_network();
     let structure = network.structure();
-    let length = structure.functions.len();
+    let length = structure.ops.len();
     let centered = (0..length)
-        .find(|&index| matches!(structure.functions.get(index), Some(Function::Sub(_))))
+        .find(|&index| matches!(structure.ops.get(index), Some(Op::Sub(_))))
         .expect("the formula records its centering");
 
     let wanted = vec![true; length];
@@ -107,7 +107,7 @@ fn a_shared_statistic_bars_the_match() {
     let root = normalization.output.symbol().id.index();
     let network = tape.into_network();
 
-    let length = network.structure().functions.len();
+    let length = network.structure().ops.len();
     let wanted = vec![true; length];
     let readable = vec![false; length];
     let view = full_view(&network, &wanted, &readable);
@@ -141,7 +141,7 @@ fn an_unverified_divisor_is_not_a_training_mean() {
     let root = output.symbol().id.index();
     let network = tape.into_network();
 
-    let length = network.structure().functions.len();
+    let length = network.structure().ops.len();
     let wanted = vec![true; length];
     let readable = vec![false; length];
     let view = full_view(&network, &wanted, &readable);
@@ -170,7 +170,7 @@ fn the_inference_formula_matches_supplied_statistics() {
     let variance = variance.symbol().id.index();
     let network = tape.into_network();
 
-    let length = network.structure().functions.len();
+    let length = network.structure().ops.len();
     let wanted = vec![true; length];
     let readable = vec![false; length];
     let view = full_view(&network, &wanted, &readable);
@@ -196,7 +196,7 @@ fn closed_rejects_a_readable_node_listed_as_interior() {
     // The named-result refinement is not named-wins: a readable mean
     // listed as an unnamed interior fails the closure outright.
     let (network, root, mean, _variance) = training_network();
-    let length = network.structure().functions.len();
+    let length = network.structure().ops.len();
     let wanted = vec![true; length];
     let mut readable = vec![false; length];
     readable[mean] = true;

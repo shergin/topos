@@ -1,7 +1,7 @@
 use std::thread;
 
 use crate::Tape;
-use crate::function::Function;
+use crate::op::Op;
 
 #[test]
 fn operator_sugar_allocates_on_the_same_tape() {
@@ -12,7 +12,7 @@ fn operator_sugar_allocates_on_the_same_tape() {
     let x = v1 + v2;
 
     assert_eq!(tape.len(), 3);
-    assert_eq!(x.function(), Function::add());
+    assert_eq!(x.op(), Op::add());
     assert_eq!(x.operands(), vec![v1.id(), v2.id()]);
     assert_eq!(x.payload(), None);
 }
@@ -29,9 +29,9 @@ fn copy_values_are_reusable_across_expressions() {
     let negated = -z;
 
     assert_eq!(tape.len(), 6);
-    assert_eq!(z.function(), Function::add());
+    assert_eq!(z.op(), Op::add());
     assert_eq!(z.operands(), vec![x.id(), y.id()]);
-    assert_eq!(negated.function(), Function::neg());
+    assert_eq!(negated.op(), Op::neg());
     assert_eq!(negated.operands(), vec![z.id()]);
 }
 
@@ -45,7 +45,7 @@ fn expression_chain_allocates_intermediate_values() {
     let x = v1 * v2 + v3;
 
     assert_eq!(tape.len(), 5);
-    assert!(matches!(x.function(), Function::Add(_)));
+    assert!(matches!(x.op(), Op::Add(_)));
 }
 
 #[test]

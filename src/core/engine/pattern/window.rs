@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::function::Function;
+use crate::op::Op;
 use crate::{Element, Shape, Tensor};
 
 use super::candidates::Candidate;
@@ -56,34 +56,34 @@ impl WindowProduct {
 /// Interiors must pass [`View::interior_ok`]: wanted, outside the
 /// keep-set, and consumed exactly once inside the closure.
 pub(crate) fn match_at<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Candidate> {
-    let Some(Function::MatMul(_)) = view.function(index) else {
+    let Some(Op::MatMul(_)) = view.op(index) else {
         return None;
     };
     let lhs = view.operand(index, 0);
     let kernel = view.operand(index, 1);
 
-    let Some(Function::Reshape(reshape)) = view.function(lhs) else {
+    let Some(Op::Reshape(reshape)) = view.op(lhs) else {
         return None;
     };
     if !view.interior_ok(lhs) || reshape.shape.rank() != 2 {
         return None;
     }
     let permuted = view.sole_operand(lhs);
-    let Some(Function::Permute(permute)) = view.function(permuted) else {
+    let Some(Op::Permute(permute)) = view.op(permuted) else {
         return None;
     };
     if !view.interior_ok(permuted) || permute.order.as_slice() != [0, 2, 4, 1, 3, 5] {
         return None;
     }
     let windows_w = view.sole_operand(permuted);
-    let Some(Function::Unfold(unfold_w)) = view.function(windows_w) else {
+    let Some(Op::Unfold(unfold_w)) = view.op(windows_w) else {
         return None;
     };
     if !view.interior_ok(windows_w) || unfold_w.axis != 4 || unfold_w.dilation != 1 {
         return None;
     }
     let windows_h = view.sole_operand(windows_w);
-    let Some(Function::Unfold(unfold_h)) = view.function(windows_h) else {
+    let Some(Op::Unfold(unfold_h)) = view.op(windows_h) else {
         return None;
     };
     if !view.interior_ok(windows_h)
@@ -99,12 +99,12 @@ pub(crate) fn match_at<E: Element>(index: usize, view: &View<Tensor<E>>) -> Opti
     let mut padding = 0;
     // Symmetric zero pads fold into the fused call; anything else
     // simply leaves the pad output as the (materialized) source.
-    if let Some(Function::Pad(pad_w)) = view.function(source)
+    if let Some(Op::Pad(pad_w)) = view.op(source)
         && view.interior_ok(source)
         && pad_w.axis == 3
     {
         let below = view.sole_operand(source);
-        if let Some(Function::Pad(pad_h)) = view.function(below) {
+        if let Some(Op::Pad(pad_h)) = view.op(below) {
             let base = view.sole_operand(below);
             let base_axes = view.shape(base).axes();
             if view.interior_ok(below)

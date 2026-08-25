@@ -75,7 +75,7 @@ as the default.
 
 ## Spelled today
 
-`Opcode` / `Function` is the closed set. `Map` carries
+`Opcode` / `Op` is the closed set. `Map` carries
 `MapOperation`. `log_softmax` and `log_sum_exp` earned their
 seats on bits; `relu` is `maximum` against a counted zero;
 `Sub` is the documented exception (`Add` of `Neg` is bit-exact).

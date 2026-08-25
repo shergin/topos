@@ -3,7 +3,7 @@
 //!
 //! A loss is a composition, not a primitive: it records existing graph
 //! operations, so its gradient falls out of the chain rule with no
-//! dedicated backward rule. A formula earns a fused `Function` variant
+//! dedicated backward rule. A formula earns a fused `Op` variant
 //! only where composition cannot express it — [`Value::log_softmax`] is
 //! that fused core here, because its stability demands a max shift no
 //! recorded composition can perform — while everything around the core

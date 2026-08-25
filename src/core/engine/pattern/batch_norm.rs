@@ -1,6 +1,6 @@
 use smallvec::{SmallVec, smallvec};
 
-use crate::function::{Function, Map};
+use crate::op::{Map, Op};
 use crate::{Element, MapOperation, Tensor};
 
 use super::candidates::Candidate;
@@ -81,7 +81,7 @@ struct Tail {
 /// collected by walking the formula — `centered` fans out five ways —
 /// and `Catalog::collect` checks the closure.
 fn match_tail<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Tail> {
-    let Some(Function::Add(_)) = view.function(index) else {
+    let Some(Op::Add(_)) = view.op(index) else {
         return None;
     };
     // Cheap reject: the output is a rank-2 `[batch, features]` value
@@ -91,64 +91,64 @@ fn match_tail<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Tail> 
     }
     let scaled = view.operand(index, 0);
     let shift_bcast = view.operand(index, 1);
-    let Some(Function::BroadcastAlong(shift_along)) = view.function(shift_bcast) else {
+    let Some(Op::BroadcastAlong(shift_along)) = view.op(shift_bcast) else {
         return None;
     };
-    let Some(Function::Mul(_)) = view.function(scaled) else {
+    let Some(Op::Mul(_)) = view.op(scaled) else {
         return None;
     };
     let shift = view.sole_operand(shift_bcast);
     let normalized = view.operand(scaled, 0);
     let scale_bcast = view.operand(scaled, 1);
-    let Some(Function::BroadcastAlong(scale_along)) = view.function(scale_bcast) else {
+    let Some(Op::BroadcastAlong(scale_along)) = view.op(scale_bcast) else {
         return None;
     };
     if shift_along.axis != 0 || scale_along.axis != 0 {
         return None;
     }
     let scale = view.sole_operand(scale_bcast);
-    let Some(Function::Div(_)) = view.function(normalized) else {
+    let Some(Op::Div(_)) = view.op(normalized) else {
         return None;
     };
     let centered = view.operand(normalized, 0);
     let dev_bcast = view.operand(normalized, 1);
-    let Some(Function::BroadcastAlong(dev_along)) = view.function(dev_bcast) else {
+    let Some(Op::BroadcastAlong(dev_along)) = view.op(dev_bcast) else {
         return None;
     };
     if dev_along.axis != 0 {
         return None;
     }
     let deviation = view.sole_operand(dev_bcast);
-    let Some(Function::Map(Map {
+    let Some(Op::Map(Map {
         op: MapOperation::Sqrt,
-    })) = view.function(deviation)
+    })) = view.op(deviation)
     else {
         return None;
     };
     let var_plus = view.sole_operand(deviation);
-    let Some(Function::Add(_)) = view.function(var_plus) else {
+    let Some(Op::Add(_)) = view.op(var_plus) else {
         return None;
     };
     let variance = view.operand(var_plus, 0);
     let eps_bcast = view.operand(var_plus, 1);
-    let Some(Function::Broadcast(_)) = view.function(eps_bcast) else {
+    let Some(Op::Broadcast(_)) = view.op(eps_bcast) else {
         return None;
     };
     let epsilon = view.sole_operand(eps_bcast);
     // The raise renders epsilon as the operation's attribute, so it
     // must be a single-value leaf whose payload emission can read.
-    let Some(Function::Leaf(_)) = view.function(epsilon) else {
+    let Some(Op::Leaf(_)) = view.op(epsilon) else {
         return None;
     };
     if view.shape(epsilon).volume() != 1 {
         return None;
     }
-    let Some(Function::Sub(_)) = view.function(centered) else {
+    let Some(Op::Sub(_)) = view.op(centered) else {
         return None;
     };
     let input = view.operand(centered, 0);
     let mean_bcast = view.operand(centered, 1);
-    let Some(Function::BroadcastAlong(mean_along)) = view.function(mean_bcast) else {
+    let Some(Op::BroadcastAlong(mean_along)) = view.op(mean_bcast) else {
         return None;
     };
     if mean_along.axis != 0 {
@@ -186,18 +186,18 @@ fn match_tail<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Tail> 
 /// reduced shape and the source's batch extent: an unverified divisor
 /// would raise a formula that is not a mean.
 fn mean_along_of<E: Element>(node: usize, view: &View<Tensor<E>>) -> Option<(usize, usize, usize)> {
-    let Some(Function::Div(_)) = view.function(node) else {
+    let Some(Op::Div(_)) = view.op(node) else {
         return None;
     };
     let sum = view.operand(node, 0);
     let count = view.operand(node, 1);
-    let Some(Function::SumAlong(along)) = view.function(sum) else {
+    let Some(Op::SumAlong(along)) = view.op(sum) else {
         return None;
     };
     if along.axis != 0 {
         return None;
     }
-    let Some(Function::Leaf(leaf)) = view.function(count) else {
+    let Some(Op::Leaf(leaf)) = view.op(count) else {
         return None;
     };
     let source = view.sole_operand(sum);
@@ -223,7 +223,7 @@ pub(crate) fn match_training<E: Element>(
         return None;
     }
     let (squared, var_sum, var_count) = mean_along_of(tail.group.variance, view)?;
-    let Some(Function::Mul(_)) = view.function(squared) else {
+    let Some(Op::Mul(_)) = view.op(squared) else {
         return None;
     };
     if view.operand(squared, 0) != tail.centered || view.operand(squared, 1) != tail.centered {

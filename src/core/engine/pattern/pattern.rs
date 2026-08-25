@@ -11,8 +11,8 @@ use super::window::WindowProduct;
 /// to the consumers: each owns a repertoire (the patterns it can act
 /// on) and an action per variant in its own module — the forward
 /// run's kernel table lives beside the plan, the raises beside the
-/// emitter. The shape mirrors `Function`, the role does not: a
-/// `Function` carries its rules because they are the single spec,
+/// emitter. The shape mirrors `Op`, the role does not: a
+/// `Op` carries its rules because they are the single spec,
 /// while a pattern has as many interpretations as consumers.
 #[derive(Debug, Clone)]
 pub(crate) enum Pattern {

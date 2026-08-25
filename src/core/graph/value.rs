@@ -6,7 +6,7 @@ use static_assertions::assert_impl_all;
 
 use crate::{Element, MapOperation, Shape, Tensor};
 
-use crate::function::Function;
+use crate::op::Op;
 
 use super::{Symbol, Tape};
 
@@ -43,7 +43,7 @@ impl ValueId {
 /// recorded, so invalid expressions panic before a forward run begins.
 ///
 /// The methods in this file are opcode mnemonics: each records exactly one
-/// computed node, one per `Function` variant (payload literals additionally
+/// computed node, one per `Op` variant (payload literals additionally
 /// record a leaf, which is data injection rather than computation). Methods
 /// that expand to several computed nodes are composites and live in the
 /// composition tier of `composite.rs`.
@@ -101,10 +101,10 @@ impl<E: Element> From<Value<'_, E>> for Symbol {
 }
 
 impl<'tape, E: Element> Value<'tape, E> {
-    /// Returns a clone of the `Function` that produced this value.
+    /// Returns a clone of the `Op` that produced this value.
     #[cfg(test)]
-    pub(crate) fn function(&self) -> Function<Tensor<E>> {
-        self.tape.with_node(self.id, |function| function.clone())
+    pub(crate) fn op(&self) -> Op<Tensor<E>> {
+        self.tape.with_node(self.id, |op| op.clone())
     }
 
     /// Returns the operand links of this value's node.
@@ -129,10 +129,10 @@ impl<'tape, E: Element> Value<'tape, E> {
         self.tape.payload_of(self.id)
     }
 
-    /// Records a computed node produced by `function` over the positional
+    /// Records a computed node produced by `op` over the positional
     /// `operands` on the same tape and returns a proxy to it.
-    fn apply(&self, function: Function<Tensor<E>>, operands: &[ValueId]) -> Self {
-        let id = self.tape.record_node(function, operands);
+    fn apply(&self, op: Op<Tensor<E>>, operands: &[ValueId]) -> Self {
+        let id = self.tape.record_node(op, operands);
         Self::bind(self.tape, id)
     }
 
@@ -142,7 +142,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// It backs the payload-literal operator sugar: every literal
     /// appearance records its own leaf.
     pub(crate) fn literal(&self, data: Tensor<E>) -> Self {
-        Self::bind(self.tape, self.tape.record_node(Function::leaf(data), &[]))
+        Self::bind(self.tape, self.tape.record_node(Op::leaf(data), &[]))
     }
 
     /// Panics if `other` belongs to a different tape.
@@ -166,37 +166,37 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// Records the hyperbolic tangent of this value on the same tape
     /// and returns a proxy to it.
     pub fn tanh(self) -> Self {
-        self.apply(Function::map(MapOperation::Tanh), &[self.id])
+        self.apply(Op::map(MapOperation::Tanh), &[self.id])
     }
 
     /// Records the exponential of this value on the same tape and
     /// returns a proxy to it.
     pub fn exp(self) -> Self {
-        self.apply(Function::map(MapOperation::Exp), &[self.id])
+        self.apply(Op::map(MapOperation::Exp), &[self.id])
     }
 
     /// Records the natural logarithm of this value on the same tape
     /// and returns a proxy to it.
     pub fn ln(self) -> Self {
-        self.apply(Function::map(MapOperation::Ln), &[self.id])
+        self.apply(Op::map(MapOperation::Ln), &[self.id])
     }
 
     /// Records the square root of this value on the same tape and
     /// returns a proxy to it.
     pub fn sqrt(self) -> Self {
-        self.apply(Function::map(MapOperation::Sqrt), &[self.id])
+        self.apply(Op::map(MapOperation::Sqrt), &[self.id])
     }
 
     /// Records the sine of this value on the same tape and returns a
     /// proxy to it.
     pub fn sin(self) -> Self {
-        self.apply(Function::map(MapOperation::Sin), &[self.id])
+        self.apply(Op::map(MapOperation::Sin), &[self.id])
     }
 
     /// Records the cosine of this value on the same tape and returns
     /// a proxy to it.
     pub fn cos(self) -> Self {
-        self.apply(Function::map(MapOperation::Cos), &[self.id])
+        self.apply(Op::map(MapOperation::Cos), &[self.id])
     }
 
     /// Records the natural logarithm of one plus this value on the
@@ -208,7 +208,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// accurate there. The two spellings are different specs with
     /// different bits, and both remain valid.
     pub fn log1p(self) -> Self {
-        self.apply(Function::map(MapOperation::Log1p), &[self.id])
+        self.apply(Op::map(MapOperation::Log1p), &[self.id])
     }
 
     /// Records `e` raised to this value, minus one, on the same tape
@@ -218,7 +218,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// composed `x.exp() - one` cancels catastrophically near zero,
     /// and this one does not.
     pub fn expm1(self) -> Self {
-        self.apply(Function::map(MapOperation::Expm1), &[self.id])
+        self.apply(Op::map(MapOperation::Expm1), &[self.id])
     }
 
     /// Records the error function of this value on the same tape and
@@ -230,7 +230,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// keeps the constant `2/sqrt(pi)` inside per-element kernels
     /// rather than in any recorded graph.
     pub fn erf(self) -> Self {
-        self.apply(Function::map(MapOperation::Erf), &[self.id])
+        self.apply(Op::map(MapOperation::Erf), &[self.id])
     }
 
     /// Records the derivative of the error function of this value —
@@ -241,7 +241,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// Its own derivative is `-2x` times itself, so the pair closes
     /// under differentiation.
     pub fn erf_derivative(self) -> Self {
-        self.apply(Function::map(MapOperation::ErfDerivative), &[self.id])
+        self.apply(Op::map(MapOperation::ErfDerivative), &[self.id])
     }
 
     /// Records this value raised elementwise to the power of `exponent`
@@ -255,7 +255,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// shapes differ.
     pub fn powf(self, exponent: Self) -> Self {
         self.assert_same_tape(&exponent);
-        self.apply(Function::powf(), &[self.id, exponent.id])
+        self.apply(Op::powf(), &[self.id, exponent.id])
     }
 
     /// Records the elementwise maximum of this value and `rhs` on the
@@ -267,7 +267,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// shapes differ.
     pub fn maximum(self, rhs: Self) -> Self {
         self.assert_same_tape(&rhs);
-        self.apply(Function::maximum(), &[self.id, rhs.id])
+        self.apply(Op::maximum(), &[self.id, rhs.id])
     }
 
     /// Records the elementwise 0/1 indicator of `self >= threshold` on
@@ -286,7 +286,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// shapes differ.
     pub fn step(self, threshold: Self) -> Self {
         self.assert_same_tape(&threshold);
-        self.apply(Function::step(), &[self.id, threshold.id])
+        self.apply(Op::step(), &[self.id, threshold.id])
     }
 }
 
@@ -305,13 +305,13 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// not rank 2, or their inner dimensions differ.
     pub fn matmul(self, rhs: Self) -> Self {
         self.assert_same_tape(&rhs);
-        self.apply(Function::matmul(), &[self.id, rhs.id])
+        self.apply(Op::matmul(), &[self.id, rhs.id])
     }
 
     /// Records the sum of every value in this payload on the same tape
     /// and returns a proxy to it.
     pub fn sum(self) -> Self {
-        self.apply(Function::sum(), &[self.id])
+        self.apply(Op::sum(), &[self.id])
     }
 
     /// Records the sum of this value along `axis` on the same tape
@@ -320,7 +320,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// # Panics
     /// Panics if `axis` is out of rank.
     pub fn sum_along(self, axis: usize) -> Self {
-        self.apply(Function::sum_along(axis), &[self.id])
+        self.apply(Op::sum_along(axis), &[self.id])
     }
 
     /// Records the explicit broadcast of this single-value payload
@@ -339,7 +339,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// Panics if this value's shape does not contain exactly one
     /// element.
     pub fn broadcast(self, shape: impl Into<Shape>) -> Self {
-        self.apply(Function::broadcast(shape.into()), &[self.id])
+        self.apply(Op::broadcast(shape.into()), &[self.id])
     }
 
     /// Records the explicit repetition of this value along a new axis
@@ -356,7 +356,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// # Panics
     /// Panics if `axis` exceeds this value's rank or `extent` is zero.
     pub fn broadcast_along(self, axis: usize, extent: usize) -> Self {
-        self.apply(Function::broadcast_along(axis, extent), &[self.id])
+        self.apply(Op::broadcast_along(axis, extent), &[self.id])
     }
 
     /// Records a reshape of this value to `shape` on the same tape and
@@ -366,7 +366,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// # Panics
     /// Panics if `shape`'s volume differs from this value's.
     pub fn reshape(self, shape: impl Into<Shape>) -> Self {
-        self.apply(Function::reshape(shape.into()), &[self.id])
+        self.apply(Op::reshape(shape.into()), &[self.id])
     }
 
     /// Records a permutation of this value's axes by `order` on the same
@@ -376,7 +376,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// # Panics
     /// Panics if `order` is not a permutation of `0..rank`.
     pub fn permute(self, order: impl IntoIterator<Item = usize>) -> Self {
-        self.apply(Function::permute(order), &[self.id])
+        self.apply(Op::permute(order), &[self.id])
     }
 
     /// Records the window of `len` elements from `start` along `axis` on
@@ -388,7 +388,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// Panics if `axis` is out of rank, `len` is zero (tensors cannot be
     /// empty), or `start + len` overflows or exceeds the axis extent.
     pub fn narrow(self, axis: usize, start: usize, len: usize) -> Self {
-        self.apply(Function::narrow(axis, start, len), &[self.id])
+        self.apply(Op::narrow(axis, start, len), &[self.id])
     }
 
     /// Records this value placed at `start ..` along `axis` inside zeros
@@ -400,7 +400,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// Panics if `axis` is out of rank or the window overflows or
     /// exceeds `full_extent`.
     pub fn pad(self, axis: usize, start: usize, full_extent: usize) -> Self {
-        self.apply(Function::pad(axis, start, full_extent), &[self.id])
+        self.apply(Op::pad(axis, start, full_extent), &[self.id])
     }
 
     /// Records the sliding windows of this value along `axis` on the
@@ -415,7 +415,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// zero, or the dilated window span `dilation * (size - 1) + 1`
     /// overflows or exceeds the axis extent.
     pub fn unfold(self, axis: usize, size: usize, step: usize, dilation: usize) -> Self {
-        self.apply(Function::unfold(axis, size, step, dilation), &[self.id])
+        self.apply(Op::unfold(axis, size, step, dilation), &[self.id])
     }
 
     /// Records the `(count, size)` window pair at `axis`, `axis + 1`
@@ -438,10 +438,7 @@ impl<'tape, E: Element> Value<'tape, E> {
         dilation: usize,
         extent: usize,
     ) -> Self {
-        self.apply(
-            Function::fold(axis, size, step, dilation, extent),
-            &[self.id],
-        )
+        self.apply(Op::fold(axis, size, step, dilation, extent), &[self.id])
     }
 
     /// Records the row gather of this value (the table) by `selection`, a
@@ -458,7 +455,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// rank 2, or its vocabulary does not match this value's first axis.
     pub fn gather(self, selection: Self) -> Self {
         self.assert_same_tape(&selection);
-        self.apply(Function::gather(), &[self.id, selection.id])
+        self.apply(Op::gather(), &[self.id, selection.id])
     }
 
     /// Records the rows of this value scatter-added into one row per
@@ -473,7 +470,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// entry of this value.
     pub fn scatter(self, selection: Self) -> Self {
         self.assert_same_tape(&selection);
-        self.apply(Function::scatter(), &[self.id, selection.id])
+        self.apply(Op::scatter(), &[self.id, selection.id])
     }
 
     /// Records the log-softmax of this value along `axis` on the same
@@ -487,7 +484,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// # Panics
     /// Panics if `axis` is out of rank.
     pub fn log_softmax(self, axis: usize) -> Self {
-        self.apply(Function::log_softmax(axis), &[self.id])
+        self.apply(Op::log_softmax(axis), &[self.id])
     }
 
     /// Records the log-sum-exp of this value along `axis` on the same
@@ -505,7 +502,7 @@ impl<'tape, E: Element> Value<'tape, E> {
     /// # Panics
     /// Panics if `axis` is out of rank.
     pub fn logsumexp(self, axis: usize) -> Self {
-        self.apply(Function::log_sum_exp(axis), &[self.id])
+        self.apply(Op::log_sum_exp(axis), &[self.id])
     }
 }
 
@@ -534,7 +531,7 @@ impl<'tape, E: Element> Add for Value<'tape, E> {
 
     fn add(self, rhs: Self) -> Self::Output {
         self.assert_same_tape(&rhs);
-        self.apply(Function::add(), &[self.id, rhs.id])
+        self.apply(Op::add(), &[self.id, rhs.id])
     }
 }
 
@@ -543,7 +540,7 @@ impl<'tape, E: Element> Sub for Value<'tape, E> {
 
     fn sub(self, rhs: Self) -> Self::Output {
         self.assert_same_tape(&rhs);
-        self.apply(Function::sub(), &[self.id, rhs.id])
+        self.apply(Op::sub(), &[self.id, rhs.id])
     }
 }
 
@@ -552,7 +549,7 @@ impl<'tape, E: Element> Mul for Value<'tape, E> {
 
     fn mul(self, rhs: Self) -> Self::Output {
         self.assert_same_tape(&rhs);
-        self.apply(Function::mul(), &[self.id, rhs.id])
+        self.apply(Op::mul(), &[self.id, rhs.id])
     }
 }
 
@@ -561,7 +558,7 @@ impl<'tape, E: Element> Div for Value<'tape, E> {
 
     fn div(self, rhs: Self) -> Self::Output {
         self.assert_same_tape(&rhs);
-        self.apply(Function::div(), &[self.id, rhs.id])
+        self.apply(Op::div(), &[self.id, rhs.id])
     }
 }
 
@@ -569,7 +566,7 @@ impl<'tape, E: Element> Neg for Value<'tape, E> {
     type Output = Value<'tape, E>;
 
     fn neg(self) -> Self::Output {
-        self.apply(Function::neg(), &[self.id])
+        self.apply(Op::neg(), &[self.id])
     }
 }
 

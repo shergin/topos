@@ -1,5 +1,5 @@
-use crate::function::Function;
 use crate::graph::Network;
+use crate::op::Op;
 use crate::{Tape, Tensor, conv2d, max_pool};
 
 use super::super::candidates::Candidates;
@@ -99,7 +99,7 @@ fn a_repertoire_selects_among_candidates() {
     let network = tape.into_network();
     let structure = network.structure();
     let matmul = (0..structure.len())
-        .find(|&index| matches!(structure.functions.get(index), Some(Function::MatMul(_))))
+        .find(|&index| matches!(structure.ops.get(index), Some(Op::MatMul(_))))
         .expect("the conv records one matmul");
     let patches = structure
         .operands

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::function::SlotId;
+use crate::op::SlotId;
 
 use super::ValueId;
 
@@ -46,7 +46,7 @@ impl<Data> SlotStore<Data> {
     /// `record`, and stores the returned node link.
     ///
     /// `record` receives the new [`SlotId`] so it can embed the slot in
-    /// a `Function` and push a structure row; it must return that row's
+    /// an `Op` and push a structure row; it must return that row's
     /// [`ValueId`]. The store is never left half-open: payload and node
     /// are committed together when `record` returns.
     ///

@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
-use crate::function::Function;
 use crate::graph::Structure;
+use crate::op::Op;
 use crate::{Element, Shape, Tensor};
 
 /// The columns and derived sets every matcher reads.
@@ -110,8 +110,8 @@ impl<'plan, E: Element> View<'plan, Tensor<E>> {
         true
     }
 
-    pub(crate) fn function(&self, index: usize) -> Option<&'plan Function<Tensor<E>>> {
-        self.structure.functions.get(index)
+    pub(crate) fn op(&self, index: usize) -> Option<&'plan Op<Tensor<E>>> {
+        self.structure.ops.get(index)
     }
 
     pub(crate) fn shape(&self, index: usize) -> &'plan Shape {

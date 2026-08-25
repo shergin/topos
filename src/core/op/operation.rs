@@ -42,7 +42,7 @@ impl Reads {
 /// engine computes it over payload buffers, and `differentiate`
 /// records it through `Trace` handles.
 ///
-/// It is implemented by each computed `Function` variant and dispatched
+/// It is implemented by each computed `Op` variant and dispatched
 /// through the enum with a plain `match`, so implementations stay
 /// statically sized and the trait never needs to be object safe. Leaves
 /// and parameters do not implement it: they are supplied, not computed,

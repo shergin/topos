@@ -34,8 +34,8 @@ const FACADE_DIRECTORIES: [&str; 2] = ["src/facade/neural", "src/facade/notebook
 /// root's re-exports and the `reference`, `model`, and `compiler`
 /// modules.
 const INTERNAL_MODULES: [&str; 11] = [
-    "backend", "core", "derived", "emission", "engine", "facade", "function", "graph", "neural",
-    "notebook", "payload",
+    "backend", "core", "derived", "emission", "engine", "facade", "graph", "neural", "notebook",
+    "op", "payload",
 ];
 
 /// The lint suppressions that would let a crate-private item hide

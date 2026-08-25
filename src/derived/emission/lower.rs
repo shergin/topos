@@ -18,7 +18,7 @@ use std::fmt::Write;
 use thiserror::Error;
 
 use crate::engine::{BatchNormalization, Catalog, Pattern, ReduceWindow, WindowProduct};
-use crate::function::Function;
+use crate::op::Op;
 use crate::{Backend, MapOperation, Plan, Shape};
 
 use super::builder::{
@@ -116,9 +116,9 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                 if !wanted_node {
                     continue;
                 }
-                let function = self.functions().get(index).expect("plan columns are fixed");
-                let argument = match (pass, function) {
-                    (0, Function::Parameter(_)) | (1, Function::Input(_)) => {
+                let op = self.ops().get(index).expect("plan columns are fixed");
+                let argument = match (pass, op) {
+                    (0, Op::Parameter(_)) | (1, Op::Input(_)) => {
                         format!("%arg{}", arguments.len())
                     }
                     _ => continue,
@@ -206,7 +206,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
         let result_type = tensor_type::<Element>(shape);
         let links = self.operands().get(index).expect("plan columns are fixed");
         let operand = |position: usize| links.as_slice()[position].index();
-        let function = self.functions().get(index).expect("plan columns are fixed");
+        let op = self.ops().get(index).expect("plan columns are fixed");
 
         // The elementwise families share one line shape each; everything
         // else renders its own syntax.
@@ -224,21 +224,21 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
             ));
         };
 
-        match function {
-            Function::Leaf(leaf) => {
+        match op {
+            Op::Leaf(leaf) => {
                 let literal = dense_literal(shape, &leaf.0.to_vec());
                 emitter.line(format!(
                     "{result} = stablehlo.constant {literal} : {result_type}"
                 ));
             }
-            Function::Add(_) => binary("add", emitter),
-            Function::Sub(_) => binary("subtract", emitter),
-            Function::Mul(_) => binary("multiply", emitter),
-            Function::Div(_) => binary("divide", emitter),
-            Function::Maximum(_) => binary("maximum", emitter),
-            Function::Powf(_) => binary("power", emitter),
-            Function::Neg(_) => unary("negate", emitter),
-            Function::Map(map) => match map.op {
+            Op::Add(_) => binary("add", emitter),
+            Op::Sub(_) => binary("subtract", emitter),
+            Op::Mul(_) => binary("multiply", emitter),
+            Op::Div(_) => binary("divide", emitter),
+            Op::Maximum(_) => binary("maximum", emitter),
+            Op::Powf(_) => binary("power", emitter),
+            Op::Neg(_) => unary("negate", emitter),
+            Op::Map(map) => match map.op {
                 MapOperation::Exp => unary("exponential", emitter),
                 MapOperation::Ln => unary("log", emitter),
                 MapOperation::Sqrt => unary("sqrt", emitter),
@@ -283,7 +283,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     ));
                 }
             },
-            Function::MatMul(_) => {
+            Op::MatMul(_) => {
                 let left = operand(0);
                 let right = operand(1);
                 // Rank two contracts plainly; the batched ranks name
@@ -333,7 +333,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     ));
                 }
             }
-            Function::Gather(_) => {
+            Op::Gather(_) => {
                 // `output[i] = table[selection[i]]` over a one-hot
                 // selection is exactly the one-hot times the table.
                 // No accumulation form is needed: each output sums a
@@ -349,7 +349,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     tensor_type::<Element>(&shapes[table]),
                 ));
             }
-            Function::Permute(permute) => {
+            Op::Permute(permute) => {
                 let source = operand(0);
                 emitter.line(format!(
                     "{result} = stablehlo.transpose {}, dims = {:?} : ({}) -> {result_type}",
@@ -358,7 +358,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     tensor_type::<Element>(&shapes[source]),
                 ));
             }
-            Function::Reshape(_) => {
+            Op::Reshape(_) => {
                 let source = operand(0);
                 emitter.line(format!(
                     "{result} = stablehlo.reshape {} : ({}) -> {result_type}",
@@ -366,7 +366,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     tensor_type::<Element>(&shapes[source]),
                 ));
             }
-            Function::Sum(_) => {
+            Op::Sum(_) => {
                 let source = operand(0);
                 if shapes[source].rank() == 0 {
                     emitter.names[index] = Some(emitter.name(source).to_string());
@@ -375,7 +375,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                 let axes: Vec<usize> = (0..shapes[source].rank()).collect();
                 self.reduce(index, source, &axes, "add", Element::ZERO, emitter);
             }
-            Function::SumAlong(along) => {
+            Op::SumAlong(along) => {
                 self.reduce(
                     index,
                     operand(0),
@@ -385,7 +385,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     emitter,
                 );
             }
-            Function::Broadcast(_) => {
+            Op::Broadcast(_) => {
                 // The reference operand contributes only its shape; the
                 // single-element source flattens to a scalar and spreads.
                 let source = operand(0);
@@ -405,7 +405,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     Element::ELEMENT,
                 ));
             }
-            Function::BroadcastAlong(along) => {
+            Op::BroadcastAlong(along) => {
                 let source = operand(0);
                 let dims: Vec<usize> = (0..shape.rank())
                     .filter(|&axis| axis != along.axis)
@@ -416,7 +416,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     tensor_type::<Element>(&shapes[source]),
                 ));
             }
-            Function::Narrow(narrow) => {
+            Op::Narrow(narrow) => {
                 let source = operand(0);
                 let ranges: Vec<String> = shapes[source]
                     .axes()
@@ -437,7 +437,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     tensor_type::<Element>(&shapes[source]),
                 ));
             }
-            Function::Pad(pad) => {
+            Op::Pad(pad) => {
                 let source = operand(0);
                 let rank = shapes[source].rank();
                 let mut low = vec![0usize; rank];
@@ -459,13 +459,13 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     Element::ELEMENT,
                 ));
             }
-            Function::LogSoftmax(softmax) => {
+            Op::LogSoftmax(softmax) => {
                 self.lower_log_softmax(index, operand(0), softmax.axis, emitter);
             }
-            Function::LogSumExp(log_sum_exp) => {
+            Op::LogSumExp(log_sum_exp) => {
                 self.lower_log_sum_exp(index, operand(0), log_sum_exp.axis, emitter);
             }
-            Function::Step(_) => {
+            Op::Step(_) => {
                 // No step exists in StableHLO; the indicator is a
                 // `GE` compare selecting between splat ones and zeros.
                 let source = operand(0);
@@ -494,7 +494,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                      : {mask_type}, {result_type}",
                 ));
             }
-            Function::Scatter(_) => {
+            Op::Scatter(_) => {
                 // The adjoint of the one-hot gather: the one-hot with
                 // its count axis contracted against the gradient's,
                 // leaving `[vocab, ...]` — a scatter-add expressed as
@@ -531,7 +531,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     ));
                 }
             }
-            Function::Fold(fold) => {
+            Op::Fold(fold) => {
                 // Fold is a linear map on the window pair, so it lowers
                 // as one contraction against a constant 0/1 window
                 // matrix `[count, size, extent]` marking which source
@@ -624,7 +624,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     ));
                 }
             }
-            Function::Unfold(unfold) => {
+            Op::Unfold(unfold) => {
                 // The completeness fallback the emission design names: the
                 // windows' start coordinates bake into a constant and one
                 // static gather reads them. Raising is the real path — a
@@ -680,7 +680,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
                     sizes = slice_sizes.join(", "),
                 ));
             }
-            Function::Parameter(_) | Function::Input(_) => {
+            Op::Parameter(_) | Op::Input(_) => {
                 unreachable!("arguments are named before lowering")
             }
         }
@@ -822,7 +822,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
     /// envelope-based conformance contract, like the target's own
     /// reassociation.
     fn epsilon_literal(&self, index: usize) -> String {
-        let Some(Function::Leaf(leaf)) = self.functions().get(index) else {
+        let Some(Op::Leaf(leaf)) = self.ops().get(index) else {
             unreachable!("the matcher requires a single-value leaf epsilon")
         };
         leaf.0.to_vec()[0].literal()

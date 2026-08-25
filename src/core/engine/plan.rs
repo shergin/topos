@@ -7,10 +7,10 @@ use static_assertions::assert_impl_all;
 use crate::{Element, Numerics, Shape, Tensor};
 
 use crate::backend::{Backend, Formula, NumericsScope, Precision};
-use crate::function::Function;
 use crate::graph::{
     Network, Node, Operands, Origin, Parameters, SlotStore, Structure, Symbol, ValueId,
 };
+use crate::op::Op;
 
 use super::pattern::{
     BatchNormalization, Candidate, Candidates, Catalog, Pattern, PatternMatch, ReduceWindow, View,
@@ -204,11 +204,8 @@ impl<E: Element> Plan<E> {
                 if !wanted[index] {
                     continue;
                 }
-                let function = structure
-                    .functions
-                    .get(index)
-                    .expect("snapshot cannot shrink");
-                let reads = function.reads();
+                let op = structure.ops.get(index).expect("snapshot cannot shrink");
+                let reads = op.reads();
                 if reads.output {
                     required[index] = true;
                 }
@@ -342,13 +339,13 @@ impl<E: Element> Plan<E> {
         &self.results
     }
 
-    /// Returns the plan's function column, for plan consumers such as
+    /// Returns the plan's op column, for plan consumers such as
     /// the StableHLO emitter — introspection siblings of `describe`.
-    pub(crate) fn functions(&self) -> &CowVec<Function<Tensor<E>>> {
-        &self.structure.functions
+    pub(crate) fn ops(&self) -> &CowVec<Op<Tensor<E>>> {
+        &self.structure.ops
     }
 
-    /// Returns the plan's operand column, parallel to the functions.
+    /// Returns the plan's operand column, parallel to the ops.
     pub(crate) fn operands(&self) -> &CowVec<Operands> {
         &self.structure.operands
     }
@@ -632,8 +629,8 @@ impl<E: Element> Plan<E> {
                 index < self.len(),
                 "symbol is not allocated in the plan's graph prefix"
             );
-            let slot = match self.structure.functions.get(index) {
-                Some(Function::Input(input)) => input.0,
+            let slot = match self.structure.ops.get(index) {
+                Some(Op::Input(input)) => input.0,
                 _ => panic!("only inputs can be fed"),
             };
             assert_eq!(
@@ -665,9 +662,9 @@ impl<E: Element> Plan<E> {
                     }
                 }
             } else {
-                let function = self
+                let op = self
                     .structure
-                    .functions
+                    .ops
                     .get(index)
                     .expect("plan columns are fixed");
                 let links = self
@@ -680,7 +677,7 @@ impl<E: Element> Plan<E> {
                     .iter()
                     .map(|link| &values[link.index()])
                     .collect();
-                let value = function.forward(&operands, parameters.payloads(), inputs.payloads());
+                let value = op.forward(&operands, parameters.payloads(), inputs.payloads());
                 // The same producing-node contract check the interpreter
                 // run makes: the rule's output must carry the plan's
                 // recorded shape for this slot.

@@ -4,7 +4,7 @@ use static_assertions::assert_impl_all;
 
 use crate::{Element, Tensor};
 
-use crate::function::Function;
+use crate::op::Op;
 
 use super::{Node, Origin, Parameters, SlotStore, Structure, Symbol, Tape, ValueId};
 
@@ -160,13 +160,13 @@ impl<E: Element> Network<E> {
         let id = self.locate(symbol);
         match self
             .structure
-            .functions
+            .ops
             .get(id.index())
             .expect("`locate` checked the bounds")
         {
-            Function::Leaf(leaf) => Some(&leaf.0),
-            Function::Parameter(parameter) => Some(&self.initials.payloads()[parameter.0.index()]),
-            Function::Input(input) => Some(&self.inputs.payloads()[input.0.index()]),
+            Op::Leaf(leaf) => Some(&leaf.0),
+            Op::Parameter(parameter) => Some(&self.initials.payloads()[parameter.0.index()]),
+            Op::Input(input) => Some(&self.inputs.payloads()[input.0.index()]),
             _ => None,
         }
     }

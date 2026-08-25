@@ -1,5 +1,5 @@
-use crate::function::Function;
 use crate::graph::Network;
+use crate::op::Op;
 use crate::{Tape, Tensor, conv2d};
 
 use super::super::pattern::Pattern;
@@ -24,9 +24,9 @@ fn conv_network() -> Network<f64> {
 
 /// Returns the index of the network's single `matmul` node.
 fn matmul_index(network: &Network<f64>) -> usize {
-    let functions = &network.structure().functions;
-    (0..functions.len())
-        .find(|&index| matches!(functions.get(index), Some(Function::MatMul(_))))
+    let ops = &network.structure().ops;
+    (0..ops.len())
+        .find(|&index| matches!(ops.get(index), Some(Op::MatMul(_))))
         .expect("the conv records one matmul")
 }
 
@@ -34,7 +34,7 @@ fn matmul_index(network: &Network<f64>) -> usize {
 fn the_conv_chain_matches_with_its_geometry() {
     let network = conv_network();
     let structure = network.structure();
-    let length = structure.functions.len();
+    let length = structure.ops.len();
     let wanted = vec![true; length];
     let readable = vec![false; length];
     let view = View::new(structure, &wanted, &readable);
@@ -60,7 +60,7 @@ fn the_conv_chain_matches_with_its_geometry() {
 fn a_kept_interior_bars_the_match() {
     let network = conv_network();
     let structure = network.structure();
-    let length = structure.functions.len();
+    let length = structure.ops.len();
     let matmul = matmul_index(&network);
     let patches = structure
         .operands

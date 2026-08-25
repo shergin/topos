@@ -7,10 +7,10 @@ use static_assertions::assert_impl_all;
 use crate::{Element, Numerics, Tensor};
 
 use crate::backend::NumericsScope;
-use crate::function::{Function, SlotId};
 use crate::graph::{
     Adjoints, Field, Gradients, Network, Origin, Parameters, SlotStore, Structure, Symbol, ValueId,
 };
+use crate::op::{Op, SlotId};
 
 use super::Entry;
 
@@ -77,7 +77,7 @@ impl Provenance {
 /// or the operations differentiated by [`Run::backward`].
 #[derive(Debug)]
 pub struct Run<E> {
-    /// Frozen node columns for this run: functions, operands, and the
+    /// Frozen node columns for this run: ops, operands, and the
     /// shapes inferred at record time.
     structure: Structure<Tensor<E>>,
     field: Field<E>,
@@ -187,10 +187,7 @@ impl<E: Element> Run<E> {
         for &(parameter, gradient) in adjoints.pairs() {
             let index = self.locate(parameter);
             assert!(
-                matches!(
-                    self.structure.functions.get(index),
-                    Some(Function::Parameter(_))
-                ),
+                matches!(self.structure.ops.get(index), Some(Op::Parameter(_))),
                 "recorded gradients fill parameter slots; a `wrt` entry of \
                  these adjoints is not a parameter"
             );
@@ -212,10 +209,10 @@ impl<E: Element> Run<E> {
         let values = self.field.payloads();
         let rows = self
             .structure
-            .functions
+            .ops
             .iter()
             .enumerate()
-            .filter(|(_, function)| matches!(function, Function::Parameter(_)))
+            .filter(|(_, op)| matches!(op, Op::Parameter(_)))
             .map(|(index, _)| {
                 let payload = recorded
                     .remove(&index)
@@ -311,9 +308,9 @@ impl<E: Element> Run<E> {
             if !ancestors[index] {
                 continue;
             }
-            let function = self
+            let op = self
                 .structure
-                .functions
+                .ops
                 .get(index)
                 .expect("the freeze cannot shrink");
             let links = self
@@ -328,7 +325,7 @@ impl<E: Element> Run<E> {
             let operands: SmallVec<[&Tensor<E>; 2]> =
                 links.iter().map(|link| &values[link.index()]).collect();
             let gradient = gradients[index].clone();
-            let cotangents = function.backward(&operands, &values[index], &gradient);
+            let cotangents = op.backward(&operands, &values[index], &gradient);
             debug_assert_eq!(cotangents.len(), links.len());
             // Accumulation is the multivariate chain rule: when a value
             // feeds several consumers, its gradient is the sum of the
@@ -433,11 +430,11 @@ impl<E: Element> Network<E> {
     fn input_slot(&self, id: ValueId) -> Option<SlotId> {
         match self
             .structure()
-            .functions
+            .ops
             .get(id.index())
             .expect("`ValueId` is in bounds for its network")
         {
-            Function::Input(input) => Some(input.0),
+            Op::Input(input) => Some(input.0),
             _ => None,
         }
     }
@@ -472,8 +469,8 @@ impl<E: Element> Network<E> {
         let structure = self.structure();
         let computed = targets.map(|targets| structure.ancestors(targets));
         let mut values = Vec::with_capacity(structure.len());
-        for (index, (function, links)) in structure
-            .functions
+        for (index, (op, links)) in structure
+            .ops
             .iter()
             .zip(structure.operands.iter())
             .enumerate()
@@ -495,7 +492,7 @@ impl<E: Element> Network<E> {
                     .iter()
                     .map(|link| &values[link.index()])
                     .collect();
-                let value = function.forward(&operands, parameters.payloads(), inputs.payloads());
+                let value = op.forward(&operands, parameters.payloads(), inputs.payloads());
                 // The recorded shape is the type of this node; a payload
                 // whose rule answers a different shape has broken the
                 // operation contract at exactly this producing node.

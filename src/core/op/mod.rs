@@ -1,4 +1,4 @@
-//! The differentiable operation set: the [`Function`] node vocabulary
+//! The differentiable operation set: the [`Op`] node vocabulary
 //! the graph records and the executor replays, one file per
 //! operation, each a pure forward/backward rule over the payload
 //! traits.
@@ -9,11 +9,9 @@ mod broadcast_along;
 mod div;
 mod gather;
 // The module convention names each file after its main concept, and this
-// module's main concept is the `Function` enum itself; the inception is
+// module's main concept is the `Op` enum itself; the inception is
 // deliberate.
 mod fold;
-#[allow(clippy::module_inception)]
-mod function;
 mod input;
 mod leaf;
 mod log_softmax;
@@ -24,6 +22,8 @@ mod maximum;
 mod mul;
 mod narrow;
 mod neg;
+#[allow(clippy::module_inception)]
+mod op;
 mod operation;
 mod pad;
 mod parameter;
@@ -43,7 +43,6 @@ pub(crate) use broadcast::Broadcast;
 pub(crate) use broadcast_along::BroadcastAlong;
 pub(crate) use div::Div;
 pub(crate) use fold::Fold;
-pub(crate) use function::Function;
 pub(crate) use gather::Gather;
 pub(crate) use input::Input;
 pub(crate) use leaf::Leaf;
@@ -55,6 +54,7 @@ pub(crate) use maximum::Maximum;
 pub(crate) use mul::Mul;
 pub(crate) use narrow::Narrow;
 pub(crate) use neg::Neg;
+pub(crate) use op::Op;
 pub(crate) use operation::{Cotangents, Operation, Reads, binary, unary};
 pub(crate) use pad::Pad;
 pub(crate) use parameter::Parameter;

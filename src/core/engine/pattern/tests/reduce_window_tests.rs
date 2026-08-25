@@ -1,5 +1,5 @@
-use crate::function::Function;
 use crate::graph::Network;
+use crate::op::Op;
 use crate::{Tape, Tensor, max_pool};
 
 use super::super::candidates::Candidates;
@@ -34,7 +34,7 @@ fn full_view<'plan>(
 #[test]
 fn the_pool_fold_matches_with_its_geometry() {
     let (network, root) = pool_network();
-    let length = network.structure().functions.len();
+    let length = network.structure().ops.len();
     let wanted = vec![true; length];
     let readable = vec![false; length];
     let view = full_view(&network, &wanted, &readable);
@@ -74,7 +74,7 @@ fn a_balanced_fold_tree_does_not_match() {
     let root = pooled.symbol().id.index();
     let network = tape.into_network();
 
-    let length = network.structure().functions.len();
+    let length = network.structure().ops.len();
     let wanted = vec![true; length];
     let readable = vec![false; length];
     let view = full_view(&network, &wanted, &readable);
@@ -85,12 +85,12 @@ fn a_balanced_fold_tree_does_not_match() {
 fn a_kept_lanes_reshape_bars_the_match() {
     let (network, _root) = pool_network();
     let structure = network.structure();
-    let length = structure.functions.len();
+    let length = structure.ops.len();
     let lanes = (0..length)
         .find(|&index| {
             matches!(
-                structure.functions.get(index),
-                Some(Function::Reshape(reshape)) if reshape.shape.rank() == 5
+                structure.ops.get(index),
+                Some(Op::Reshape(reshape)) if reshape.shape.rank() == 5
             )
         })
         .expect("the pool records its lanes reshape");
@@ -109,7 +109,7 @@ fn the_home_repertoire_never_elects_the_raise_only_pattern() {
     // consumer's repertoire excludes it (raise-only), so home runs
     // execute the recorded fold while a total election raises it.
     let (network, root) = pool_network();
-    let length = network.structure().functions.len();
+    let length = network.structure().ops.len();
     let wanted = vec![true; length];
     let readable = vec![false; length];
     let view = full_view(&network, &wanted, &readable);

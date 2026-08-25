@@ -127,7 +127,7 @@
 // Core: the spec and its named readings. What the crate exists to
 // do -- record a spec, then read it.
 mod core;
-pub(crate) use core::{engine, function, graph, payload};
+pub(crate) use core::{engine, graph, op, payload};
 
 // Derived: faster or foreign readings of the same spec. A backend may
 // decline and the interpreter remains the truth; emission writes the
@@ -139,8 +139,8 @@ pub(crate) use derived::{backend, emission};
 // alone, with no privileged engine access.
 mod facade;
 pub(crate) use facade::neural;
-#[cfg(feature = "evcxr")]
-pub(crate) use facade::notebook;
+// `notebook` adds inherent methods to types the crate already owns, so
+// nothing ever names its path; declaring it inside the tier is enough.
 
 // Tools: the bitwise references a new element is graded against.
 pub mod reference;

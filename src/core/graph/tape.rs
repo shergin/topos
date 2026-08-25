@@ -3,7 +3,7 @@ use std::sync::{Mutex, MutexGuard};
 use smallvec::SmallVec;
 use static_assertions::assert_impl_all;
 
-use crate::function::Function;
+use crate::op::Op;
 use crate::{Element, Shape, Tensor, Tensorial};
 
 use super::trace::Trace;
@@ -32,7 +32,7 @@ struct TapeInner<E> {
 /// node of one computation graph.
 ///
 /// It is the engine's take on the classic autograd tape (a Wengert
-/// list): expressions record `Function` nodes onto it as they are built
+/// list): expressions record `Op` nodes onto it as they are built
 /// — each with its `Shape`, inferred and validated at record time — so
 /// invalid expressions panic at the expression that records them,
 /// before anything runs. Recording happens through [`Value`] proxies
@@ -137,7 +137,7 @@ impl<E: Element> Tape<E> {
     /// Constants are fixed at recording time; see `parameter` for
     /// trainable leaves and `input` for leaves fed per run.
     pub fn leaf(&self, data: impl Into<Tensor<E>>) -> Value<'_, E> {
-        let id = self.record_node(Function::leaf(data.into()), &[]);
+        let id = self.record_node(Op::leaf(data.into()), &[]);
         Value::bind(self, id)
     }
 
@@ -158,7 +158,7 @@ impl<E: Element> Tape<E> {
             // in `install`'s closure are simultaneous without conflict.
             let structure = &mut inner.structure;
             inner.initials.install(data, |slot| {
-                structure.push(Function::parameter(slot), Operands::none(), shape)
+                structure.push(Op::parameter(slot), Operands::none(), shape)
             })
         };
         Value::bind(self, id)
@@ -177,7 +177,7 @@ impl<E: Element> Tape<E> {
             let inner = &mut *guard;
             let structure = &mut inner.structure;
             inner.inputs.install(initial, |slot| {
-                structure.push(Function::input(slot), Operands::none(), shape)
+                structure.push(Op::input(slot), Operands::none(), shape)
             })
         };
         Value::bind(self, id)
@@ -281,7 +281,7 @@ impl<E: Element> Tape<E> {
         self.len() == 0
     }
 
-    /// Records `function` with its positional `operands` and returns
+    /// Records `op` with its positional `operands` and returns
     /// its handle.
     ///
     /// It infers and stores the result's shape on the way in, so shape
@@ -289,17 +289,13 @@ impl<E: Element> Tape<E> {
     /// anything runs.
     ///
     /// # Panics
-    /// Panics if `operands` does not match the function's arity or
+    /// Panics if `operands` does not match the op's arity or
     /// references a node that is not recorded on this tape, or if the
     /// operands' shapes are incompatible.
-    pub(crate) fn record_node(
-        &self,
-        function: Function<Tensor<E>>,
-        operands: &[ValueId],
-    ) -> ValueId {
+    pub(crate) fn record_node(&self, op: Op<Tensor<E>>, operands: &[ValueId]) -> ValueId {
         assert_eq!(
             operands.len(),
-            function.arity(),
+            op.arity(),
             "operand count must match the operation's arity"
         );
         let mut inner = self.lock();
@@ -320,11 +316,11 @@ impl<E: Element> Tape<E> {
                         .clone()
                 })
                 .collect();
-            function.infer_shape(&operand_shapes)
+            op.infer_shape(&operand_shapes)
         };
         inner
             .structure
-            .push(function, Operands::from_slice(operands), shape)
+            .push(op, Operands::from_slice(operands), shape)
     }
 
     /// Returns a clone of the payload behind `id`: a leaf's embedded
@@ -335,17 +331,17 @@ impl<E: Element> Tape<E> {
     /// Panics if `id` is not recorded on this tape.
     pub(crate) fn payload_of(&self, id: ValueId) -> Option<Tensor<E>> {
         let inner = self.lock();
-        let function = inner
+        let op = inner
             .structure
-            .functions
+            .ops
             .get(id.index())
             .expect("`ValueId` is out of bounds for its tape");
-        match function {
-            Function::Leaf(leaf) => Some(leaf.0.clone()),
-            Function::Parameter(parameter) => {
+        match op {
+            Op::Leaf(leaf) => Some(leaf.0.clone()),
+            Op::Parameter(parameter) => {
                 Some(inner.initials.payloads()[parameter.0.index()].clone())
             }
-            Function::Input(input) => Some(inner.inputs.payloads()[input.0.index()].clone()),
+            Op::Input(input) => Some(inner.inputs.payloads()[input.0.index()].clone()),
             _ => None,
         }
     }
@@ -385,15 +381,15 @@ impl<E: Element> Tape<E> {
     pub(crate) fn with_node<Output>(
         &self,
         id: ValueId,
-        reader: impl FnOnce(&Function<Tensor<E>>) -> Output,
+        reader: impl FnOnce(&Op<Tensor<E>>) -> Output,
     ) -> Output {
         let inner = self.lock();
-        let function = inner
+        let op = inner
             .structure
-            .functions
+            .ops
             .get(id.index())
             .expect("`ValueId` is out of bounds for its tape");
-        reader(function)
+        reader(op)
     }
 
     /// Returns an O(1) freeze of the recorded columns, so a scan can
@@ -523,15 +519,12 @@ impl<E: Element> Tape<E> {
                 // gradients stop and get read out below.
                 continue;
             }
-            let function = structure
-                .functions
-                .get(index)
-                .expect("the freeze cannot shrink");
+            let op = structure.ops.get(index).expect("the freeze cannot shrink");
             let operand_traces: SmallVec<[Trace<'_, E>; 2]> =
                 links.iter().map(|link| trace(link.index())).collect();
             let operands: SmallVec<[&Trace<'_, E>; 2]> = operand_traces.iter().collect();
             let gradient = cotangents[index].expect("ancestors carry cotangents");
-            let recorded = function.backward(&operands, &trace(index), &gradient);
+            let recorded = op.backward(&operands, &trace(index), &gradient);
             debug_assert_eq!(recorded.len(), links.len());
             for (&link, cotangent) in links.iter().zip(recorded) {
                 if let Some(contribution) = cotangent {

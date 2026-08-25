@@ -11,7 +11,7 @@ use super::{Cotangents, Operation, Reads, unary};
 /// `tanh` recorded here and `tanh` offered to the backend chain are
 /// the same instruction, so adding a transcendental is a
 /// `MapOperation` variant and the arms below — never a new
-/// `Function` variant. Everything op-specific (the printed name, the
+/// `Op` variant. Everything op-specific (the printed name, the
 /// read set, the derivative) dispatches on `op`; the shape behavior
 /// is shared, since a map always keeps its operand's shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

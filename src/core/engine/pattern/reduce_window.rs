@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::function::Function;
+use crate::op::Op;
 use crate::{Element, Tensor};
 
 use super::candidates::Candidate;
@@ -51,7 +51,7 @@ fn lane_start<E: Element>(
     view: &View<Tensor<E>>,
     lanes: &mut Option<usize>,
 ) -> Option<usize> {
-    let Some(Function::Narrow(narrow)) = view.function(index) else {
+    let Some(Op::Narrow(narrow)) = view.op(index) else {
         return None;
     };
     if narrow.axis != 4 || narrow.len != 1 {
@@ -78,7 +78,7 @@ fn lane_start<E: Element>(
 pub(crate) fn match_at<E: Element>(index: usize, view: &View<Tensor<E>>) -> Option<Candidate> {
     // The root is the facade squeeze: a rank-4 reshape of a rank-5
     // value whose lane axis has folded down to extent 1.
-    let Some(Function::Reshape(reshape)) = view.function(index) else {
+    let Some(Op::Reshape(reshape)) = view.op(index) else {
         return None;
     };
     if reshape.shape.rank() != 4 {
@@ -96,7 +96,7 @@ pub(crate) fn match_at<E: Element>(index: usize, view: &View<Tensor<E>>) -> Opti
     let mut lanes: Option<usize> = None;
     let mut descending_starts: Vec<usize> = Vec::new();
     let mut current = folded;
-    while let Some(Function::Maximum(_)) = view.function(current) {
+    while let Some(Op::Maximum(_)) = view.op(current) {
         interiors.push(current);
         let start = lane_start(view.operand(current, 1), view, &mut lanes)?;
         descending_starts.push(start);
@@ -117,25 +117,25 @@ pub(crate) fn match_at<E: Element>(index: usize, view: &View<Tensor<E>>) -> Opti
 
     // The lanes head: the merging reshape, the lane permute, and the
     // two square unfolds over a rank-4 source.
-    let Some(Function::Reshape(lanes_reshape)) = view.function(lanes) else {
+    let Some(Op::Reshape(lanes_reshape)) = view.op(lanes) else {
         return None;
     };
     let permuted = view.sole_operand(lanes);
-    let Some(Function::Permute(permute)) = view.function(permuted) else {
+    let Some(Op::Permute(permute)) = view.op(permuted) else {
         return None;
     };
     if permute.order.as_slice() != [0, 1, 2, 4, 3, 5] {
         return None;
     }
     let windows_w = view.sole_operand(permuted);
-    let Some(Function::Unfold(unfold_w)) = view.function(windows_w) else {
+    let Some(Op::Unfold(unfold_w)) = view.op(windows_w) else {
         return None;
     };
     if unfold_w.axis != 4 || unfold_w.dilation != 1 {
         return None;
     }
     let windows_h = view.sole_operand(windows_w);
-    let Some(Function::Unfold(unfold_h)) = view.function(windows_h) else {
+    let Some(Op::Unfold(unfold_h)) = view.op(windows_h) else {
         return None;
     };
     if unfold_h.axis != 2

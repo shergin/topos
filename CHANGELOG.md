@@ -82,12 +82,16 @@ The format is based on [Keep a Changelog], and this project adheres to
   `parameters.with_payloads(...)` installs checkpoints. What-ifs are
   `parameters.clone()`: one spec, any number of states.
 
-- The module tree now mirrors the stack: the op rules live in a
-  top-level `function` tier, the graph world (tape, network,
-  parameters, fields, handles, the recording surface) in a top-level
-  `graph` tier, and `engine` shrank to what the prose always meant by
-  the word — the executor (`Run`, `Plan`, `Compile`, and the forward
-  entry points, which moved next to `compile`'s home in the planner).
+- The module tree now mirrors the stack, in four tiers under `src/`:
+  `core` — the payload seam, the closed instruction set (`op`), the
+  graph world (tape, network, parameters, fields, handles, the
+  recording surface), and the `engine` that reads them (`Run`,
+  `Plan`, and the forward entry points); `derived` — the backend
+  chain and StableHLO emission, faster or foreign readings of the
+  same spec; `facade` — the neural and notebook conveniences, which
+  compose through the public surface alone; and the published
+  `reference` kernels. The engine enum is `Op`, not `Function`: it
+  is the instruction set, not an ML function and not a Rust `fn`.
   Purely internal: the crate root re-exports are unchanged.
 
 - The compile request is `Request`, and its posture flag is

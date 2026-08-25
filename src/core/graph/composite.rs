@@ -13,7 +13,7 @@
 //! in domain modules such as the loss module.
 //!
 //! A formula belongs here only while composition expresses it faithfully;
-//! it earns a `Function` variant the moment floating point breaks the
+//! it earns an `Op` variant the moment floating point breaks the
 //! composed form, the way `log_softmax` did. `Sub` is the one
 //! deliberate exception in the other direction: its composition
 //! (`Add` of `Neg`) is bit-exact, yet the variant stays — a practical
