@@ -30,14 +30,14 @@ impl Adjoints {
         let plural = if pairs == 1 { "" } else { "s" };
         format!(
             "adjoints  \u{b7}  {pairs} pair{plural}  \u{b7}  target #{}",
-            self.target().id.index()
+            self.target().index()
         )
     }
 
     fn body_text(&self) -> String {
         self.pairs()
             .iter()
-            .map(|&(wrt, gradient)| format!("#{}  →  #{}", wrt.id.index(), gradient.id.index()))
+            .map(|&(wrt, gradient)| format!("#{}  →  #{}", wrt.index(), gradient.index()))
             .collect::<Vec<_>>()
             .join("\n")
     }

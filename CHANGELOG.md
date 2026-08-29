@@ -7,6 +7,25 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- The declared reading is public data. `Entry`'s four fields —
+  `roots`, `observe`, `backward`, `numerics` — are public (the
+  builder methods stay the construction road), and
+  `BoundEntry::entry` borrows the declaration as the twin of
+  `into_entry`. `Symbol::index` answers the position `describe`
+  prints for nodes and operands, previously unreadable from the
+  public IR view. `Parameters::payloads` is the slot-ordered
+  table read, the parameter-grain twin of `Field::payloads`.
+  `Tensor::as_constant` answers the fill value of a constant
+  payload — a representation fact for O(1) displays and norms.
+  The notebook tier composes through these reads alone: its last
+  privileged accesses are gone, and every card is now
+  hand-rollable from outside the crate. The new
+  `tests/notebook_surface.rs` welds that claim — it compiles as
+  an external consumer and rebuilds each card's data from the
+  public readers.
+
 ## [0.12.0] - 2026-08-25
 
 ### Added

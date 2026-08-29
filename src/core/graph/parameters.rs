@@ -75,9 +75,15 @@ impl<E: Element> Parameters<E> {
         self.store.len() == 0
     }
 
-    /// Returns the payloads in slot order, for the engine's node
-    /// evaluation.
-    pub(crate) fn payloads(&self) -> &[Tensor<E>] {
+    /// Returns every parameter payload in slot order: the aligned
+    /// table itself, for scans and displays that walk the whole
+    /// state rather than read one value out of it — the
+    /// parameter-grain twin of
+    /// [`Field::payloads`](crate::Field::payloads).
+    ///
+    /// [`Parameters::of`] remains the symbol-typed read for a
+    /// single value.
+    pub fn payloads(&self) -> &[Tensor<E>] {
         self.store.payloads()
     }
 

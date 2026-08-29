@@ -299,7 +299,7 @@ impl<E: Element> Plan<E> {
     }
 
     /// Returns the numerics posture this plan's runs execute under,
-    /// as chosen by [`Entry::numerics`](crate::Entry::numerics).
+    /// as chosen by [`Entry::numerics`](crate::Entry::numerics()).
     pub fn numerics(&self) -> Numerics {
         self.numerics
     }
@@ -725,7 +725,7 @@ impl<E: Element> Network<E> {
     /// entries stored across phases.
     ///
     /// Forward-only entries (never calling
-    /// [`Entry::backward`](crate::Entry::backward)) free every
+    /// [`Entry::backward`](crate::Entry::backward())) free every
     /// non-readable buffer after its last consumer, so their runs
     /// refuse `backward`; recorded gradient symbols compile as
     /// ordinary roots.

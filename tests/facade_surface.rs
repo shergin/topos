@@ -16,9 +16,14 @@
 //! import rules (imports at the top of the file, no inline qualified
 //! paths) are what make the scan sound in practice, and the suppression
 //! check catches the historical counterexample (the notebook tier's
-//! `private_bounds` allows). The scan reads the files from disk, so the
-//! `notebook` tier is covered even when the `evcxr` feature that
-//! compiles it is off.
+//! `private_bounds` allows). The method-call shape has its own
+//! historical example — the notebook once read `Entry`'s fields,
+//! `ValueId::index`, `Parameters::payloads`, and `Tensor::as_constant`
+//! before they were published as designed reads — and its own gate:
+//! `notebook_surface.rs` compiles as an external consumer and rebuilds
+//! each card's data from public readers alone. The scan reads the
+//! files from disk, so the `notebook` tier is covered even when the
+//! `evcxr` feature that compiles it is off.
 
 use std::fs;
 use std::path::{Path, PathBuf};

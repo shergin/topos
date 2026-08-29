@@ -8,7 +8,7 @@ use crate::{Element, Numerics, Plan, Run, Tensor};
 /// logits head, recorded gradient symbols; no root is special), the
 /// extra interior values to observe (readable after a run, alongside
 /// the roots), and whether run buffers support the engine reverse
-/// scan ([`Entry::backward`]). One network exports any number of
+/// scan ([`Entry::backward()`]). One network exports any number of
 /// entries sharing its parameters — the twin pattern, said in the
 /// type system. An entry never touches the graph: recorded gradients
 /// enter as ordinary roots, produced by a visible
@@ -24,6 +24,12 @@ use crate::{Element, Numerics, Plan, Run, Tensor};
 /// for storage: roots and observes are [`Symbol`]s, valid across
 /// reopens, and [`Network::compile`](crate::Network::compile) binds
 /// one late.
+///
+/// The four fields are the declaration itself, public to read: a
+/// display or an external tool walks them directly. The builder
+/// methods remain the construction road — [`Entry::roots()`] to
+/// open, then chained `observe`, `backward`, and `numerics` —
+/// converting through `Into<Symbol>` as they go.
 ///
 /// # Examples
 /// ```
@@ -42,10 +48,17 @@ use crate::{Element, Numerics, Plan, Run, Tensor};
 /// ```
 #[derive(Debug, Clone)]
 pub struct Entry {
-    pub(crate) roots: Vec<Symbol>,
-    pub(crate) observe: Vec<Symbol>,
-    pub(crate) backward: bool,
-    pub(crate) numerics: Numerics,
+    /// The closure sources a run must compute; every root is
+    /// readable after a run.
+    pub roots: Vec<Symbol>,
+    /// The interior values the caller also declared readable,
+    /// alongside the roots.
+    pub observe: Vec<Symbol>,
+    /// Whether run buffers retain what the engine reverse scan
+    /// reads.
+    pub backward: bool,
+    /// The numerics posture the entry's runs execute under.
+    pub numerics: Numerics,
 }
 
 impl Entry {
@@ -123,20 +136,20 @@ pub struct BoundEntry<'network, E> {
 
 impl<'network, E: Element> BoundEntry<'network, E> {
     /// Adds interior values the caller also wants readable, exactly
-    /// as [`Entry::observe`].
+    /// as [`Entry::observe()`].
     pub fn observe(mut self, extra: impl IntoIterator<Item = impl Into<Symbol>>) -> Self {
         self.entry = self.entry.observe(extra);
         self
     }
 
     /// Requests runs that answer engine `backward`, exactly as
-    /// [`Entry::backward`].
+    /// [`Entry::backward()`].
     pub fn backward(mut self) -> Self {
         self.entry = self.entry.backward();
         self
     }
 
-    /// Chooses the numerics posture, exactly as [`Entry::numerics`].
+    /// Chooses the numerics posture, exactly as [`Entry::numerics()`].
     pub fn numerics(mut self, numerics: Numerics) -> Self {
         self.entry = self.entry.numerics(numerics);
         self
@@ -167,6 +180,12 @@ impl<'network, E: Element> BoundEntry<'network, E> {
     /// Panics if a declared symbol does not resolve in the network.
     pub fn lower(&self) -> Plan<E> {
         self.network.compile(self.entry.clone())
+    }
+
+    /// Returns the declared reading this bound entry carries: the
+    /// borrowing twin of [`into_entry`](BoundEntry::into_entry).
+    pub fn entry(&self) -> &Entry {
+        &self.entry
     }
 
     /// Detaches the entry for storage: symbols stay valid across

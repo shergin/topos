@@ -3,7 +3,7 @@
 use malevich::Theme;
 
 use super::html;
-use crate::{BoundEntry, Element, Entry, Numerics};
+use crate::{BoundEntry, Element, Entry, Numerics, Symbol};
 
 impl Entry {
     /// Renders the declared reading: roots, observes, memory
@@ -51,10 +51,10 @@ impl Entry {
     }
 }
 
-fn list_symbols(symbols: &[crate::Symbol]) -> String {
+fn list_symbols(symbols: &[Symbol]) -> String {
     symbols
         .iter()
-        .map(|symbol| format!("#{}", symbol.id.index()))
+        .map(|symbol| format!("#{}", symbol.index()))
         .collect::<Vec<_>>()
         .join("  ")
 }
@@ -63,13 +63,13 @@ impl<E: Element> BoundEntry<'_, E> {
     /// Renders the bound entry the same way as its detached
     /// signature.
     pub fn to_html(&self, theme: Theme) -> String {
-        self.entry.to_html(theme)
+        self.entry().to_html(theme)
     }
 
     /// Displays the bound entry when it is the last expression in
     /// an Evcxr cell.
     pub fn evcxr_display(&self) {
-        self.entry.evcxr_display();
+        self.entry().evcxr_display();
     }
 }
 

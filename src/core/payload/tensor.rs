@@ -63,12 +63,14 @@ impl<Element> Tensor<Element> {
         }
     }
 
-    /// Returns the repeated value when this tensor is a constant fill.
+    /// Returns the repeated value when this tensor is stored as a
+    /// non-allocating constant fill.
     ///
-    /// Only the notebook displays read this today, so the default
-    /// build sees an unused method.
-    #[cfg_attr(not(any(test, feature = "evcxr")), allow(dead_code))]
-    pub(crate) fn as_constant(&self) -> Option<&Element> {
+    /// This is a representation fact, not a mathematical predicate:
+    /// a dense buffer that happens to hold one value throughout
+    /// answers `None`. Displays and norms use it as an O(1) fast
+    /// path over fills such as gradient seeds and counted leaves.
+    pub fn as_constant(&self) -> Option<&Element> {
         match &self.storage {
             Storage::Constant { value, .. } => Some(value),
             _ => None,

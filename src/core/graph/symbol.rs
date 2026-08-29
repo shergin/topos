@@ -27,3 +27,17 @@ pub struct Symbol {
     pub(crate) origin: Origin,
     pub(crate) id: ValueId,
 }
+
+impl Symbol {
+    /// Returns the position of the named node on its tape: the
+    /// number [`Network::describe`](crate::Network::describe) prints
+    /// for the node and its operands. Nodes never move, so the
+    /// position is stable for the life of the family.
+    ///
+    /// The position is meaningful only within one family. Symbol
+    /// equality, which includes the origin, is identity; comparing
+    /// indices across networks means nothing.
+    pub fn index(self) -> usize {
+        self.id.index()
+    }
+}
