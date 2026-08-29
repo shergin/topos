@@ -33,6 +33,18 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Changed
 
+- Kinship has one spelling. The origin-plus-coverage check a
+  carrier makes when it meets a `Symbol` was written out six times
+  — on `Tape`, `Network`, `Run`, `Field`, `Parameters`, and `Plan`
+  — the same one-job-many-spellings shape the identity protocol
+  was. A crate-internal `Kinship` now owns the check: one `locate`
+  with the shared family message and each carrier's own coverage
+  wording, and a `family` half for the slot-grained `Parameters`,
+  whose coverage is the slot lookup. Every panic message is
+  verbatim what it was; purely internal. The carrier-vs-carrier
+  agreements (a parameter table against a network's slots) are a
+  different check and keep their own spellings.
+
 - `Fidelity` gained a third value, `Composed`, and the word stopped
   meaning two things. `BitIdentical` is now the absolute claim —
   the reference bits in every build, under either posture — and

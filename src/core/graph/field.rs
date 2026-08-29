@@ -4,7 +4,7 @@ use static_assertions::assert_impl_all;
 
 use crate::{Element, Tensor};
 
-use super::{Origin, Parameters, Symbol};
+use super::{Kinship, Origin, Parameters, Symbol};
 
 // Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
@@ -67,15 +67,9 @@ impl<E: Element> Field<E> {
     /// Panics if `symbol` belongs to a different network or was
     /// allocated after this field was produced.
     pub fn of(&self, symbol: Symbol) -> &Tensor<E> {
-        assert!(
-            symbol.origin == self.origin,
-            "symbol belongs to a different network"
-        );
-        assert!(
-            symbol.id.index() < self.payloads.len(),
-            "symbol was allocated after this field was produced"
-        );
-        &self.payloads[symbol.id.index()]
+        let index = Kinship::over(self.origin, self.payloads.len())
+            .locate(symbol, "symbol was allocated after this field was produced");
+        &self.payloads[index]
     }
 
     /// Returns a field with every entry passed through `transform`.

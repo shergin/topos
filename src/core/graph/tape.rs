@@ -8,7 +8,8 @@ use crate::{Element, Recordable, Shape, Tensor};
 
 use super::trace::Trace;
 use super::{
-    Adjoints, Detach, Network, Node, Operands, Origin, SlotStore, Structure, Symbol, Value, ValueId,
+    Adjoints, Detach, Kinship, Network, Node, Operands, Origin, SlotStore, Structure, Symbol,
+    Value, ValueId,
 };
 
 // Entry-time thread-safety contract; the anchor rationale is documented
@@ -190,14 +191,8 @@ impl<E: Element> Tape<E> {
     /// Panics if `symbol` belongs to a different network or is not
     /// allocated on this tape.
     pub fn resolve(&self, symbol: Symbol) -> Value<'_, E> {
-        assert!(
-            symbol.origin == self.origin,
-            "symbol belongs to a different network"
-        );
-        assert!(
-            symbol.id.index() < self.len(),
-            "symbol is not allocated on this tape"
-        );
+        Kinship::over(self.origin, self.len())
+            .locate(symbol, "symbol is not allocated on this tape");
         Value::bind(self, symbol.id)
     }
 
@@ -214,16 +209,10 @@ impl<E: Element> Tape<E> {
     /// Panics if `symbol` belongs to a different network or is not
     /// allocated on this tape.
     pub fn node(&self, symbol: Symbol) -> Node {
-        assert!(
-            symbol.origin == self.origin,
-            "symbol belongs to a different network"
-        );
         let inner = self.lock();
-        assert!(
-            symbol.id.index() < inner.structure.len(),
-            "symbol is not allocated on this tape"
-        );
-        inner.structure.node_at(self.origin, symbol.id.index())
+        let index = Kinship::over(self.origin, inner.structure.len())
+            .locate(symbol, "symbol is not allocated on this tape");
+        inner.structure.node_at(self.origin, index)
     }
 
     /// Returns every node recorded so far, in allocation order, as a

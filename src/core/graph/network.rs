@@ -6,7 +6,7 @@ use crate::{Element, Tensor};
 
 use crate::op::Op;
 
-use super::{Node, Origin, Parameters, SlotStore, Structure, Symbol, Tape, ValueId};
+use super::{Kinship, Node, Origin, Parameters, SlotStore, Structure, Symbol, Tape, ValueId};
 
 // Entry-time thread-safety contract. `Differentiable` already requires
 // `Data: Send + Sync`, so only a structural change (an `Rc`, a `RefCell`, a
@@ -203,14 +203,8 @@ impl<E: Element> Network<E> {
     /// Panics if `symbol` belongs to a different network or is not
     /// allocated in it.
     pub(crate) fn locate(&self, symbol: Symbol) -> ValueId {
-        assert!(
-            symbol.origin == self.origin,
-            "symbol belongs to a different network"
-        );
-        assert!(
-            symbol.id.index() < self.structure.len(),
-            "symbol is not allocated in this network"
-        );
+        Kinship::over(self.origin, self.structure.len())
+            .locate(symbol, "symbol is not allocated in this network");
         symbol.id
     }
 }

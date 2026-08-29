@@ -11,6 +11,7 @@ mod adjoints;
 mod composite;
 mod detach;
 mod field;
+mod kinship;
 mod literal;
 // The module convention names each file after its main concept, and this
 // module's main concept is the `Network` itself; the inception is
@@ -40,6 +41,7 @@ pub use tape::Tape;
 pub use trace::Trace;
 pub use value::Value;
 
+pub(crate) use kinship::Kinship;
 pub(crate) use operands::Operands;
 pub(crate) use origin::Origin;
 pub(crate) use slot_store::SlotStore;

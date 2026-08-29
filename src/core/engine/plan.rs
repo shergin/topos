@@ -8,7 +8,7 @@ use crate::{Element, Numerics, Shape, Tensor};
 
 use crate::backend::{Backend, Formula, NumericsScope, Precision};
 use crate::graph::{
-    Network, Node, Operands, Origin, Parameters, SlotStore, Structure, Symbol, ValueId,
+    Kinship, Network, Node, Operands, Origin, Parameters, SlotStore, Structure, Symbol, ValueId,
 };
 use crate::op::Op;
 
@@ -311,15 +311,9 @@ impl<E: Element> Plan<E> {
     /// Panics if `symbol` belongs to a different network or is not
     /// allocated in the prefix.
     pub fn node(&self, symbol: Symbol) -> Node {
-        assert!(
-            symbol.origin == self.origin,
-            "symbol belongs to a different network"
-        );
-        assert!(
-            symbol.id.index() < self.len(),
-            "symbol is not allocated in the plan's graph prefix"
-        );
-        self.structure.node_at(self.origin, symbol.id.index())
+        let index = Kinship::over(self.origin, self.len())
+            .locate(symbol, "symbol is not allocated in the plan's graph prefix");
+        self.structure.node_at(self.origin, index)
     }
 
     /// Returns the scheduled nodes — the ancestor closure a run
@@ -644,15 +638,8 @@ impl<E: Element> Plan<E> {
 
         let mut bindings = Vec::new();
         for (symbol, payload) in feeds {
-            assert!(
-                symbol.origin == self.origin,
-                "symbol belongs to a different network"
-            );
-            let index = symbol.id.index();
-            assert!(
-                index < self.len(),
-                "symbol is not allocated in the plan's graph prefix"
-            );
+            let index = Kinship::over(self.origin, self.len())
+                .locate(symbol, "symbol is not allocated in the plan's graph prefix");
             let slot = match self.structure.ops.get(index) {
                 Some(Op::Input(input)) => input.0,
                 _ => panic!("only inputs can be fed"),

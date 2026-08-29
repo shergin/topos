@@ -8,7 +8,8 @@ use crate::{Element, Numerics, Tensor};
 
 use crate::backend::NumericsScope;
 use crate::graph::{
-    Adjoints, Field, Gradients, Network, Origin, Parameters, SlotStore, Structure, Symbol, ValueId,
+    Adjoints, Field, Gradients, Kinship, Network, Origin, Parameters, SlotStore, Structure, Symbol,
+    ValueId,
 };
 use crate::op::{Op, SlotId};
 
@@ -122,15 +123,8 @@ impl<E: Element> Run<E> {
     /// Panics if `symbol` belongs to a different network or was
     /// allocated after this run.
     fn locate(&self, symbol: Symbol) -> usize {
-        assert!(
-            symbol.origin == self.field.origin(),
-            "symbol belongs to a different network"
-        );
-        assert!(
-            symbol.id.index() < self.field.len(),
-            "symbol was allocated after this run"
-        );
-        symbol.id.index()
+        Kinship::over(self.field.origin(), self.field.len())
+            .locate(symbol, "symbol was allocated after this run")
     }
 
     /// Returns the computed payload of the value named by `symbol`.

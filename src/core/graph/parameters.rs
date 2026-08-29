@@ -6,7 +6,7 @@ use crate::{Element, Tensor};
 
 use super::Field;
 
-use super::{Network, Origin, SlotStore, Symbol, ValueId};
+use super::{Kinship, Network, Origin, SlotStore, Symbol, ValueId};
 
 // Entry-time thread-safety contract; the anchor rationale is documented
 // in `network.rs`.
@@ -65,6 +65,13 @@ impl<E: Element> Parameters<E> {
         self.origin
     }
 
+    /// Returns this table's kinship check; parameters are
+    /// slot-grained, so callers use its family half and keep the
+    /// slot lookup as the coverage half.
+    fn kinship(&self) -> Kinship {
+        Kinship::over(self.origin, self.len())
+    }
+
     /// Returns the number of parameter slots.
     pub fn len(&self) -> usize {
         self.store.len()
@@ -93,10 +100,9 @@ impl<E: Element> Parameters<E> {
     /// Panics if `symbol` belongs to a different network or does not
     /// name a parameter these parameters carry.
     pub fn of(&self, symbol: Symbol) -> &Tensor<E> {
-        assert!(
-            symbol.origin == self.origin,
-            "symbol belongs to a different network"
-        );
+        // The slot lookup is this carrier's coverage half: parameters
+        // are slot-grained, so kinship supplies the family check.
+        self.kinship().family(symbol);
         let Some(slot) = self.store.slot_of(symbol.id) else {
             panic!("symbol does not name a parameter these parameters carry");
         };
@@ -292,10 +298,7 @@ impl<E: Element> Parameters<E> {
     ) -> Self {
         let mut payloads = self.store.payloads().to_vec();
         for (symbol, payload) in replacements {
-            assert!(
-                symbol.origin == self.origin,
-                "symbol belongs to a different network"
-            );
+            self.kinship().family(symbol);
             let Some(slot) = self.store.slot_of(symbol.id) else {
                 panic!("symbol does not name a parameter these parameters carry");
             };
