@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Fixed
 
+- The two reverse scans plant the same seed expressions for every
+  element. `Tape::differentiate` seeded with `counted(shape, 1)`
+  and minted non-ancestor zeros as `counted(shape, 0)` — the
+  size-derived constants — while the engine scan plants `one_like`
+  and `zero_like`; identical for the built-in elements, silently
+  divergent for any element where `from_count` is not `one`/`zero`.
+  Both recorded spellings now use the engine's `one` and `zero`,
+  and the closure contract is pinned off `f64` by a `Bf16` case in
+  the closure suite.
+
 - `Plan::describe` and the live-volume accounting now tell the truth
   about a fused group's named results. An observed batch-norm mean
   or variance is written back by the group's action — materialized

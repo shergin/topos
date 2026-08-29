@@ -450,7 +450,11 @@ impl<E: Element> Tape<E> {
             0,
             "differentiate requires a scalar loss; reduce it with `sum` first"
         );
-        let seed = loss_value.literal(Tensor::counted(loss_value.shape(), 1));
+        // The seed is the same `one` the engine scan plants
+        // (`one_like`), not `counted`'s size-derived constant, so the
+        // two scans agree for every element — not only those where
+        // `from_count(1)` happens to equal `one`.
+        let seed = loss_value.literal(Tensor::filled(loss_value.shape(), E::one()));
         self.vjp(loss_value.symbol(), seed.symbol(), wrt)
     }
 
@@ -547,8 +551,11 @@ impl<E: Element> Tape<E> {
                     Some(gradient) => gradient.value().symbol(),
                     // A non-ancestor's gradient is a recorded zero of
                     // its own shape, the tape twin of the zeros a
-                    // gradient field holds there.
-                    None => value.literal(Tensor::counted(value.shape(), 0)).symbol(),
+                    // gradient field holds there — the engine's
+                    // `zero_like`, so the twin holds for every element.
+                    None => value
+                        .literal(Tensor::filled(value.shape(), E::zero()))
+                        .symbol(),
                 };
                 (value.symbol(), gradient)
             })

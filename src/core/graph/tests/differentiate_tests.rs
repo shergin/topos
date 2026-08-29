@@ -756,6 +756,49 @@ fn recorded_gradients_zero_fill_unnamed_parameters() {
 }
 
 #[test]
+fn closure_holds_for_a_non_f64_element() {
+    use crate::Bf16;
+
+    // The two scans plant the same `one` and `zero` expressions, so
+    // parity is element-independent; this pins the contract off
+    // `f64`, where `from_count` and `one` could in principle differ.
+    let tape: Tape<Bf16> = Tape::new();
+    let weights = tape.parameter(Tensor::new(
+        [2, 3],
+        (0..6)
+            .map(|index| Bf16::from(0.25_f32 * (index as f32) - 0.625))
+            .collect::<Vec<_>>(),
+    ));
+    let inputs = tape.leaf(Tensor::new(
+        [3, 2],
+        (0..6)
+            .map(|index| Bf16::from(0.5_f32 * (index as f32) - 1.25))
+            .collect::<Vec<_>>(),
+    ));
+    let loss = weights.matmul(inputs).tanh().sum();
+    let adjoints = tape.differentiate(loss, [weights]);
+    let loss = loss.symbol();
+    let weights = weights.symbol();
+    let network = tape.into_network();
+    let run = network.forward(&network.parameters(), []);
+    let engine = run.backward(loss);
+
+    for &(target, gradient) in adjoints.pairs() {
+        let recorded = run.of(gradient).to_vec();
+        let computed = engine.of(target).to_vec();
+        assert_eq!(target, weights);
+        assert_eq!(recorded.len(), computed.len());
+        for (recorded, computed) in recorded.iter().zip(&computed) {
+            assert_eq!(
+                recorded.to_bits(),
+                computed.to_bits(),
+                "recorded gradient differs from the engine's for `Bf16`"
+            );
+        }
+    }
+}
+
+#[test]
 #[should_panic(expected = "is not a parameter")]
 fn recorded_gradients_reject_non_parameter_wrt_entries() {
     let tape: Tape<f64> = Tape::new();
