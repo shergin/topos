@@ -108,4 +108,21 @@ fn main() {
          {per_step:.3} s/step, {:.1} GFLOP/s of matrix products",
         step_flops / per_step / 1e9
     );
+
+    // Where one step's tasks landed: coverage declares what a backend
+    // may serve, the tally reports what each one did.
+    let (_, services) = Backend::tallied(|| {
+        let run = plan.forward(&parameters, [(features, batch.clone())]);
+        run.backward(loss)
+    });
+    for service in services {
+        let server = match service.backend {
+            Some(backend) => format!("{backend:?}"),
+            None => "reference".to_string(),
+        };
+        println!(
+            "dispatch: {:?} {:?} x{}: {server}",
+            service.formula, service.precision, service.count
+        );
+    }
 }

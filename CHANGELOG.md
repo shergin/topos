@@ -54,6 +54,19 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- The run-time half of dispatch is visible: `Backend::tallied(body)`
+  runs any region — a plan run, a `backward`, a direct payload
+  call, a whole training step — with a dispatch tally open and
+  answers the collected `Service` rows: formula, precision, who
+  served (with `None` naming the reference paths), and how many
+  tasks landed there. Coverage declares *may*; the tally reports
+  what *did*. Shaped like `Numerics::exactly` — a scoped closure,
+  per thread, nested scopes capturing innermost — and free when no
+  scope is open. The `throughput` example prints one step's tally
+  (six products and a map, and which backend took them), the exact
+  pinned-bits test now also asserts its roads tally only reference
+  rows, and `service_tests` pins the row semantics in every build.
+
 - The declared reading is public data. `Entry`'s four fields —
   `roots`, `observe`, `backward`, `numerics` — are public (the
   builder methods stay the construction road), and

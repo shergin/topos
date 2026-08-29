@@ -10,7 +10,7 @@
 //! `Exact`, or a reference kernel drifting between targets, fails
 //! here first.
 
-use crate::{Element, Numerics, Tape, Tensor};
+use crate::{Backend, Element, Numerics, Tape, Tensor};
 
 /// FNV-1a over every element's bit pattern, in iteration order.
 fn digest<E: Element>(tensor: &Tensor<E>, bits: impl Fn(E) -> u64) -> u64 {
@@ -64,13 +64,26 @@ fn exact_digests<E: Element>(
     let network = tape.into_network();
     let parameters = network.parameters();
 
-    let forward = network.forward(&parameters, []);
     let plan = network
         .entry([loss])
         .observe([product, activated])
         .numerics(Numerics::Exact)
         .lower();
-    let planned = plan.forward(&parameters, std::iter::empty());
+    let ((forward, planned), services) = Backend::tallied(|| {
+        (
+            network.forward(&parameters, []),
+            plan.forward(&parameters, std::iter::empty()),
+        )
+    });
+    // The tasks reach the chain and nothing serves: the exact roads
+    // tally only reference rows, in every build.
+    assert!(!services.is_empty());
+    for service in &services {
+        assert!(
+            service.backend.is_none(),
+            "an exact road must not be served: {service:?}"
+        );
+    }
 
     let symbols = [product, activated, loss];
     let from_forward = symbols.map(|symbol| digest(forward.of(symbol), bits));

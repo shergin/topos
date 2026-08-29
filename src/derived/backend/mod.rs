@@ -27,6 +27,7 @@ mod fused;
 mod manifest;
 mod metal;
 mod numerics;
+mod service;
 mod task;
 // Safe stride classification shared by the BLAS-shaped backends;
 // compiled exactly where one of them is.
@@ -42,6 +43,7 @@ pub use backend::{Backend, BackendUnavailable};
 pub use coverage::{Coverage, Dispatch, Fidelity};
 pub use formula::{Formula, Precision};
 pub use numerics::Numerics;
+pub use service::Service;
 pub use task::MapTask;
 
 pub(crate) use numerics::NumericsScope;
@@ -58,11 +60,17 @@ use task::Task;
 /// kernel and would admit a bit-certified one.
 pub(crate) fn offered<T: Task>(task: &T) -> Option<T::Product> {
     let required = numerics::current().fidelity();
-    T::FORMULA
-        .chain(T::PRECISION)
-        .iter()
-        .filter(|backend| backend.coverage(T::FORMULA).meets(required))
-        .find_map(|&backend| task.offer(backend))
+    for &backend in T::FORMULA.chain(T::PRECISION) {
+        if !backend.coverage(T::FORMULA).meets(required) {
+            continue;
+        }
+        if let Some(product) = task.offer(backend) {
+            service::note(T::FORMULA, T::PRECISION, Some(backend));
+            return Some(product);
+        }
+    }
+    service::note(T::FORMULA, T::PRECISION, None);
+    None
 }
 
 #[cfg(test)]

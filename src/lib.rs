@@ -150,7 +150,7 @@ pub mod reference;
 
 pub use backend::{
     Backend, BackendUnavailable, Coverage, Dispatch, Fidelity, Formula, MapTask, Numerics,
-    Precision,
+    Precision, Service,
 };
 pub use emission::{EmitError, Emittable};
 pub use engine::{BoundEntry, Entry, PatternKind, PatternMatch, Plan, Run};
@@ -195,7 +195,7 @@ pub mod compiler {
         Adjoints, Backend, BackendUnavailable, BatchNormTask, Bf16, BoundEntry, Coverage, Detach,
         Differentiable, Dispatch, Element, Elementary, EmitError, Emittable, Entry, Fidelity,
         Formula, GemmTask, MapOperation, MapTask, Network, Node, Normalized, Numerics, Opcode,
-        Parameters, PatternKind, PatternMatch, Plan, Precision, Recordable, Run, Shape, Symbol,
-        Tape, Tensor, Trace,
+        Parameters, PatternKind, PatternMatch, Plan, Precision, Recordable, Run, Service, Shape,
+        Symbol, Tape, Tensor, Trace,
     };
 }

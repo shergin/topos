@@ -8,6 +8,7 @@ use super::formula::{Formula, Precision};
 use super::fused::Fused;
 use super::manifest::Manifest;
 use super::metal::Metal;
+use super::service::{self, Service};
 use super::simd::Simd;
 use super::stablehlo::StableHlo;
 
@@ -109,6 +110,22 @@ impl Backend {
     /// the orthogonal availability question.
     pub fn serves(self, formula: Formula, precision: Precision) -> bool {
         self.coverage(formula).admits(precision)
+    }
+
+    /// Runs `body` with a dispatch tally open on the current thread
+    /// and answers its result alongside the collected rows: one
+    /// [`Service`] per formula, precision, and server, in
+    /// first-served order, with `None` naming the reference paths.
+    ///
+    /// It is the run-time half of dispatch made visible — coverage
+    /// declares *may* and the tally reports what *did* — shaped like
+    /// [`Numerics::exactly`](super::Numerics::exactly): a scoped
+    /// closure, not stored state, so any region tallies — a forward
+    /// run, a `backward`, a direct payload call, a whole training
+    /// step. The tally is per thread (work `body` hands to other
+    /// threads goes uncounted) and nested scopes capture innermost.
+    pub fn tallied<Output>(body: impl FnOnce() -> Output) -> (Output, Vec<Service>) {
+        service::tallied(body)
     }
 
     /// How this implementer's kernels are reached.

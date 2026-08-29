@@ -124,6 +124,11 @@ let fast = network.entry([loss]).lower();
 A dependency that enables `topos/accelerate` enables it for the
 whole binary. An `Exact` entry still computes interpreter bits.
 
+Which backend actually served is run-time data: wrap any region in
+`Backend::tallied` and read the per-formula tally — coverage
+declares *may*, the tally reports what *did*. The `throughput`
+example prints one for a full training step.
+
 ## Serving
 
 A compiled plan is already a closed, statically shaped tensor
