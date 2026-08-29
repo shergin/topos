@@ -23,6 +23,9 @@ pub(crate) type Cotangents<Data> = SmallVec<[Option<Data>; 2]>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Reads {
     /// Whether the rule reads the operand payload at each position.
+    /// The width is the vocabulary's maximum arity; `op_tests` welds
+    /// every op against it, so a wider op fails in test rather than
+    /// in a training plan's liveness pass.
     pub(crate) operands: [bool; 2],
     /// Whether the rule reads the node's own output payload.
     pub(crate) output: bool,

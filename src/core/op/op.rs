@@ -499,3 +499,7 @@ impl<Data> Op<Data> {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "tests/op_tests.rs"]
+mod tests;

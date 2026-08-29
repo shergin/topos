@@ -64,6 +64,15 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- The hand-maintained op tables are welded by test. `op_tests`
+  constructs one instance of every `Op` variant — so a new variant
+  breaks the list at compile time — and asserts the engine's
+  `arity` agrees with `Opcode::arity`, that `is_source` names
+  exactly the arity-0 variants, and that every read contract fits
+  `Reads::operands`' width: the day an op outgrows the liveness
+  array, the failure is a named test, not an index panic inside a
+  caller's training-plan compile.
+
 - The run-time half of dispatch is visible: `Backend::tallied(body)`
   runs any region — a plan run, a `backward`, a direct payload
   call, a whole training step — with a dispatch tally open and
