@@ -49,7 +49,9 @@
 //! [`Run::recorded_gradients`] bridging to `step`. [`Run::backward`]
 //! (the loop above) is the interpreter applying the same rules
 //! without recording — the oracle the transform is proven against
-//! bitwise, shipped forever. [`Entry::backward`] is neither: a
+//! bitwise, shipped forever; a whole-spec run is exact by
+//! construction, so its bits are the same in every build, on every
+//! platform. [`Entry::backward()`] is neither: a
 //! memory posture that retains what the engine scan reads, so a plan
 //! that did not record its derivative can still answer `backward`.
 //!
@@ -62,7 +64,7 @@
 //! ```text
 //! spec       Tape / Network        record, describe
 //! shape      inferred at record    panics at the recording expression
-//! value      BoundEntry::interpret the oracle; Network::forward is the whole-spec form
+//! value      BoundEntry::interpret the declared reading; Network::forward is the exact oracle
 //! cotangent  Run::backward         the engine reverse scan, oracle of reverse mode
 //! trace      Tape::differentiate   the same rules recording themselves (Trace)
 //! schedule   BoundEntry::lower     Plan: keep-set, liveness, election; describe

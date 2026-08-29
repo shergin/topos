@@ -69,10 +69,13 @@ the core owns.
    optimization runs on: the observed must survive any rewrite;
    the unobserved is fair game to fuse away.
 3. **The interpreter's bits are the truth.** The plain interpreter
-   is the executable spec, and every plan, backend, and emitted
-   module must reproduce its bits by default. Seeded runs replay
-   exactly; anything that reorders float math is a labeled option,
-   never a silent one.
+   is the executable spec: whole-spec evaluation always walks the
+   reference paths, so its bits are the same in every build, on
+   every platform. Every plan, backend, and emitted module must
+   reproduce those bits under the exact posture; a compiled
+   backend serves only under the fast posture a plan or an entry
+   declares. Seeded runs replay exactly; anything that reorders
+   float math is that labeled option, never a silent one.
 4. **Composition is the default.** A fused or native form buys
    its way in with a measured reason — float behavior or real
    cost. The primitives compose; specialized spelling is earned.

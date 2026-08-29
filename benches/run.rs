@@ -78,7 +78,10 @@ fn run(criterion: &mut Criterion) {
 
     // The same regression over dense payloads: `filled` above stores
     // constants, which bypass the dense matmul and slice paths, so
-    // these twin cases are the ones that price the accelerated tiers.
+    // these twin cases price the dense reference kernels. Interpreter
+    // runs are exact by construction and never engage a backend; the
+    // accelerated tiers are priced by `gemm.rs` and the `throughput`
+    // example's plan road.
     let dense_tape = Tape::new();
     let dense_values = |len: usize, seed: u64| -> Vec<f64> {
         (0..len)

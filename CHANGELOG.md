@@ -7,6 +7,25 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- `Network::forward` — whole-spec evaluation, the proving road — now
+  runs under `Numerics::Exact` by construction: the backend chain
+  declines every task, so its bits are the reference bits, the same
+  in every build and on every platform, and `Run::backward` on such
+  a run differentiates exactly. `BoundEntry::interpret` now honors
+  its entry's declared numerics posture (it previously ran under the
+  ambient default whatever the entry declared), and every
+  interpreter run records the posture it executed under, so
+  `backward` re-enters exactly what the forward ran under. Compiled
+  speed is untouched: plans keep the `Fast` default and the backend
+  chain, and the `throughput` example's training phase moved to an
+  engine-backward plan accordingly. Vision rule 3 and
+  `docs/acceleration.md` now state the anchor precisely, and the
+  new `numerics_tests` welds it: pinned digests of a product, a
+  map, and a log-softmax loss that every feature build and platform
+  must reproduce bit for bit on the exact roads.
+
 ### Added
 
 - The declared reading is public data. `Entry`'s four fields —

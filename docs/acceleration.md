@@ -109,9 +109,12 @@ Results are a function of the payloads, the compiled features,
 the numerics posture, and the machine. Two identical runs of one
 binary never disagree.
 
-What `Fast` (the default) gives up is bit-identity with the
-interpreter: hardware reassociates sums. `Exact` restores those
-bits in the same process — a labeled choice, not a feature flag.
+`Network::forward` — whole-spec evaluation, the proving road — is
+exact by construction: its bits are the same in every build, on
+every platform. What `Fast` (an entry's default) gives up is
+bit-identity with that oracle: hardware reassociates sums.
+`Exact` restores those bits in the same process — a labeled
+choice, not a feature flag.
 
 ```rust
 let exact = network.entry([loss]).numerics(Numerics::Exact).lower();

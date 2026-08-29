@@ -7,20 +7,24 @@ use super::coverage::Fidelity;
 ///
 /// `Exact` demands the bit-identity fidelity — the reference *bits*, in
 /// every build. Today no offer-dispatched kernel meets it, so chain
-/// work computes on the built-in reference paths, and the one
-/// bit-certified kernel (the fused window product) serves under both
-/// postures. `Fast` demands only the envelope fidelity: the chain as
-/// compiled, backends engaging above their per-task thresholds,
-/// which are cost heuristics inside this posture, never correctness
-/// boundaries.
+/// work computes on the built-in reference paths, while the fused
+/// cells serve under both postures: the reduce-window walk answers
+/// the reference bits outright, and the composed cells honor the
+/// demand by composing on the reference paths. `Fast` demands only
+/// the envelope fidelity: the chain as compiled, backends engaging
+/// above their per-task thresholds, which are cost heuristics inside
+/// this posture, never correctness boundaries.
 ///
-/// The posture is a value, not a build flag: it rides a
-/// [`Entry`](crate::Entry) onto the plan and its runs, so an
-/// exact oracle result and a fast result are comparable in one
-/// process. The default — for interpreter runs and host-side payload
-/// calls outside any run — is `Fast`: enabling a backend feature
-/// keeps meaning "use it", and features change speed, never behavior
-/// classes.
+/// The posture is a value, not a build flag: it rides an
+/// [`Entry`](crate::Entry) onto every executor's runs — interpreted
+/// or lowered — so an exact oracle result and a fast result are
+/// comparable in one process. The default — for entries and for
+/// host-side payload calls outside any run — is `Fast`: enabling a
+/// backend feature keeps meaning "use it", and features change
+/// speed, never behavior classes. The one road that consults no
+/// default is [`Network::forward`](crate::Network::forward):
+/// whole-spec evaluation is the proving road and always runs
+/// `Exact`, so its bits are the same in every build.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Numerics {
     /// Only bit-certified kernels serve: the reference bits, the
@@ -84,3 +88,7 @@ impl Drop for NumericsScope {
         CURRENT.with(|cell| cell.set(self.previous));
     }
 }
+
+#[cfg(test)]
+#[path = "tests/numerics_tests.rs"]
+mod tests;

@@ -155,11 +155,17 @@ impl<'network, E: Element> BoundEntry<'network, E> {
         self
     }
 
-    /// Interprets the entry: the oracle, evaluating the declared
-    /// results' ancestor closure with `feeds` bound to declared
-    /// inputs for this run only. Values outside the closure hold
-    /// placeholders, and reads of them panic — observability is
-    /// declared, never inferred.
+    /// Interprets the entry: evaluates the declared results' ancestor
+    /// closure with `feeds` bound to declared inputs for this run
+    /// only, under the entry's numerics posture. Values outside the
+    /// closure hold placeholders, and reads of them panic —
+    /// observability is declared, never inferred.
+    ///
+    /// Under [`Numerics::Exact`] this is the oracle over the declared
+    /// closure — the reference bits in every build; under the default
+    /// `Fast` it is the bitwise twin of a lowered plan's runs, walking
+    /// the same backend chain. [`Network::forward`](crate::Network::forward)
+    /// is the whole-spec oracle, exact by construction.
     ///
     /// # Panics
     /// Panics as [`Network::forward`](crate::Network::forward) panics,

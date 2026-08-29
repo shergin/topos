@@ -369,6 +369,13 @@ impl<E: Element> Network<E> {
     /// what makes the single forward scan sufficient. The returned run
     /// owns its values, so [`Run::backward`] needs no network borrow.
     ///
+    /// Whole-spec evaluation is the debug and proving road, so it runs
+    /// under [`Numerics::Exact`] by construction: the backend chain
+    /// declines every task and the bits are the reference bits — the
+    /// same in every build, on every platform. The run records the
+    /// posture, so its `backward` is exact too. Compiled speed is a
+    /// plan affair: lower an entry and choose the posture there.
+    ///
     /// # Panics
     /// Panics if `parameters` belongs to a different network or does
     /// not cover this one, if a fed symbol does not resolve here or
@@ -379,7 +386,7 @@ impl<E: Element> Network<E> {
         parameters: &Parameters<E>,
         feeds: impl IntoIterator<Item = (Symbol, Tensor<E>)>,
     ) -> Run<E> {
-        self.run(parameters, None, feeds)
+        self.run(parameters, None, Numerics::Exact, feeds)
     }
 
     /// Panics unless `parameters` was born from this network's exact
@@ -422,7 +429,7 @@ impl<E: Element> Network<E> {
             .chain(&entry.observe)
             .map(|&target| self.locate(target))
             .collect();
-        self.run(parameters, Some(targets), feeds)
+        self.run(parameters, Some(targets), entry.numerics, feeds)
     }
 
     /// Returns the input slot behind `id`, or `None` if the node is
@@ -440,14 +447,19 @@ impl<E: Element> Network<E> {
     }
 
     /// Replays the recording: the shared body of `forward` (every
-    /// node) and `forward_for` (the targets' ancestor closure).
+    /// node, always exact) and `interpret` (the targets' ancestor
+    /// closure, under the entry's declared posture).
     fn run(
         &self,
         parameters: &Parameters<E>,
         targets: Option<Vec<ValueId>>,
+        numerics: Numerics,
         feeds: impl IntoIterator<Item = (Symbol, Tensor<E>)>,
     ) -> Run<E> {
         self.assert_covering(parameters);
+        // The posture holds for the whole scan and the run records it,
+        // so `backward` re-enters exactly what the forward ran under.
+        let _numerics = NumericsScope::enter(numerics);
         let mut bindings = Vec::new();
         for (symbol, payload) in feeds {
             let id = self.locate(symbol);
@@ -512,14 +524,12 @@ impl<E: Element> Network<E> {
             Some(computed) => Provenance::Sliced { computed },
             None => Provenance::Complete,
         };
-        // Interpreter runs execute under the ambient default posture;
-        // a chosen posture is a plan affair, carried by the request.
         Run::new(
             structure.clone(),
             self.origin(),
             values,
             provenance,
-            Numerics::Fast,
+            numerics,
         )
     }
 }

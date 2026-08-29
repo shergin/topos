@@ -83,7 +83,11 @@ fn main() {
     // Phase two: whole training steps — the honest Amdahl statement.
     // Once the products are accelerated, the elementwise operations
     // (2M scalar `tanh` calls above all) own the step time; that gap
-    // is the roadmap's next tier, not the backends'.
+    // is the roadmap's next tier, not the backends'. The steps run
+    // through an engine-backward plan: `Network::forward` is the
+    // exact proving road and never engages a backend, so the plan
+    // tier is where a throughput measurement belongs.
+    let plan = network.entry([loss]).backward().lower();
     let warmup = 2;
     let steps = 8;
     let mut started = Instant::now();
@@ -91,7 +95,7 @@ fn main() {
         if step == warmup {
             started = Instant::now();
         }
-        let run = network.forward(&parameters, [(features, batch.clone())]);
+        let run = plan.forward(&parameters, [(features, batch.clone())]);
         let gradients = run.backward(loss).parameters(&parameters);
         parameters = parameters.step(&gradients, |parameter, gradient| {
             parameter.clone() - gradient.clone() * learning_rate.broadcast_like(gradient)
