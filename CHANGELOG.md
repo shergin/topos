@@ -96,6 +96,21 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- The spec is executable IR, not only printable. `Opcode::express`
+  computes or records one operation over any `Recordable` payload,
+  and `Opcode::vjp` is the public name of the one derivative-rule
+  body — so walking `Network::nodes` and expressing each opcode
+  replays a frozen spec (over `Tensor` it is the interpreter, over
+  `Trace` it re-records), and a reverse scan can be written from
+  outside the crate against the crate's own rules, with the engine
+  scan as its oracle. Sources panic ("supplied, not expressed");
+  the opcode set stays closed — the surface applies rules, it does
+  not define them. `tests/spec_surface.rs` welds all three
+  readings: replay-over-tensors equals `Network::forward` bitwise,
+  replay-over-traces re-records a spec whose `describe` matches
+  byte for byte, and a public reverse scan matches `Run::backward`
+  bitwise.
+
 - `BatchNormTask::new` is public, for the same reason as
   `GemmTask::new` and `MapTask::new`: an out-of-tree element
   implementing `Elementary::batch_norm` builds the same validated

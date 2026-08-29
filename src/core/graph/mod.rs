@@ -10,6 +10,7 @@
 mod adjoints;
 mod composite;
 mod detach;
+mod express;
 mod field;
 mod kinship;
 mod literal;
