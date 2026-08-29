@@ -1229,6 +1229,43 @@ impl<Element: Elementary> Tensor<Element> {
         Self::dense(shape.without_axis(axis), elements)
     }
 
+    /// Returns `self` with `axis` reduced by the stable log-sum-exp:
+    /// the axis maximum plus the log of the shifted exponential sum.
+    ///
+    /// Shifting by the axis maximum keeps every exponent at or below
+    /// zero: the sum lands between one and the axis extent, its
+    /// logarithm between zero and `ln(extent)`, so the result is
+    /// finite for every finite operand — even where the shifted
+    /// difference itself underflows to `-inf`.
+    ///
+    /// # Panics
+    /// Panics if `axis` is out of rank.
+    pub fn logsumexp(&self, axis: usize) -> Self {
+        let peak = self.max_along(axis);
+        let shifted = self.clone() - peak.broadcast_along_like(axis, self);
+        peak + shifted.exp().sum_along(axis).ln()
+    }
+
+    /// Returns the log-softmax of `self` along `axis`:
+    /// `x - ln(sum(exp(x)))`, the logarithm of the softmax
+    /// probabilities.
+    ///
+    /// Shifting by the axis maximum keeps every exponent at or below
+    /// zero, so the sum cannot overflow; the shift cancels in the
+    /// final subtraction, leaving the result stable (not exact: the
+    /// shifted rounding differs from the unshifted ideal, and a
+    /// difference beyond the representable range still underflows to
+    /// `-inf` — the mathematically faithful log-probability).
+    ///
+    /// # Panics
+    /// Panics if `axis` is out of rank.
+    pub fn log_softmax(&self, axis: usize) -> Self {
+        let peak = self.max_along(axis).broadcast_along_like(axis, self);
+        let shifted = self.clone() - peak;
+        let normalizer = shifted.exp().sum_along(axis).ln();
+        shifted.clone() - normalizer.broadcast_along_like(axis, &shifted)
+    }
+
     /// Returns the tensor with `axis` reduced to its largest element by the
     /// elementwise [`Elementary::maximum`].
     ///
@@ -1884,6 +1921,14 @@ impl<E: Element> Recordable for Tensor<E> {
 
     fn sum_along(&self, axis: usize) -> Self {
         Tensor::sum_along(self, axis)
+    }
+
+    fn logsumexp(&self, axis: usize) -> Self {
+        Tensor::logsumexp(self, axis)
+    }
+
+    fn log_softmax(&self, axis: usize) -> Self {
+        Tensor::log_softmax(self, axis)
     }
 
     fn broadcast(&self, shape: Shape) -> Self {

@@ -51,15 +51,7 @@ impl LogSumExp {
 
 impl LogSumExp {
     pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
-        let &operand = unary(operands);
-        // Shifting by the axis maximum keeps every exponent at or below
-        // zero: the sum lands between one and the axis extent, its
-        // logarithm between zero and `ln(extent)`, so `peak + ln(sum)`
-        // is finite for every finite operand — even where the shifted
-        // difference itself underflows to `-inf`.
-        let peak = operand.max_along(self.axis);
-        let shifted = operand.clone() - peak.broadcast_along_like(self.axis, operand);
-        peak + shifted.exp().sum_along(self.axis).ln()
+        unary(operands).logsumexp(self.axis)
     }
 }
 

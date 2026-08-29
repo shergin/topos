@@ -42,6 +42,17 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Changed
 
+- `Recordable` now spans the whole recordable operation set:
+  `logsumexp` and `log_softmax` join the vocabulary. The two
+  log-domain opcodes earned their seats on max-shifted bits, but
+  no derivative rule happens to call them, so the trait — whose
+  own doc says every member corresponds to something a tape can
+  record — was the opcode set minus two, and no payload-generic
+  algorithm could replay a spec containing them. Their stable
+  forward bodies moved from the op files to inherent `Tensor`
+  methods, where every other forward lives; `Trace` records the
+  nodes. Out-of-tree `Recordable` impls gain two members.
+
 - Kinship has one spelling. The origin-plus-coverage check a
   carrier makes when it meets a `Symbol` was written out six times
   — on `Tape`, `Network`, `Run`, `Field`, `Parameters`, and `Plan`

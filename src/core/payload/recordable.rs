@@ -102,6 +102,16 @@ pub trait Recordable:
     /// Returns `self` with `axis` reduced by summation.
     fn sum_along(&self, axis: usize) -> Self;
 
+    /// Returns `self` with `axis` reduced by the stable log-sum-exp:
+    /// a recorded primitive, because no composition of the rest
+    /// reproduces its max-shifted bits.
+    fn logsumexp(&self, axis: usize) -> Self;
+
+    /// Returns the log-softmax of `self` along `axis`: like
+    /// [`logsumexp`](Recordable::logsumexp), a recorded primitive
+    /// with max-shifted bits no composition reproduces.
+    fn log_softmax(&self, axis: usize) -> Self;
+
     /// Returns this value's single element spread across `shape`.
     fn broadcast(&self, shape: Shape) -> Self;
 

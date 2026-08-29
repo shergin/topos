@@ -196,6 +196,14 @@ impl<'tape, E: Element> Recordable for Trace<'tape, E> {
         Self::of(self.value.sum_along(axis))
     }
 
+    fn logsumexp(&self, axis: usize) -> Self {
+        Self::of(self.value.logsumexp(axis))
+    }
+
+    fn log_softmax(&self, axis: usize) -> Self {
+        Self::of(self.value.log_softmax(axis))
+    }
+
     fn broadcast(&self, shape: Shape) -> Self {
         Self::of(self.value.broadcast(shape))
     }

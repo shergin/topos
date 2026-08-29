@@ -49,19 +49,7 @@ impl LogSoftmax {
 
 impl LogSoftmax {
     pub(crate) fn forward<E: Element>(&self, operands: &[&Tensor<E>]) -> Tensor<E> {
-        let &operand = unary(operands);
-        // Shifting by the axis maximum keeps every exponent at or below
-        // zero, so the sum cannot overflow; the shift cancels in the
-        // final subtraction, leaving the result stable (not exact: the
-        // shifted rounding differs from the unshifted ideal, and a
-        // difference beyond the representable range still underflows to
-        // `-inf` — the mathematically faithful log-probability).
-        let peak = operand
-            .max_along(self.axis)
-            .broadcast_along_like(self.axis, operand);
-        let shifted = operand.clone() - peak;
-        let normalizer = shifted.exp().sum_along(self.axis).ln();
-        shifted.clone() - normalizer.broadcast_along_like(self.axis, &shifted)
+        unary(operands).log_softmax(self.axis)
     }
 }
 
