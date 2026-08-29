@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Fixed
 
+- The vocabulary's identity constructors agree between their two
+  interpretations for every element. `Trace::zero_like`/`one_like`
+  recorded `counted` leaves while `Tensor`'s hold `zero`/`one` —
+  the same `from_count` divergence as the scan seeds, one level
+  down and worse: five derivative rules call `one_like`, so for an
+  element where `from_count(1)` is not `one` the recorded
+  gradients themselves would drift from the engine's. `Trace` now
+  records filled leaves of the engine's `zero` and `one`.
+
 - The two reverse scans plant the same seed expressions for every
   element. `Tape::differentiate` seeded with `counted(shape, 1)`
   and minted non-ancestor zeros as `counted(shape, 0)` — the

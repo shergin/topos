@@ -51,12 +51,16 @@ impl<'tape, E: Element> Trace<'tape, E> {
         self.value
     }
 
-    /// Records a literal leaf of `count` spread across this trace's
-    /// recorded shape: the recording twin of `zero_like`/`one_like`.
-    fn counted_like(&self, count: usize) -> Self {
+    /// Records a literal leaf of `element` spread across this trace's
+    /// recorded shape: the recording twin of the tensor identity
+    /// constructors. The leaf holds exactly the `zero`/`one` the
+    /// engine's buffers hold, so the two interpretations agree for
+    /// every element — not only those where `from_count` happens to
+    /// match.
+    fn filled_like(&self, element: E) -> Self {
         Self::of(
             self.value
-                .literal(Tensor::counted(self.value.shape(), count)),
+                .literal(Tensor::filled(self.value.shape(), element)),
         )
     }
 }
@@ -121,11 +125,11 @@ impl<'tape, E: Element> Recordable for Trace<'tape, E> {
     }
 
     fn zero_like(&self) -> Self {
-        self.counted_like(0)
+        self.filled_like(E::zero())
     }
 
     fn one_like(&self) -> Self {
-        self.counted_like(1)
+        self.filled_like(E::one())
     }
 
     fn exp(&self) -> Self {
