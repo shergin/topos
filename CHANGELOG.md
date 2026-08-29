@@ -64,6 +64,13 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- `BatchNormTask::new` is public, for the same reason as
+  `GemmTask::new` and `MapTask::new`: an out-of-tree element
+  implementing `Elementary::batch_norm` builds the same validated
+  tasks its differential tests need, closing the one hole in the
+  `reference` module's promise that every hook grades exactly the
+  way the in-crate ones are graded.
+
 - The hand-maintained op tables are welded by test. `op_tests`
   constructs one instance of every `Op` variant — so a new variant
   breaks the list at compile time — and asserts the engine's

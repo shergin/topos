@@ -28,10 +28,16 @@ impl<'buffers, Element> BatchNormTask<'buffers, Element> {
     /// Creates a validated task over the row-major `[batch, features]`
     /// input and the `[features]` affine operands.
     ///
+    /// It is public for the same reason as
+    /// [`GemmTask::new`](super::GemmTask::new): an out-of-tree element
+    /// implementing [`Elementary::batch_norm`](crate::Elementary::batch_norm)
+    /// builds the same validated tasks its differential tests need,
+    /// grading exactly the way the in-crate hooks are graded.
+    ///
     /// # Panics
     /// Panics if any extent is zero or a slice does not span its
     /// shape.
-    pub(crate) fn new(
+    pub fn new(
         input: &'buffers [Element],
         scale: &'buffers [Element],
         shift: &'buffers [Element],
