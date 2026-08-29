@@ -1,3 +1,5 @@
+use smallvec::{SmallVec, smallvec};
+
 use crate::backend::Formula;
 
 use super::batch_norm::BatchNormalization;
@@ -36,6 +38,18 @@ impl Pattern {
             Pattern::ReduceWindow(_) => Formula::ReduceWindow,
             Pattern::BatchNormTraining(_) => Formula::BatchNormTraining,
             Pattern::BatchNormInference(_) => Formula::BatchNormInference,
+        }
+    }
+
+    /// The named-result slots a fusing consumer's action writes back
+    /// at the root — materialized values, unlike unnamed interiors,
+    /// which are never computed. Empty for single-result patterns.
+    pub(crate) fn named(&self) -> SmallVec<[usize; 4]> {
+        match self {
+            Pattern::BatchNormTraining(group) => smallvec![group.mean, group.variance],
+            Pattern::WindowProduct(_)
+            | Pattern::ReduceWindow(_)
+            | Pattern::BatchNormInference(_) => SmallVec::new(),
         }
     }
 }

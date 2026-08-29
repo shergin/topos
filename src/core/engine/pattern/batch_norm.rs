@@ -231,9 +231,10 @@ pub(crate) fn match_training<E: Element>(
     }
     tail.interiors
         .extend_from_slice(&[mean_sum, mean_count, squared, var_sum, var_count]);
-    let named = smallvec![tail.group.mean, tail.group.variance];
+    let pattern = Pattern::BatchNormTraining(tail.group);
+    let named = pattern.named();
     Some(Candidate {
-        pattern: Pattern::BatchNormTraining(tail.group),
+        pattern,
         root: index,
         interiors: tail.interiors,
         named,

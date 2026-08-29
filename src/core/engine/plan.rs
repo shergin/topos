@@ -387,8 +387,10 @@ impl<E: Element> Plan<E> {
     /// Empty on engine-backward plans, whose memory contract forbids
     /// fusing.
     ///
-    /// Every root printed as `fused` by [`describe`](Plan::describe)
-    /// appears here, so the human dump and the data agree by test.
+    /// Every group whose interiors print `fused` in
+    /// [`describe`](Plan::describe) appears here — the root keeps its
+    /// own liveness label — so the human dump and the data agree by
+    /// test.
     pub fn patterns(&self) -> Vec<PatternMatch> {
         let mut claimed = vec![false; self.len()];
         self.candidates
@@ -450,7 +452,15 @@ impl<E: Element> Plan<E> {
             if !self.wanted[index] || self.home.interior(index) {
                 continue;
             }
-            let volume = self.structure.shapes[index].volume();
+            let mut volume = self.structure.shapes[index].volume();
+            // A group rooted here writes its named results back into
+            // their slots, and their release points precede the
+            // write-back, so they materialize now and stay live.
+            if let Some(pattern) = self.home.at(index) {
+                for slot in pattern.named() {
+                    volume += self.structure.shapes[slot].volume();
+                }
+            }
             total += volume;
             live += volume;
             if live > peak {
@@ -458,8 +468,10 @@ impl<E: Element> Plan<E> {
                 peak_at = index;
             }
             for &slot in slots {
-                // Fusion interiors were never counted live: their
-                // slots hold placeholders from the start.
+                // Unnamed fusion interiors were never counted live:
+                // their slots hold placeholders from the start. Named
+                // results release before the root writes them, so their
+                // volumes never leave either way.
                 if self.home.interior(slot) {
                     continue;
                 }
@@ -480,6 +492,13 @@ impl<E: Element> Plan<E> {
                 continue;
             }
             live += self.structure.shapes[index].volume();
+            // Named results materialize at their group's root and are
+            // never released after it; see `live_story`.
+            if let Some(pattern) = self.home.at(index) {
+                for slot in pattern.named() {
+                    live += self.structure.shapes[slot].volume();
+                }
+            }
             series.push(live);
             for &slot in slots {
                 if self.home.interior(slot) {
@@ -523,10 +542,15 @@ impl<E: Element> Plan<E> {
                 continue;
             }
             evaluated += 1;
-            let liveness = if self.home.interior(index) {
-                "fused".to_string()
-            } else if self.readable[index] {
+            // Readability wins over group membership: a readable slot
+            // inside an elected group is a named result the group's
+            // action writes back — materialized and readable, so it is
+            // `kept` — while unnamed interiors are never readable by
+            // the legality check and print `fused`.
+            let liveness = if self.readable[index] {
                 "kept".to_string()
+            } else if self.home.interior(index) {
+                "fused".to_string()
             } else {
                 match released {
                     Some(consumer) => format!("{release_word} {consumer}"),

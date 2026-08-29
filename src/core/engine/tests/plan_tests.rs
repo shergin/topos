@@ -679,6 +679,69 @@ fn fused_batch_norm_grades_against_the_oracle() {
 }
 
 #[test]
+fn observed_named_results_read_kept_and_count_live() {
+    use crate::BatchNorm;
+
+    let tape = Tape::new();
+    let input = tape.leaf(Tensor::new(
+        [64, 64],
+        (0..64 * 64)
+            .map(|index| ((index * 7 % 23) as f64 - 11.0) / 4.0)
+            .collect::<Vec<_>>(),
+    ));
+    let layer = BatchNorm::new(
+        &tape,
+        Tensor::filled([64], 1.2_f64),
+        Tensor::filled([64], 0.3),
+        Tensor::filled([1], 1.0e-5),
+    );
+    let normalization = layer.express(input);
+    let output = normalization.output.symbol();
+    let mean = normalization.mean.symbol();
+    let variance = normalization.variance.symbol();
+    let network = tape.into_network();
+
+    let observed = network.compile(Entry::roots([output]).observe([mean, variance]));
+    if observed.patterns().is_empty() {
+        // Fusing the batch-norm group needs a compiled backend behind
+        // the formula; unfused plans label the statistics as ordinary
+        // readable nodes already.
+        return;
+    }
+
+    // The group's action writes the observed statistics back into
+    // their slots: materialized and readable, so describe says
+    // `kept`, never `fused`.
+    let described = observed.describe();
+    for symbol in [mean, variance] {
+        let spec = observed.node(symbol).to_string();
+        let line = described
+            .lines()
+            .find(|line| line.starts_with(spec.trim_end()))
+            .expect("observed statistic line is printed");
+        assert!(
+            line.trim_end().ends_with("kept"),
+            "observed statistic must read kept: {line:?}"
+        );
+    }
+
+    // The write-back happens whether or not the statistics are
+    // observed, so observing them costs no live volume: the two
+    // plans account identically, named results included.
+    let unobserved = network.compile(Entry::roots([output]));
+    assert!(!unobserved.patterns().is_empty());
+    assert_eq!(observed.live_series(), unobserved.live_series());
+    let retained = *observed
+        .live_series()
+        .last()
+        .expect("the plan evaluates nodes");
+    assert!(
+        retained >= 64 * 64 + 64 + 64,
+        "the output and both written-back statistics stay live: {retained}"
+    );
+}
+
+#[test]
 fn fused_max_pool_matches_the_interpreter_bitwise() {
     use crate::max_pool;
 

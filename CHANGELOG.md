@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- `Plan::describe` and the live-volume accounting now tell the truth
+  about a fused group's named results. An observed batch-norm mean
+  or variance is written back by the group's action — materialized
+  and readable — so its line reads `kept`, no longer `fused`; and
+  `live_story`/`live_series` count the written-back statistics from
+  the group's root onward instead of omitting them. Observing a
+  named result costs no live volume (the write-back happens either
+  way), which a new build-adaptive test pins along with the labels.
+  The `Plan::patterns` doc no longer claims roots print as `fused`,
+  and a stale intra-doc link in the window pattern points at
+  `Tensor::windowed_product` again.
+
 ### Changed
 
 - `Fidelity` gained a third value, `Composed`, and the word stopped
