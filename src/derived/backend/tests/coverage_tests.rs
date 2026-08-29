@@ -52,22 +52,38 @@ fn the_matrix_pins_every_hardware_row() {
 }
 
 #[test]
-fn fused_serves_its_kernels_bit_identically() {
-    // Every in-process kernel either reduces in the recorded order
-    // or falls back to composing the recorded formula, so every cell
-    // clears bit identity; the envelope enters only through an
-    // admitted hardware kernel.
+fn fused_cells_name_how_they_honor_a_bit_identity_demand() {
+    // The reduce-window walk answers the reference bits outright in
+    // every build — the one absolute cell. The window product and
+    // the batch-norm group route their interiors through the chain,
+    // so their cells are composed: honored under `Exact` because the
+    // interior chain declines along with everything else. All three
+    // meet a bit-identity demand.
+    assert_eq!(
+        Backend::Fused.coverage(Formula::ReduceWindow),
+        Coverage::Serves {
+            fidelity: Fidelity::BitIdentical,
+            precisions: Precision::ALL
+        }
+    );
+    for formula in [Formula::WindowProduct, Formula::BatchNormTraining] {
+        assert_eq!(
+            Backend::Fused.coverage(formula),
+            Coverage::Serves {
+                fidelity: Fidelity::Composed,
+                precisions: Precision::ALL
+            }
+        );
+    }
     for formula in [
         Formula::WindowProduct,
         Formula::ReduceWindow,
         Formula::BatchNormTraining,
     ] {
-        assert_eq!(
-            Backend::Fused.coverage(formula),
-            Coverage::Serves {
-                fidelity: Fidelity::BitIdentical,
-                precisions: Precision::ALL
-            }
+        assert!(
+            Backend::Fused
+                .coverage(formula)
+                .meets(Fidelity::BitIdentical)
         );
     }
     for formula in [Formula::Gemm, Formula::Map, Formula::BatchNormInference] {
@@ -90,9 +106,14 @@ fn the_stablehlo_column_is_total() {
 fn the_fidelity_rule_is_one_comparison() {
     assert!(Fidelity::BitIdentical.meets(Fidelity::BitIdentical));
     assert!(Fidelity::BitIdentical.meets(Fidelity::Envelope));
+    // A composed implementation honors a bit-identity demand by
+    // composing on the reference paths.
+    assert!(Fidelity::Composed.meets(Fidelity::BitIdentical));
+    assert!(Fidelity::Composed.meets(Fidelity::Envelope));
     assert!(Fidelity::Envelope.meets(Fidelity::Envelope));
     assert!(!Fidelity::Envelope.meets(Fidelity::BitIdentical));
-    // The postures demand exactly the two fidelities.
+    // The postures demand exactly the two absolute fidelities;
+    // `Composed` is a cell's answer, never a demand.
     assert_eq!(Numerics::Exact.fidelity(), Fidelity::BitIdentical);
     assert_eq!(Numerics::Fast.fidelity(), Fidelity::Envelope);
 }

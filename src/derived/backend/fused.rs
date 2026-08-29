@@ -18,29 +18,28 @@ impl Manifest for Fused {
     fn coverage(formula: Formula) -> Coverage {
         match formula {
             // `windowed_product` computes through the gemm seam in
-            // the recorded accumulation order: bit-identical under
-            // both postures, proven by the plan snapshots — the one
-            // cell at the bit-identity fidelity, since the oracle's bits
-            // live in this process.
+            // the recorded accumulation order: exactly as faithful as
+            // the composition it replaces, under either posture,
+            // because the interior product walks the same chain.
             Formula::WindowProduct => Coverage::Serves {
-                fidelity: Fidelity::BitIdentical,
+                fidelity: Fidelity::Composed,
                 precisions: Precision::ALL,
             },
             // `batch_normalized` offers the whole group down the
             // chain and falls back to composing the recorded formula
-            // through the same payload operations the rules make —
-            // bitwise — so, like the window kernel, the cell clears
-            // bit identity: the chain's own admission keeps `Exact`
-            // runs on the reference, and the envelope enters only
-            // through an admitted hardware kernel under `Fast`.
+            // through the same payload operations the rules make, so
+            // the chain's own admission keeps `Exact` runs on the
+            // reference and the envelope enters only through an
+            // admitted hardware kernel under `Fast`.
             Formula::BatchNormTraining => Coverage::Serves {
-                fidelity: Fidelity::BitIdentical,
+                fidelity: Fidelity::Composed,
                 precisions: Precision::ALL,
             },
             // `max_pooled` folds each window with `maximum` in the
             // recorded lane order — a direct walk that materializes
-            // no lane views — so its bits match the composed fold in
-            // every build, under either posture.
+            // no lane views and consults no chain — so its bits are
+            // the reference bits in every build, under either
+            // posture: the one absolute bit-identity cell.
             Formula::ReduceWindow => Coverage::Serves {
                 fidelity: Fidelity::BitIdentical,
                 precisions: Precision::ALL,

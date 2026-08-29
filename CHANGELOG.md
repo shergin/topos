@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Changed
 
+- `Fidelity` gained a third value, `Composed`, and the word stopped
+  meaning two things. `BitIdentical` is now the absolute claim —
+  the reference bits in every build, under either posture — and
+  only the fused reduce-window walk makes it. The fused window
+  product and batch-norm cells are `Composed`: exactly as faithful
+  as the composition they replace, because their interiors consult
+  the same chain, which is why they honor an `Exact` demand — the
+  interior chain declines along with everything else. Admission is
+  unchanged and still one comparison (`Composed` meets both
+  demands, and demands remain the two postures' fidelities), so no
+  election, plan, or bit changes anywhere.
+
 - `Network::forward` — whole-spec evaluation, the proving road — now
   runs under `Numerics::Exact` by construction: the backend chain
   declines every task, so its bits are the reference bits, the same

@@ -4,16 +4,27 @@ use super::formula::Precision;
 ///
 /// Every implementer is a shortcut over the reference
 /// implementation, and its fidelity states how faithful the shortcut is
-/// proven to be. Admission is one comparison — a kernel serves a
-/// run when its fidelity [`meets`](Fidelity::meets) the fidelity the run's
-/// [`Numerics`](crate::Numerics) posture demands — so `Exact`
-/// excluding reordering kernels is a consequence, not a special
-/// case.
+/// proven to be — and by what argument. Admission is one comparison —
+/// a kernel serves a run when its fidelity [`meets`](Fidelity::meets)
+/// the fidelity the run's [`Numerics`](crate::Numerics) posture
+/// demands — so `Exact` excluding reordering kernels is a
+/// consequence, not a special case. A demand is always
+/// `BitIdentical` or `Envelope`, the two postures; `Composed`
+/// appears only as a cell's answer, never as a demand.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Fidelity {
     /// Certified to answer the reference implementation's exact
-    /// bits, proven by differential test.
+    /// bits in every build, under either posture, proven by
+    /// differential test.
     BitIdentical,
+    /// Certified to answer the bits the formula's composed form
+    /// answers under the run's posture: every interior shortcut
+    /// consults the same chain the composition would, so a
+    /// bit-identity demand is honored by composing on the reference
+    /// paths, and under the envelope demand the implementation is
+    /// exactly as faithful as the composition. The cell inherits
+    /// the chain's fidelity rather than certifying an absolute one.
+    Composed,
     /// Certified to answer within the documented error envelope;
     /// the kernel may reorder floating-point math.
     Envelope,
@@ -21,13 +32,16 @@ pub enum Fidelity {
 
 impl Fidelity {
     /// Whether a kernel certified at `self` may serve where
-    /// `required` is demanded: bit-identity serves everywhere, an
-    /// envelope serves only envelope demands.
+    /// `required` is demanded: bit identity and composition serve
+    /// everywhere — a composed implementation honors a bit-identity
+    /// demand because its interior chain declines along with
+    /// everything else — while an envelope serves only envelope
+    /// demands.
     pub fn meets(self, required: Fidelity) -> bool {
         match (self, required) {
-            (Fidelity::BitIdentical, _) => true,
+            (Fidelity::BitIdentical | Fidelity::Composed, _) => true,
             (Fidelity::Envelope, Fidelity::Envelope) => true,
-            (Fidelity::Envelope, Fidelity::BitIdentical) => false,
+            (Fidelity::Envelope, Fidelity::BitIdentical | Fidelity::Composed) => false,
         }
     }
 }
