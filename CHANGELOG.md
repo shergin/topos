@@ -96,6 +96,22 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- A dual number as a research element (`examples/dual.rs`):
+  forward mode by reinterpreting the payloads, where the
+  forward-mode example got it by transforming the graph. `Dual`
+  implements `Differentiable` and `Elementary` from outside the
+  crate — every map the chain rule on the primal's own `libm`
+  kernel, the accumulator carrying product-rule terms through
+  inner sums — and `Tape<Dual>` then records the unchanged primal
+  graph while the unchanged interpreter computes a directional
+  derivative in every payload slot. Graded as a triangle at
+  dyadic values: the dual tangent equals the engine reverse scan
+  equals the recorded gradient, bit for bit (a zero-error point
+  is excluded on record: the two modes then differ in the sign of
+  zero). `tests/dual.rs` gates the same asserts plus the
+  accumulator check through the example's own number, and
+  `element_seam.rs` points here as the seam's research consumer.
+
 - Attention and embedding join the facade tier, in the shapes
   the three in-repo transformers dictate. `scaled_dot_product` is
   the operand-asymmetric free function — one head, rank 2, mask

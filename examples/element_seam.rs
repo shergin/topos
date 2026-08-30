@@ -9,6 +9,11 @@
 //! derivative rules, no engine hooks — `unfold`, `backward`, plans,
 //! and the notebook all come along from the contracts alone.
 //!
+//! This file proves the seam's hooks are consulted;
+//! `examples/dual.rs` is the research consumer of the same seam — a
+//! number whose semantics genuinely differ, computing forward-mode
+//! derivatives through the unchanged interpreter.
+//!
 //! Run with: `cargo run --example element_seam`
 
 use std::ops::{Add, Div, Mul, Neg, Sub};
