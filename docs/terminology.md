@@ -2,7 +2,8 @@
 
 The public vocabulary. Each entry is the literature meaning and
 where it lives here. Design arguments live in
-[vision](vision.md) and [principles](principles/). When a
+[vision](vision.md) and [principles](principles/). Decisions and
+what they opened live in [openings](openings/). When a
 concept is added, renamed, or changes meaning, update this in the
 same change.
 
@@ -60,9 +61,11 @@ inputs use the recorded default.
 
 **Entry.** A function exported from a network: roots, observes,
 memory posture, numerics. `network.entry([loss]).interpret(...)`
-is the oracle over that closure;
-`network.entry([loss]).lower()` is the plan. One spec may export
-several entries that share weights.
+runs the interpreter over that closure under the entry's
+numerics — the oracle under `Exact`; `Network::forward` is the
+always-exact whole-spec oracle. `network.entry([loss]).lower()`
+is the plan. One spec may export several entries that share
+weights.
 
 **Run.** One forward execution's payloads. `Network::forward`
 evaluates the whole spec; an entry's `interpret` evaluates only

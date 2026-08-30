@@ -97,3 +97,17 @@ rot, the rest must not.
 - [What earns an instruction](principles/vocabulary.md)
 - [The element is the seam](principles/element.md)
 - [Observability is a license](principles/observability.md)
+
+## Openings
+
+Decisions and what they paid for, in
+[openings](openings/). Not constraints — consequences. An
+opening may wait on a seam that is designed but not yet
+collected.
+
+- [AD as a named reading](openings/ad-as-a-reading.md)
+- [Recurrence as feeds](openings/recurrence-as-feeds.md)
+- [Several exports, one spec](openings/several-exports.md)
+- [Fusion raises](openings/fusion-raises.md)
+- [The oracle ships](openings/the-oracle-ships.md)
+- [Dropout as a feed](openings/dropout-as-a-feed.md)

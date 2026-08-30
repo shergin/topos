@@ -80,3 +80,6 @@ as the default.
 seats on bits; `relu` is `maximum` against a counted zero;
 `Sub` is the documented exception (`Add` of `Neg` is bit-exact).
 This section may rot; the rest must not.
+
+See [Fusion raises](../openings/fusion-raises.md) for the
+catalog's second life as an idiom raiser.

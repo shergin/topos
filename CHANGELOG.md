@@ -96,6 +96,11 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- `docs/openings/`, a short series of architectural decisions and
+  what they paid for — not principles: AD as a named reading,
+  recurrence as feeds, several exports of one spec, fusion that
+  raises, the shipped oracle, and dropout as a feed.
+
 - Forward mode, as the first out-of-tree AD mode
   (`examples/forward_mode.rs`): a `Dual` payload implementing
   `Recordable` — forward-mode knowledge is dual arithmetic, a

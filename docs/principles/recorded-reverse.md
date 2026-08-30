@@ -80,3 +80,6 @@ forward-mode example. `Entry::backward` is the retain-buffers
 posture. `Run::recorded_gradients` is the bridge from recorded
 adjoints to `Parameters::step`. This section may rot; the rest
 must not.
+
+See [AD as a named reading](../openings/ad-as-a-reading.md) for
+what this decision opened.

@@ -17,6 +17,8 @@ sibling of `describe`, not a second compiler.
 
 The design is in [`docs/vision.md`](docs/vision.md). Constraints
 it assumes live in [`docs/principles/`](docs/principles/).
+Decisions and what they opened live in
+[`docs/openings/`](docs/openings/).
 
 ## Record and train
 

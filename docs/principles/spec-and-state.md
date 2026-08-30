@@ -78,3 +78,6 @@ node-aligned analogue. `Tape::into_network` / `Network::into_tape`
 are the consuming pair. `Parameters::step` mints the next state;
 `Parameters::carried` keeps payloads across a reopen. This
 section may rot; the rest must not.
+
+See [Recurrence as feeds](../openings/recurrence-as-feeds.md)
+for what this cut opened.

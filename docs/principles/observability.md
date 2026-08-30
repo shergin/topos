@@ -75,5 +75,10 @@ why several entries can share one frozen architecture.
 numerics. `BoundEntry::interpret` and `BoundEntry::lower` are the
 two executors. `Run::of` panics outside the mask.
 `Tape::record`'s return is `Detach`. `Network::forward` still
-evaluates the whole spec. A keep-set node inside a pattern is a
-fusion barrier. This section may rot; the rest must not.
+evaluates the whole spec. An unnamed keep-set node inside a
+pattern is a fusion barrier; a named result (batch-norm's
+statistics) is written back instead. This section may rot; the
+rest must not.
+
+See [Several exports, one spec](../openings/several-exports.md)
+for the twins and the emission ABI.
