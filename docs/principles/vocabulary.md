@@ -78,7 +78,12 @@ as the default.
 `Opcode` / `Op` is the closed set. `Map` carries
 `MapOperation`. `log_softmax` and `log_sum_exp` earned their
 seats on bits; `relu` is `maximum` against a counted zero;
-`Sub` is the documented exception (`Add` of `Neg` is bit-exact).
+`Sub` is the documented exception on the bit clause (`Add` of
+`Neg` is bit-exact). `Powf` is the exception on the consumer
+clause: kept ahead of its consumers by decision — its
+composition is neither bit-faithful nor defined on negative
+bases, and the expected consumers (learned pooling exponents,
+fractional robust-loss powers) are on file in the op-set audit.
 This section may rot; the rest must not.
 
 See [Fusion raises](../openings/fusion-raises.md) for the

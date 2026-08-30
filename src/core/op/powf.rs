@@ -13,6 +13,16 @@ use super::{Cotangents, Operation, Reads, binary};
 /// positive base — elsewhere the payload's `ln` semantics (`NaN` for
 /// scalars) propagate, mirroring the mathematics: `x^y` has no exponent
 /// derivative at a non-positive base.
+///
+/// This is the one operation kept ahead of its consumers, on record
+/// (the mirror of `Sub`, the exception on the other membership
+/// clause): nothing in the tree records a power yet, but the seat is
+/// irreplaceable the day one does — `exp(exponent * ln(base))` is not
+/// bit-faithful (the `ln` rounding is amplified by the exponent) and
+/// does not exist at a negative base — and the expected consumers
+/// (a learned pooling exponent, fractional robust-loss powers) make
+/// the exponent a graph value no host-side constant can stand in
+/// for. The op-set audit holds the roster.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Powf;
 
