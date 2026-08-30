@@ -1,5 +1,6 @@
 mod activation;
 mod adam;
+mod attention;
 mod batch_norm;
 // Public modules where the names are meaningless unqualified:
 // initializer names (`uniform`, `normal`) need `init::`, and
@@ -7,6 +8,7 @@ mod batch_norm;
 pub mod checkpoint;
 mod convolution;
 mod dropout;
+mod embedding;
 pub mod init;
 mod layer_norm;
 mod linear;
@@ -20,9 +22,11 @@ mod sequential;
 
 pub use activation::Activation;
 pub use adam::{Adam, AdamW};
+pub use attention::{causal_mask, scaled_dot_product};
 pub use batch_norm::{BatchNorm, Normalization};
 pub use convolution::{Conv2d, conv2d};
 pub use dropout::Dropout;
+pub use embedding::Embedding;
 pub use layer_norm::LayerNorm;
 pub use linear::Linear;
 pub use loss::cross_entropy;

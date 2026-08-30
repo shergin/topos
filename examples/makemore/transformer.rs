@@ -8,7 +8,8 @@
 //! `0 / -inf` leaf) keeps samples independent and time causal, which
 //! is the sequence-packing idiom and the reason no batched matmul is
 //! needed. Masked softmax records as the mask added before the axis
-//! softmax, heads record as a loop of rank-2 attentions joined by
+//! softmax, heads record as a loop of rank-2 `scaled_dot_product`
+//! attentions joined by
 //! `concat`, and the per-sample prediction rows come back through a
 //! one-hot `gather`. The block is pre-norm: attention and feed-forward
 //! each read an `RmsNorm` of their input and add onto the residual
@@ -26,7 +27,10 @@ mod corpus;
 
 use std::time::Instant;
 
-use topos::{Dropout, Module, RmsNorm, Shape, Tape, Tensor, Value, concat, cross_entropy, init};
+use topos::{
+    Dropout, Embedding, Module, RmsNorm, Shape, Tape, Tensor, Value, concat, cross_entropy, init,
+    scaled_dot_product,
+};
 
 use chart::loss_chart;
 use corpus::{VOCABULARY_LEN, draw, from_token, load_names, shuffle, training_samples};
@@ -68,8 +72,8 @@ struct Head<'tape> {
 /// The model's parameters as recorded proxies: embeddings, one
 /// pre-norm attention block, and the language-model head.
 struct Model<'tape> {
-    embeddings: Value<'tape, f32>,
-    positions: Value<'tape, f32>,
+    embeddings: Embedding<f32>,
+    positions: Embedding<f32>,
     heads: Vec<Head<'tape>>,
     projection: Value<'tape, f32>,
     attention_norm: RmsNorm<f32>,
@@ -93,11 +97,14 @@ impl<'tape> Model<'tape> {
         let ones = Tensor::filled([EMBED_DIM], 1.0);
         let epsilon = Tensor::filled([], 1e-5);
         Self {
-            embeddings: tape.parameter(init::normal(8, 1.0)(&Shape::new([
-                VOCABULARY_LEN,
-                EMBED_DIM,
-            ]))),
-            positions: tape.parameter(init::normal(9, 1.0)(&Shape::new([CONTEXT_LEN, EMBED_DIM]))),
+            embeddings: Embedding::new(
+                tape,
+                init::normal(8, 1.0)(&Shape::new([VOCABULARY_LEN, EMBED_DIM])),
+            ),
+            positions: Embedding::new(
+                tape,
+                init::normal(9, 1.0)(&Shape::new([CONTEXT_LEN, EMBED_DIM])),
+            ),
             heads: (0..HEAD_COUNT)
                 .map(|_| Head {
                     query: tape.parameter(weights(&Shape::new([EMBED_DIM, HEAD_DIM]))),
@@ -132,7 +139,7 @@ impl<'tape> Model<'tape> {
         mask: Value<'tape, f32>,
         dropouts: &[Dropout<f32>; 2],
     ) -> Value<'tape, f32> {
-        let stream = self.embeddings.gather(tokens) + self.positions.gather(positions);
+        let stream = self.embeddings.express(tokens) + self.positions.express(positions);
 
         // Pre-norm attention: every head attends over the same
         // normalized stream, and `concat` joins the head outputs along
@@ -144,10 +151,8 @@ impl<'tape> Model<'tape> {
             .map(|head| {
                 let query = normalized.matmul(head.query);
                 let key = normalized.matmul(head.key);
-                let scores = query.matmul(key.transpose());
-                let scaled = scores * self.scale.broadcast_like(scores);
-                let weights = (scaled + mask).softmax(1);
-                weights.matmul(normalized.matmul(head.value))
+                let value = normalized.matmul(head.value);
+                scaled_dot_product(query, key, value, mask, self.scale)
             })
             .collect();
         let stream = stream + dropouts[0].express(concat(&heads, 1).matmul(self.projection));

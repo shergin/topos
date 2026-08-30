@@ -196,6 +196,17 @@ next parameters out. State is more `Parameters` tables. `Sgd`,
 **Activation.** `Tanh` and `Relu`. Anything else is composition
 on the public surface (GELU in the GPT-2 example).
 
+**Attention.** `scaled_dot_product`: one head, rank 2 —
+`softmax((q @ kᵀ) * scale + mask) @ v` — with the mask and scale
+caller-supplied values. Head loops, projections, rotary
+embeddings, grouped queries, and caches are architecture and stay
+with the caller; `causal_mask` mints the standard triangular
+payload with a caller-supplied fill.
+
+**Embedding.** A `Module` holding one `[vocab, dim]` table;
+`express` is the gather over a one-hot selection. Position tables
+are a second `Embedding`; tying reads the exposed `table` symbol.
+
 **init.** Seeded shape-to-payload closures. No global generator.
 
 **checkpoint.** Snapshot and restore of `Parameters`. Positional

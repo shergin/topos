@@ -159,9 +159,10 @@ pub use graph::{
     Value, concat, stack,
 };
 pub use neural::{
-    Activation, Adam, AdamW, BatchNorm, Conv2d, Dropout, LayerNorm, Linear, Mlp, Module,
-    Normalization, Optimizer, Path, RmsNorm, Segment, Sequential, Sgd, Visitor, checkpoint, conv2d,
-    cross_entropy, init, max_pool, named_parameters, parameters,
+    Activation, Adam, AdamW, BatchNorm, Conv2d, Dropout, Embedding, LayerNorm, Linear, Mlp, Module,
+    Normalization, Optimizer, Path, RmsNorm, Segment, Sequential, Sgd, Visitor, causal_mask,
+    checkpoint, conv2d, cross_entropy, init, max_pool, named_parameters, parameters,
+    scaled_dot_product,
 };
 pub use payload::{
     BatchNormTask, Bf16, Differentiable, Element, Elementary, GemmTask, MapOperation, Normalized,
@@ -175,11 +176,11 @@ pub use payload::{
 /// imports keep working unchanged.
 pub mod model {
     pub use crate::{
-        Activation, Adam, AdamW, Adjoints, BatchNorm, BoundEntry, Conv2d, Detach, Dropout, Entry,
-        Field, Gradients, LayerNorm, Linear, Mlp, Module, Network, Normalization, Optimizer,
-        Parameters, Path, Plan, RmsNorm, Run, Segment, Sequential, Sgd, Shape, Symbol, Tape,
-        Tensor, Value, Visitor, checkpoint, concat, conv2d, cross_entropy, init, max_pool,
-        named_parameters, parameters, stack,
+        Activation, Adam, AdamW, Adjoints, BatchNorm, BoundEntry, Conv2d, Detach, Dropout,
+        Embedding, Entry, Field, Gradients, LayerNorm, Linear, Mlp, Module, Network, Normalization,
+        Optimizer, Parameters, Path, Plan, RmsNorm, Run, Segment, Sequential, Sgd, Shape, Symbol,
+        Tape, Tensor, Value, Visitor, causal_mask, checkpoint, concat, conv2d, cross_entropy, init,
+        max_pool, named_parameters, parameters, scaled_dot_product, stack,
     };
 }
 

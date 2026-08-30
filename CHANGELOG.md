@@ -96,6 +96,25 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- Attention and embedding join the facade tier, in the shapes
+  the three in-repo transformers dictate. `scaled_dot_product` is
+  the operand-asymmetric free function — one head, rank 2, mask
+  and scale as caller-supplied values, recording exactly the node
+  sequence every hand-roll already recorded, so migration is
+  bit-identical; head loops, projections, RoPE, grouped queries,
+  and caches stay with the caller, because fused-QKV and
+  separate-projection checkpoints split heads differently.
+  `causal_mask(extent, fill)` is the host-side payload factory —
+  the caller supplies the fill, since a facade never chooses
+  float constants and a custom element may not have an infinity.
+  `Embedding` is a `Module` holding one `[vocab, dim]` table
+  whose `express` is the gather; it visits its parameter as
+  `weights`, so migrating the language models' tables preserves
+  their checkpoint paths, and tying reads the exposed `table`
+  symbol. The makemore transformer is the consumer of record:
+  migrated, its 5000-step trajectory and sampled names are
+  byte-identical to the hand-rolled form.
+
 - `docs/openings/`, a short series of architectural decisions and
   what they paid for — not principles: AD as a named reading,
   recurrence as feeds, several exports of one spec, fusion that
