@@ -96,6 +96,20 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- Forward mode, as the first out-of-tree AD mode
+  (`examples/forward_mode.rs`): a `Dual` payload implementing
+  `Recordable` — forward-mode knowledge is dual arithmetic, a
+  payload, never a second rule body — replayed through the spec
+  with `Opcode::express`. Over `Dual<Tensor>` the walk is an eager
+  JVP; over `Dual<Trace>` it records the tangent computation as
+  ordinary spec beside resolved sources. Graded bitwise: eager
+  equals recorded, the directional derivative equals the reverse
+  gradient contracted with the seed on a rational spec, and
+  forward-over-reverse equals reverse-over-reverse on a
+  Hessian-vector product — the recorded gradient is just more
+  spec, so forward mode walks straight over it. Terminology gains
+  **Replay** and **JVP** entries.
+
 - The spec is executable IR, not only printable. `Opcode::express`
   computes or records one operation over any `Recordable` payload,
   and `Opcode::vjp` is the public name of the one derivative-rule

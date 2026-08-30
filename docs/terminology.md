@@ -123,6 +123,18 @@ product.
 are written against `Recordable`; `Tensor` computes, `Trace`
 appends nodes. One rule body, two readings.
 
+**Replay.** Walking a spec's nodes and expressing each opcode
+over its operands' results (`Opcode::express`): over `Tensor` it
+is the interpreter, over `Trace` it re-records, and any other
+`Recordable` is a new interpretation of the same spec.
+`Opcode::vjp` is the public name of the rule body, so a scan can
+be written outside the crate with the engine as its oracle.
+
+**JVP.** `J seed`: the directional derivative forward mode
+computes. Not a library feature — dual arithmetic over a
+`Recordable` replayed through the spec; `examples/forward_mode.rs`
+is the worked form, graded bitwise against reverse mode.
+
 **Operation.** A primitive's forward (inherent on `Tensor`) and
 backward (the `Operation` trait over `Recordable`). Rules never
 see the tape or the gradient buffer.
