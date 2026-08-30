@@ -113,7 +113,12 @@ The format is based on [Keep a Changelog], and this project adheres to
   their checkpoint paths, and tying reads the exposed `table`
   symbol. The makemore transformer is the consumer of record:
   migrated, its 5000-step trajectory and sampled names are
-  byte-identical to the hand-rolled form.
+  byte-identical to the hand-rolled form. The GPT-2 and Llama
+  attention loops migrated too — both full-context paths and the
+  GPT-2 decode step — generating byte-identical text; Llama's
+  group-hoisted key transpose moved inside the call, which
+  re-records the O(1) permute view per query head (616 more
+  nodes at TinyLlama scale, no value changed).
 
 - `docs/openings/`, a short series of architectural decisions and
   what they paid for — not principles: AD as a named reading,

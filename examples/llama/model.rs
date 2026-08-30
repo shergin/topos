@@ -26,7 +26,7 @@ use std::marker::PhantomData;
 use topos::checkpoint::named_restore;
 use topos::{
     Element, Module, Parameters, Path, RmsNorm, Segment, Sequential, Symbol, Tape, Tensor, Value,
-    Visitor, concat, named_parameters,
+    Visitor, concat, named_parameters, scaled_dot_product,
 };
 
 use crate::family::Family;
@@ -171,13 +171,13 @@ impl<E: Element> Module<E> for Attention<E> {
         let keys = self.key.express(input);
         let values = self.value.express(input);
 
-        // Each key/value head rotates and transposes once and serves
-        // its whole group of query heads.
+        // Each key/value head rotates once and serves its whole group
+        // of query heads; `scaled_dot_product` records the transpose
+        // per query head, an O(1) view either way.
         let keyed: Vec<Value<'tape, E>> = (0..self.family.key_value_head_count)
             .map(|group| {
                 self.rope
                     .rotate(tape, keys.narrow(1, group * head_dim, head_dim))
-                    .transpose()
             })
             .collect();
 
@@ -187,9 +187,8 @@ impl<E: Element> Module<E> for Attention<E> {
                 let query = self
                     .rope
                     .rotate(tape, queries.narrow(1, head * head_dim, head_dim));
-                let scores = query.matmul(keyed[group]);
-                let weights = (scores * scale.broadcast_like(scores) + mask).softmax(1);
-                weights.matmul(values.narrow(1, group * head_dim, head_dim))
+                let value = values.narrow(1, group * head_dim, head_dim);
+                scaled_dot_product(query, keyed[group], value, mask, scale)
             })
             .collect();
         self.output.express(concat(&heads, 1))

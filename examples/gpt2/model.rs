@@ -26,7 +26,7 @@
 use topos::checkpoint::named_restore;
 use topos::{
     Element, LayerNorm, Linear, Module, Parameters, Path, Segment, Symbol, Tape, Tensor, Value,
-    Visitor, concat, named_parameters,
+    Visitor, concat, named_parameters, scaled_dot_product,
 };
 
 use crate::weights::Weights;
@@ -154,9 +154,7 @@ impl<E: Element> Attention<E> {
                 let query = fused.narrow(1, head * HEAD_DIM, HEAD_DIM);
                 let key = keys.narrow(1, head * HEAD_DIM, HEAD_DIM);
                 let value = values.narrow(1, head * HEAD_DIM, HEAD_DIM);
-                let scores = query.matmul(key.transpose());
-                let weights = (scores * scale.broadcast_like(scores) + mask).softmax(1);
-                weights.matmul(value)
+                scaled_dot_product(query, key, value, mask, scale)
             })
             .collect();
         Decoded {
@@ -178,9 +176,7 @@ impl<E: Element> Module<E> for Attention<E> {
                 let query = fused.narrow(1, head * HEAD_DIM, HEAD_DIM);
                 let key = fused.narrow(1, EMBED_DIM + head * HEAD_DIM, HEAD_DIM);
                 let value = fused.narrow(1, 2 * EMBED_DIM + head * HEAD_DIM, HEAD_DIM);
-                let scores = query.matmul(key.transpose());
-                let weights = (scores * scale.broadcast_like(scores) + mask).softmax(1);
-                weights.matmul(value)
+                scaled_dot_product(query, key, value, mask, scale)
             })
             .collect();
         self.projection.express(concat(&heads, 1))
