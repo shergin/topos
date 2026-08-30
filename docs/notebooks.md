@@ -13,7 +13,7 @@ evcxr_jupyter --install
 First cell:
 
 ```rust
-:dep topos = { version = "0.12", features = ["evcxr"] }
+:dep topos = { version = "0.13", features = ["evcxr"] }
 use topos::*;
 ```
 
@@ -22,7 +22,7 @@ compile cache on — every cell is a real crate:
 
 ```
 :cache 500
-:dep topos = { version = "0.12", features = ["evcxr"] }
+:dep topos = { version = "0.13", features = ["evcxr"] }
 ```
 
 ## Two rules

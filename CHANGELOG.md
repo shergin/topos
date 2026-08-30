@@ -7,92 +7,7 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ## [Unreleased]
 
-### Fixed
-
-- The vocabulary's identity constructors agree between their two
-  interpretations for every element. `Trace::zero_like`/`one_like`
-  recorded `counted` leaves while `Tensor`'s hold `zero`/`one` —
-  the same `from_count` divergence as the scan seeds, one level
-  down and worse: five derivative rules call `one_like`, so for an
-  element where `from_count(1)` is not `one` the recorded
-  gradients themselves would drift from the engine's. `Trace` now
-  records filled leaves of the engine's `zero` and `one`.
-
-- The two reverse scans plant the same seed expressions for every
-  element. `Tape::differentiate` seeded with `counted(shape, 1)`
-  and minted non-ancestor zeros as `counted(shape, 0)` — the
-  size-derived constants — while the engine scan plants `one_like`
-  and `zero_like`; identical for the built-in elements, silently
-  divergent for any element where `from_count` is not `one`/`zero`.
-  Both recorded spellings now use the engine's `one` and `zero`,
-  and the closure contract is pinned off `f64` by a `Bf16` case in
-  the closure suite.
-
-- `Plan::describe` and the live-volume accounting now tell the truth
-  about a fused group's named results. An observed batch-norm mean
-  or variance is written back by the group's action — materialized
-  and readable — so its line reads `kept`, no longer `fused`; and
-  `live_story`/`live_series` count the written-back statistics from
-  the group's root onward instead of omitting them. Observing a
-  named result costs no live volume (the write-back happens either
-  way), which a new build-adaptive test pins along with the labels.
-  The `Plan::patterns` doc no longer claims roots print as `fused`,
-  and a stale intra-doc link in the window pattern points at
-  `Tensor::windowed_product` again.
-
-### Changed
-
-- `Recordable` now spans the whole recordable operation set:
-  `logsumexp` and `log_softmax` join the vocabulary. The two
-  log-domain opcodes earned their seats on max-shifted bits, but
-  no derivative rule happens to call them, so the trait — whose
-  own doc says every member corresponds to something a tape can
-  record — was the opcode set minus two, and no payload-generic
-  algorithm could replay a spec containing them. Their stable
-  forward bodies moved from the op files to inherent `Tensor`
-  methods, where every other forward lives; `Trace` records the
-  nodes. Out-of-tree `Recordable` impls gain two members.
-
-- Kinship has one spelling. The origin-plus-coverage check a
-  carrier makes when it meets a `Symbol` was written out six times
-  — on `Tape`, `Network`, `Run`, `Field`, `Parameters`, and `Plan`
-  — the same one-job-many-spellings shape the identity protocol
-  was. A crate-internal `Kinship` now owns the check: one `locate`
-  with the shared family message and each carrier's own coverage
-  wording, and a `family` half for the slot-grained `Parameters`,
-  whose coverage is the slot lookup. Every panic message is
-  verbatim what it was; purely internal. The carrier-vs-carrier
-  agreements (a parameter table against a network's slots) are a
-  different check and keep their own spellings.
-
-- `Fidelity` gained a third value, `Composed`, and the word stopped
-  meaning two things. `BitIdentical` is now the absolute claim —
-  the reference bits in every build, under either posture — and
-  only the fused reduce-window walk makes it. The fused window
-  product and batch-norm cells are `Composed`: exactly as faithful
-  as the composition they replace, because their interiors consult
-  the same chain, which is why they honor an `Exact` demand — the
-  interior chain declines along with everything else. Admission is
-  unchanged and still one comparison (`Composed` meets both
-  demands, and demands remain the two postures' fidelities), so no
-  election, plan, or bit changes anywhere.
-
-- `Network::forward` — whole-spec evaluation, the proving road — now
-  runs under `Numerics::Exact` by construction: the backend chain
-  declines every task, so its bits are the reference bits, the same
-  in every build and on every platform, and `Run::backward` on such
-  a run differentiates exactly. `BoundEntry::interpret` now honors
-  its entry's declared numerics posture (it previously ran under the
-  ambient default whatever the entry declared), and every
-  interpreter run records the posture it executed under, so
-  `backward` re-enters exactly what the forward ran under. Compiled
-  speed is untouched: plans keep the `Fast` default and the backend
-  chain, and the `throughput` example's training phase moved to an
-  engine-backward plan accordingly. Vision rule 3 and
-  `docs/acceleration.md` now state the anchor precisely, and the
-  new `numerics_tests` welds it: pinned digests of a product, a
-  map, and a log-softmax loss that every feature build and platform
-  must reproduce bit for bit on the exact roads.
+## [0.13.0] - 2026-08-30
 
 ### Added
 
@@ -215,6 +130,93 @@ The format is based on [Keep a Changelog], and this project adheres to
   `tests/notebook_surface.rs` welds that claim — it compiles as
   an external consumer and rebuilds each card's data from the
   public readers.
+
+### Changed
+
+- `Recordable` now spans the whole recordable operation set:
+  `logsumexp` and `log_softmax` join the vocabulary. The two
+  log-domain opcodes earned their seats on max-shifted bits, but
+  no derivative rule happens to call them, so the trait — whose
+  own doc says every member corresponds to something a tape can
+  record — was the opcode set minus two, and no payload-generic
+  algorithm could replay a spec containing them. Their stable
+  forward bodies moved from the op files to inherent `Tensor`
+  methods, where every other forward lives; `Trace` records the
+  nodes. Out-of-tree `Recordable` impls gain two members.
+
+- Kinship has one spelling. The origin-plus-coverage check a
+  carrier makes when it meets a `Symbol` was written out six times
+  — on `Tape`, `Network`, `Run`, `Field`, `Parameters`, and `Plan`
+  — the same one-job-many-spellings shape the identity protocol
+  was. A crate-internal `Kinship` now owns the check: one `locate`
+  with the shared family message and each carrier's own coverage
+  wording, and a `family` half for the slot-grained `Parameters`,
+  whose coverage is the slot lookup. Every panic message is
+  verbatim what it was; purely internal. The carrier-vs-carrier
+  agreements (a parameter table against a network's slots) are a
+  different check and keep their own spellings.
+
+- `Fidelity` gained a third value, `Composed`, and the word stopped
+  meaning two things. `BitIdentical` is now the absolute claim —
+  the reference bits in every build, under either posture — and
+  only the fused reduce-window walk makes it. The fused window
+  product and batch-norm cells are `Composed`: exactly as faithful
+  as the composition they replace, because their interiors consult
+  the same chain, which is why they honor an `Exact` demand — the
+  interior chain declines along with everything else. Admission is
+  unchanged and still one comparison (`Composed` meets both
+  demands, and demands remain the two postures' fidelities), so no
+  election, plan, or bit changes anywhere.
+
+- `Network::forward` — whole-spec evaluation, the proving road — now
+  runs under `Numerics::Exact` by construction: the backend chain
+  declines every task, so its bits are the reference bits, the same
+  in every build and on every platform, and `Run::backward` on such
+  a run differentiates exactly. `BoundEntry::interpret` now honors
+  its entry's declared numerics posture (it previously ran under the
+  ambient default whatever the entry declared), and every
+  interpreter run records the posture it executed under, so
+  `backward` re-enters exactly what the forward ran under. Compiled
+  speed is untouched: plans keep the `Fast` default and the backend
+  chain, and the `throughput` example's training phase moved to an
+  engine-backward plan accordingly. Vision rule 3 and
+  `docs/acceleration.md` now state the anchor precisely, and the
+  new `numerics_tests` welds it: pinned digests of a product, a
+  map, and a log-softmax loss that every feature build and platform
+  must reproduce bit for bit on the exact roads.
+
+### Fixed
+
+- The vocabulary's identity constructors agree between their two
+  interpretations for every element. `Trace::zero_like`/`one_like`
+  recorded `counted` leaves while `Tensor`'s hold `zero`/`one` —
+  the same `from_count` divergence as the scan seeds, one level
+  down and worse: five derivative rules call `one_like`, so for an
+  element where `from_count(1)` is not `one` the recorded
+  gradients themselves would drift from the engine's. `Trace` now
+  records filled leaves of the engine's `zero` and `one`.
+
+- The two reverse scans plant the same seed expressions for every
+  element. `Tape::differentiate` seeded with `counted(shape, 1)`
+  and minted non-ancestor zeros as `counted(shape, 0)` — the
+  size-derived constants — while the engine scan plants `one_like`
+  and `zero_like`; identical for the built-in elements, silently
+  divergent for any element where `from_count` is not `one`/`zero`.
+  Both recorded spellings now use the engine's `one` and `zero`,
+  and the closure contract is pinned off `f64` by a `Bf16` case in
+  the closure suite.
+
+- `Plan::describe` and the live-volume accounting now tell the truth
+  about a fused group's named results. An observed batch-norm mean
+  or variance is written back by the group's action — materialized
+  and readable — so its line reads `kept`, no longer `fused`; and
+  `live_story`/`live_series` count the written-back statistics from
+  the group's root onward instead of omitting them. Observing a
+  named result costs no live volume (the write-back happens either
+  way), which a new build-adaptive test pins along with the labels.
+  The `Plan::patterns` doc no longer claims roots print as `fused`,
+  and a stale intra-doc link in the window pattern points at
+  `Tensor::windowed_product` again.
 
 ## [0.12.0] - 2026-08-25
 
@@ -1379,7 +1381,8 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[Unreleased]: https://github.com/shergin/topos/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/shergin/topos/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/shergin/topos/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/shergin/topos/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/shergin/topos/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/shergin/topos/compare/v0.9.0...v0.10.0
