@@ -18,10 +18,10 @@ That means three commitments:
 - **Every result provable.** The plain interpreter is the
   executable spec; anything faster must match it, bit for bit by
   default. A claim is one assert away from proof.
-- **Built for learning, research, and production.** New ideas
-  plug in at named seams, with the oracle as ground truth. The
-  core stays closed and simple on purpose. Completeness is the
-  point: the stack aims at the whole compiler.
+- **Built for learning and research.** New ideas plug in at
+  named seams, with the oracle as ground truth. The core stays
+  closed and simple on purpose. Completeness is the point: the
+  stack aims at the whole compiler.
 
 A typical compiler rewrites the program until it becomes something
 that can run. Topos does not. The tape is written once; everything
@@ -49,6 +49,25 @@ equivalent has the same standing as a built-in.
 
 Adoption may follow; it is never chased. No benchmark races, no
 coverage races, no plugin bazaar.
+
+## Who it is for
+
+Learners and teachers first. The crate teaches autodiff, and
+what a compiler does with it afterwards, by being small enough
+to read with every stage printable: the spec, its gradient, the
+schedule, and the emitted text are readings of one graph, and
+every claim is one assert from proof.
+
+Systems researchers second. A new element type, AD mode, fusion,
+backend, or emission target plugs in at a named seam and is
+graded against the interpreter, without forking the crate.
+
+Production is an export of that discipline, not a third promise.
+What the stack hands over is a closed, statically shaped function
+with a shipped oracle and a StableHLO boundary, embeddable in a
+Rust process. It is offered where it fits and never chased: there
+is no coverage race with the general frameworks, and the ground
+worth holding is the small, checkable stack.
 
 ## The rules
 

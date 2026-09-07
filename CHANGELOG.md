@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- `docs/vision.md` ranks its audiences. The third commitment now
+  reads "built for learning and research", and a "Who it is for"
+  section says the rest plainly: learners and teachers first,
+  systems researchers second, and production as an export of that
+  discipline, offered where it fits and never chased. The five
+  rules are unchanged.
+
 ## [0.13.0] - 2026-08-30
 
 ### Added
