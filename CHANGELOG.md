@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-09-07
+
 ### Added
 
 - `examples/walkthrough.rs`, the stack read end to end on one
@@ -1421,7 +1423,8 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[Unreleased]: https://github.com/shergin/topos/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/shergin/topos/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/shergin/topos/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/shergin/topos/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/shergin/topos/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/shergin/topos/compare/v0.10.0...v0.11.0
