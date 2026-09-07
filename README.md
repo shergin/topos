@@ -98,6 +98,8 @@ Notebooks: [`docs/notebooks.md`](docs/notebooks.md). API:
 
 [`examples/`](examples/) runs from a scalar chain to a transformer:
 
+- [`walkthrough`](examples/walkthrough.rs) — the whole stack on one
+  graph: spec, gradient, plan, StableHLO, and the runs that must agree
 - [`gradient_descent`](examples/gradient_descent.rs) — one spec, many states
 - [`makemore/`](examples/makemore/) — Karpathy's classroom, through
   facades, compiled plans, and StableHLO

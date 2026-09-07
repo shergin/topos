@@ -12,6 +12,9 @@ Two rustdoc maps, nothing moves:
 - **Model** (`topos::model`) — record, train, checkpoint.
 - **Compiler** (`topos::compiler`) — inspect, lower, emit, extend.
 
+To see every reading below printed for one small graph, run
+`cargo run --example walkthrough`.
+
 ## Recording
 
 **Tape.** The construction phase: an append-only Wengert list.

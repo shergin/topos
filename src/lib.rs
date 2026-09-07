@@ -81,7 +81,9 @@
 //! interpretation proven against [`Run::backward`], an industrial
 //! target as an emission sibling consuming [`Plan`]. The core stays
 //! closed; the table is how the crate refuses a pass manager and
-//! still says yes to research.
+//! still says yes to research. `examples/walkthrough.rs` prints every
+//! row of this table for one small graph: `cargo run --example
+//! walkthrough`.
 //!
 //! # Two surfaces, one crate
 //!

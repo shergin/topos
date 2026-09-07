@@ -7,6 +7,21 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `examples/walkthrough.rs`, the stack read end to end on one
+  graph. A matrix product, a `tanh`, and a scalar loss are recorded
+  once, then printed as the spec, differentiated into more spec
+  (with a plain-language key to the appended nodes), lowered into a
+  plan whose liveness and skipped nodes are explained, emitted as
+  StableHLO, and run three ways: the interpreter, an `Exact` plan
+  asserted bit-identical to it, and the default `Fast` plan, with
+  the recorded gradient asserted equal to the engine scan. Five
+  steps of gradient descent close the loop, and a closing section
+  replays the spec by hand with `Opcode::express` to show the
+  printed IR is executable. The README lists it first, and the
+  terminology and crate docs point at it.
+
 ### Changed
 
 - `docs/vision.md` ranks its audiences. The third commitment now
