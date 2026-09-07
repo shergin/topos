@@ -62,7 +62,7 @@ pub struct Entry {
 }
 
 impl Entry {
-    /// Opens a request over `roots`, the closure sources a run must
+    /// Declares a reading over `roots`, the closure sources a run must
     /// compute; every root is readable after a run.
     pub fn roots(roots: impl IntoIterator<Item = impl Into<Symbol>>) -> Self {
         Self {
@@ -81,10 +81,10 @@ impl Entry {
         self
     }
 
-    /// Entrys runs that answer [`Run::backward`](crate::Run::backward):
+    /// Declares runs that answer [`Run::backward`](crate::Run::backward):
     /// buffers retain what the engine's reverse scan reads — the
     /// retain-all posture, which the graded consumers preferred on
-    /// both axes over freeing or rematerializing mid-run. A request
+    /// both axes over freeing or rematerializing mid-run. An entry
     /// that never calls this compiles a forward-only plan, whose runs
     /// refuse `backward`; [`Plan::can_backward`](crate::Plan::can_backward)
     /// answers which kind a plan is.
@@ -142,7 +142,7 @@ impl<'network, E: Element> BoundEntry<'network, E> {
         self
     }
 
-    /// Requests runs that answer engine `backward`, exactly as
+    /// Declares runs that answer engine `backward`, exactly as
     /// [`Entry::backward()`].
     pub fn backward(mut self) -> Self {
         self.entry = self.entry.backward();

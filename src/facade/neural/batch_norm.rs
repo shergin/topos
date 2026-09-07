@@ -122,7 +122,7 @@ impl<E: Element> BatchNorm<E> {
     ///
     /// Record `mean` and `variance` as per-run inputs and feed the
     /// running estimates maintained during training, so one recorded
-    /// expression serves every generation of the estimates.
+    /// expression serves the estimates as they evolve.
     ///
     /// # Panics
     /// Panics if the values are not allocated on `tape`, `input` is

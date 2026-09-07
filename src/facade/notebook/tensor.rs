@@ -1,9 +1,9 @@
 //! The payload card, for a tensor held on its own.
 //!
 //! A notebook reaches a bare `Tensor` constantly — a batch, a weight
-//! read back out of a generation, a running estimate — so the payload
-//! renderer is reachable from the type directly and not only through
-//! the values that carry it.
+//! read back out of a `Parameters` table, a running estimate — so the
+//! payload renderer is reachable from the type directly and not only
+//! through the values that carry it.
 
 use malevich::Theme;
 

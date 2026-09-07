@@ -51,7 +51,7 @@ impl Numerics {
     /// operation outside any run consults the ambient posture, so
     /// `Numerics::exactly(|| a.matmul(&b))` compares a direct call
     /// against the reference without compiling a plan. Runs keep
-    /// their own posture regardless: a request's numerics override
+    /// their own posture regardless: an entry's numerics override
     /// the ambient one for the whole run.
     pub fn exactly<Output>(body: impl FnOnce() -> Output) -> Output {
         let _scope = NumericsScope::enter(Numerics::Exact);

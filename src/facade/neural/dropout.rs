@@ -57,8 +57,8 @@ impl<E: Element> Module<E> for Dropout<E> {
     ///
     /// # Panics
     /// Panics if `input`'s shape differs from the declared mask
-    /// shape, or if the module's mask does not resolve on `tape`
-    /// generation.
+    /// shape, or if the module's mask does not resolve on `input`'s
+    /// tape.
     fn express<'tape>(&self, input: Value<'tape, E>) -> Value<'tape, E> {
         let tape = input.tape();
         input * tape.resolve(self.mask)

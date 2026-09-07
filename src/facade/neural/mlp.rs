@@ -15,8 +15,8 @@ assert_impl_all!(Mlp<f64>: Send, Sync);
 /// `[batch, 3]` input to a `[batch, 1]` output. Hidden stages apply
 /// the caller's [`Activation`] after their affine transform; the
 /// output stage is affine alone. The contained stages retain
-/// parameter [`Symbol`]s, so the perceptron records in each
-/// compatible generation.
+/// parameter [`Symbol`]s, so the perceptron records on any tape of
+/// its family.
 #[derive(Debug, Clone)]
 pub struct Mlp<E> {
     stages: Vec<Linear<E>>,

@@ -68,7 +68,7 @@ impl<Element: crate::Element + Emittable> Plan<Element> {
     /// `func.func @main` whose arguments are the plan's parameters then
     /// its inputs, both in recording order, and whose results are the
     /// declared results in declared order
-    /// ([`Plan::results`](crate::Plan::results): the request's roots,
+    /// ([`Plan::results`](crate::Plan::results): the entry's roots,
     /// then its observes). Leaves embed as constants.
     ///
     /// One-hot selections cross the boundary as their dense one-hot

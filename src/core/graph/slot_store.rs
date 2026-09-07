@@ -10,8 +10,8 @@ use super::ValueId;
 /// and the [`ValueId`] of the structure node that names that slot.
 /// [`SlotId`] is the row index — assigned only by this type on
 /// [`install`](Self::install) — so loads stay O(1) and bulk steps
-/// (generation `update`, future input bulk APIs) stay O(slots) against
-/// node-indexed buffers via the `nodes` column.
+/// (a training step over every parameter, future input bulk APIs)
+/// stay O(slots) against node-indexed buffers via the `nodes` column.
 ///
 /// Structure is recorded once; these tables turn over independently
 /// (parameter payloads per training step in the caller's

@@ -298,11 +298,16 @@ impl<'tape, E: Element> Value<'tape, E> {
 /// Multi-node formulas are composites and live in `composite.rs`.
 impl<'tape, E: Element> Value<'tape, E> {
     /// Records the matrix product of this value and `rhs` on the same
-    /// network and returns a proxy to it.
+    /// tape and returns a proxy to it.
+    ///
+    /// The trailing two axes contract as the plain product. Any leading
+    /// axes are a batch prefix, required identical on both operands:
+    /// there is no broadcast batching.
     ///
     /// # Panics
-    /// Panics if the operands belong to different tapes, either operand is
-    /// not rank 2, or their inner dimensions differ.
+    /// Panics if the operands belong to different tapes, either operand
+    /// is below rank 2, their ranks or batch axes differ, or their inner
+    /// dimensions differ.
     pub fn matmul(self, rhs: Self) -> Self {
         self.assert_same_tape(&rhs);
         self.apply(Op::matmul(), &[self.id, rhs.id])

@@ -1044,7 +1044,9 @@ impl<Element: Elementary> Tensor<Element> {
         Self::dense(Shape::new([batch, channels, out_height, out_width]), pooled)
     }
 
-    /// Returns the matrix product of two rank-2 tensors.
+    /// Returns the matrix product of two tensors of rank 2 or above:
+    /// the trailing two axes contract, and any leading axes are a
+    /// batch prefix, required identical on both operands.
     ///
     /// Dense operands, including strided views (a transposed operand,
     /// most often), multiply on a slice path that reads their buffers
@@ -1053,8 +1055,9 @@ impl<Element: Elementary> Tensor<Element> {
     /// element in the same order, so their results are bit-identical.
     ///
     /// # Panics
-    /// Panics if either operand is not rank 2, the inner dimensions do not
-    /// agree, or any dimension is empty.
+    /// Panics if either operand is below rank 2, the ranks or batch axes
+    /// differ, the inner dimensions do not agree, or any dimension is
+    /// empty.
     pub fn matmul(&self, rhs: &Self) -> Self {
         let left = self.logical_shape();
         let right = rhs.logical_shape();

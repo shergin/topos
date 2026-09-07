@@ -24,8 +24,9 @@ assert_impl_all!(Run<f64>: Send, Sync);
 ///
 /// Every forward path yields the same `Run`, but the four producers
 /// leave it in genuinely different states; the posture names that
-/// state as one explicit sum, so an impossible combination — remat
-/// recipes on a run that refuses `backward` — cannot be represented.
+/// state as one explicit sum, so an impossible combination — a
+/// forward-only plan run that also claims the buffers `backward`
+/// reads — cannot be represented.
 /// Masked slots hold shape-correct zero placeholders that reads must
 /// never answer with, so `of` and `backward` consult the posture
 /// first.

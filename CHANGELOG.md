@@ -16,6 +16,15 @@ The format is based on [Keep a Changelog], and this project adheres to
   discipline, offered where it fits and never chased. The five
   rules are unchanged.
 
+- Rustdoc caught up with batched matmul and the spec/state split.
+  `Value::matmul` and `Tensor::matmul` describe the batch prefix
+  instead of claiming rank 2. The parameter node, the slot table,
+  the run posture, the notebook payload card, and the dropout, MLP,
+  and batch-norm facades no longer speak of generations,
+  `Network::update`, or rematerialization recipes, and the entry,
+  plan, adjoints, emission, and numerics docs say "entry" where
+  they still said "request": the names 0.12 retired.
+
 ## [0.13.0] - 2026-08-30
 
 ### Added

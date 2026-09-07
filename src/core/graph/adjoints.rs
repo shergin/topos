@@ -8,7 +8,7 @@ use super::Symbol;
 /// symbols because their product exists to be paired — each gradient
 /// with its `wrt` entry for
 /// [`Run::recorded_gradients`](crate::Run::recorded_gradients), and
-/// all of them with the target for a training request's roots.
+/// all of them with the target for a training entry's roots.
 /// Holding the pairs makes misordered pairs unrepresentable: no
 /// consumer rebuilds the pairing by parallel-vector discipline.
 ///

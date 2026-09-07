@@ -49,7 +49,7 @@ impl Fusion<'_> {
 /// The home consumer's kernel table: the patterns a forward run
 /// replaces with payload calls, and the group each replacement reads.
 /// Admission is not decided here — election reads the `Fused`
-/// implementer's coverage column under the request's fidelity — so
+/// implementer's coverage column under the entry's fidelity — so
 /// this table holds only the actions, and it agrees with that column
 /// by test.
 fn fusable(pattern: &Pattern) -> Option<Fusion<'_>> {
@@ -292,7 +292,7 @@ impl<E: Element> Plan<E> {
 
     /// Returns whether run buffers support
     /// [`Run::backward`](crate::Run::backward): true exactly when the
-    /// request asked for engine reverse mode; `describe` prints the
+    /// entry asked for engine reverse mode; `describe` prints the
     /// posture.
     pub fn can_backward(&self) -> bool {
         self.backward
@@ -325,7 +325,7 @@ impl<E: Element> Plan<E> {
     }
 
     /// Returns the declared results in declaration order: the
-    /// request's roots, then its observes, first occurrence kept.
+    /// entry's roots, then its observes, first occurrence kept.
     ///
     /// Result order is declared, never inferred: StableHLO emission
     /// returns exactly these values in exactly this order.
