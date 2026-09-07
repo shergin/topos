@@ -2,6 +2,10 @@
 name = "topos"
 version = "0.13.0"
 edition = "2024"
+# The floor is measured, not implied by the edition: `let` chains
+# (stable since 1.88) are the newest language feature the crate uses,
+# and CI runs the default test gate on exactly this toolchain.
+rust-version = "1.88"
 description = "An autodiff compiler stack in Rust."
 readme = "README.md"
 repository = "https://github.com/shergin/topos"

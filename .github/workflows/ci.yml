@@ -37,6 +37,18 @@ jobs:
       # this keeps the stubs honest.
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
+  # The declared floor is a contract, so it is tested as one: the
+  # default gate on exactly the `rust-version` toolchain. Backend
+  # features may need newer toolchains and are not part of the floor.
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --lib --tests --examples
+      - run: cargo test --doc
+
   # The Apple backends are real only on macOS; this job runs the
   # accelerate and metal grids, determinism, end-to-end training,
   # and the triple-feature chain order on Apple hardware. The

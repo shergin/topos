@@ -80,6 +80,8 @@ to inspect and emit.
 cargo add topos
 ```
 
+Rust 1.88 or newer.
+
 Write networks, losses, optimizers, and element types against the
 public surface. A hand-rolled layer behaves identically to a
 facade; a custom optimizer has the same standing as Adam. The

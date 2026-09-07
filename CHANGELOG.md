@@ -25,6 +25,13 @@ The format is based on [Keep a Changelog], and this project adheres to
   plan, adjoints, emission, and numerics docs say "entry" where
   they still said "request": the names 0.12 retired.
 
+- The crate declares its minimum supported Rust version, 1.88: the
+  release that stabilized `let` chains in edition 2024, the newest
+  language feature the crate uses. `rust-version` makes Cargo
+  refuse an older toolchain at resolve time instead of mid-build, a
+  new `msrv` CI job runs the default test gate on exactly that
+  toolchain, and the README says the floor in one line.
+
 ## [0.13.0] - 2026-08-30
 
 ### Added
