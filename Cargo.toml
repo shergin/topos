@@ -9,6 +9,7 @@ rust-version = "1.88"
 description = "An autodiff compiler stack in Rust."
 readme = "README.md"
 repository = "https://github.com/shergin/topos"
+homepage = "https://shergin.github.io/topos/"
 documentation = "https://docs.rs/topos"
 license = "MIT OR Apache-2.0"
 keywords = ["autograd", "autodiff", "backpropagation", "machine-learning", "educational"]
@@ -17,7 +18,7 @@ categories = ["science", "mathematics"]
 # The logo is repository furniture, not something a dependent
 # compiles against, and as an already-compressed PNG it was about
 # half the published download.
-exclude = ["topos.png"]
+exclude = ["topos.png", "site/"]
 
 # The default libtest bench harness would intercept criterion's CLI
 # flags (such as `--save-baseline`), so benchmarks run only through the
@@ -27,6 +28,17 @@ exclude = ["topos.png"]
 # workload. An explicit `--benches` (or `--all-targets`) still forces
 # them in, so CI names its test targets instead; clippy's
 # `--all-targets` remains the benchmarks' compile gate.
+# The site behind shergin.github.io/topos and the wasm the playground runs
+# on live in their own workspace members, so their dependencies (a markdown
+# renderer, wasm-bindgen) never touch the published crate or its CI. Build
+# them explicitly: `cargo run -p topos-site`, `./site/build.sh`.
+[workspace]
+members = ["site", "site/plates", "site/wasm"]
+# Keep the default build/test/lint set to topos alone; a member is built
+# with `-p`.
+default-members = ["."]
+resolver = "3"
+
 [lib]
 bench = false
 

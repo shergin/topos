@@ -1,0 +1,41 @@
+loaded 32033 names, 228146 samples
+recorded the chain rule: 37 forward nodes + 84 gradient nodes
+step 0: minibatch loss = 3.4845 (a uniform model costs ln 27 ~ 3.30)
+steps    0.. 500: mean minibatch loss = 2.5801
+steps  500..1000: mean minibatch loss = 2.4296
+steps 1000..1500: mean minibatch loss = 2.3882
+steps 1500..2000: mean minibatch loss = 2.3544
+steps 2000..2500: mean minibatch loss = 2.3312
+steps 2500..3000: mean minibatch loss = 2.3320
+steps 3000..3500: mean minibatch loss = 2.3033
+steps 3500..4000: mean minibatch loss = 2.2815
+steps 4000..4500: mean minibatch loss = 2.2517
+steps 4500..5000: mean minibatch loss = 2.2450
+trained 5000 steps in 2.168s, one plan run per step, no backward pass
+                             compiled mlp training
+                 ── minibatch  ── rolling mean  ── bigram limit
+  3.5 ┤▌
+      │▌
+  3.0 ┤█▖
+l     │██▄▄▟    ▖ ▖  ▗ ▖ ▗                        ▗   ▗
+o     │▐███████▄▙▟▙█▙█▖▌▟█▄▖▟▟█▄▄▐▗▄▟▟▄ ▄▟ ▐▙▄▗▗▖▐▟▟▄▗▟▖ ▙▖▟▗ ▄▗ ▗▖▖   ▖▗▗▗  ▙
+s 2.5 ┤▟████████████████████████████████████████▙███████▙█▙█████████▙███▟▟▟███▙█
+s     │ ▐▛▀▜████████████████████████████████████████████████████████████████████
+      │     ▀▘▌▝▜▜▛▜▛█▜█▀███▜██▜████████████████████████████████████████████████
+  2.0 ┤             ▘  ▀  ▘▜  ▀  ▘  ▝▘ ▜ ▐▝  ▘ ▌ ▘  ▜▝▝▘▀▜▘▌▀▘▜ █▛▀▜▌█▘▀▜▛█▛▀▀▛▜
+      │                    ▝                                    ▝  ▝     ▘▘
+  1.5 ┤
+      └┬──────┬──────┬───────┬──────┬──────┬──────┬───────┬──────┬──────┬──────┬
+       0     500   1000    1500   2000   2500   3000    3500   4000   4500  5000
+                                         step
+sampled names:
+  haxie
+  jael
+  yutthoniel
+  fayvahmay
+  hark
+  vainre
+  alissin
+  aliah
+  keliscearoyuc
+  keny

@@ -1,0 +1,18 @@
+[package]
+name = "topos-playground"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+description = "The wasm behind the playground on shergin.github.io/topos: a tape language, read six ways in the browser"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+topos = { path = "../.." }
+topos-plates = { path = "../plates" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wasm-bindgen = "0.2"

@@ -15,6 +15,11 @@ way of reading the same spec. Fusion is an offer, not a rewrite.
 Emission writes the plan as text for an industrial backend — a
 sibling of `describe`, not a second compiler.
 
+The site at <https://shergin.github.io/topos/> reads the whole stack
+with every plate produced by the crate: the spec, its derivative, a
+plan, the StableHLO, a live playground, and every example with its
+output.
+
 The design is in [`docs/vision.md`](docs/vision.md). Constraints
 it assumes live in [`docs/principles/`](docs/principles/).
 Decisions and what they opened live in

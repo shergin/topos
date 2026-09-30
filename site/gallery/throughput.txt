@@ -1,0 +1,10 @@
+Accelerate: the backend's cargo feature is off in this build
+Metal: the backend's cargo feature is off in this build
+Cuda: the backend's cargo feature is off in this build
+Simd: the backend's cargo feature is off in this build
+Fused: ready
+StableHlo: ready
+raw product 2048 x 2048: 23.5 GFLOP/s
+training step, batch 1024, 1024 -> 2048 -> 512: 4.110 s/step, 4.7 GFLOP/s of matrix products
+dispatch: Gemm F32 x6: reference
+dispatch: Map F32 x1: reference

@@ -1,0 +1,4 @@
+loaded the checkpoint in 8.6s
+recorded 16722 nodes and compiled the plan in 0.0s
+Once upon a time, and what's the most popular toy? What's the most played video game for generations? What
+generated 24 tokens on the tape engine in 34.9s (1452 ms/token)

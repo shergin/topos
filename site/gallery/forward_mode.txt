@@ -1,0 +1,3 @@
+eager and recorded jvp agree bitwise: -0.007744228143246899
+forward slope equals <gradient, seed> bitwise: -3
+hessian-vector product agrees across modes: [0.75, -1.5, -4.5]

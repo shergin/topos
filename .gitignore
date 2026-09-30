@@ -5,3 +5,6 @@
 examples/mnist/data/
 examples/cifar10/data/
 examples/gpt2/data/
+
+# The generated site; the pages workflow builds it from site/.
+/site/dist

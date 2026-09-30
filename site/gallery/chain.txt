@@ -1,0 +1,5 @@
+allocated 3 leaves
+chained -((a + b) * c) + a * c as Value { id: ValueId(7) }
+the tape now holds 8 values
+forward: expression = -12
+gradients: d/da = 0, d/db = -4, d/dc = -3

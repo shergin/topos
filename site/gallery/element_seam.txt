@@ -1,0 +1,2 @@
+gemm hook consulted 1 times; product matches the reference bit for bit
+trained w = 2.000000 on the audited element (target 2)

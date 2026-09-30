@@ -1,0 +1,41 @@
+loaded 32033 names, 228146 samples
+step 0: minibatch loss = 3.6266 (a uniform model costs ln 27 ~ 3.30)
+steps    0.. 500: mean minibatch loss = 2.5976
+steps  500..1000: mean minibatch loss = 2.4081
+steps 1000..1500: mean minibatch loss = 2.3733
+steps 1500..2000: mean minibatch loss = 2.3443
+steps 2000..2500: mean minibatch loss = 2.3252
+steps 2500..3000: mean minibatch loss = 2.3262
+steps 3000..3500: mean minibatch loss = 2.3039
+steps 3500..4000: mean minibatch loss = 2.2845
+steps 4000..4500: mean minibatch loss = 2.2578
+steps 4500..5000: mean minibatch loss = 2.2485
+trained 5000 steps in 2.717s
+the tape held 66 nodes through every step
+                            mlp + batchnorm training
+                 ── minibatch  ── rolling mean  ── bigram limit
+  3.5 ┤▌
+      │▌
+      │█
+l 3.0 ┤█▙
+o     │▜█▟▄▐    ▖ ▖  ▗ ▖ ▗
+s     │▐████▙██▄▙▄▌█▄▟▖▌▐█▄ ▟▟▄▄▄▐▗▗▄▐▄  ▟ ▐▙▗▐▗ ▗▐▄▐ ▐▖ ▄ ▐▗ ▖▗ ▗   ▖ ▖▗▗▗  ▄
+s 2.5 ┤▄███████████████████████████████▙██▙███▟█▙███████▙█▙████▟▟▟██▙█▄█▟▟▟▟▟█▙█
+      │ ▐▛██████████████████████████████████████████████████████████████████████
+      │    ▀██▛█████████████▜███████████████████████████████████████████████████
+  2.0 ┤         ▝▝▌▝▌▀▝▜ ▐▘█▝▝▛▝▀▘▝▀▜▛▀▜▀▜▜▀ ▀▀▌▀▀▘▝█▜▜▛█▜▛▛▜▛█▛██▜█▛█▛█████▀█▛█
+      │                    ▝  ▘                ▘    ▝▝  ▝  ▘  ▝ ▜  ▝▘▀  ▝▌▌    ▝
+      └┬──────┬──────┬───────┬──────┬──────┬──────┬───────┬──────┬──────┬──────┬
+       0     500   1000    1500   2000   2500   3000    3500   4000   4500  5000
+                                         step
+sampled names (running statistics fed per draw):
+  havigah
+  alaysriir
+  lor
+  fayvaithu
+  hani
+  vainph
+  alisshel
+  deilendelrigennyse
+  keny
+  gkinble

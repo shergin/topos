@@ -1,0 +1,4 @@
+d/dw (w*0.25 - 1.5)^2 at w = 0.5: -0.6875 on all three routes
+d/dw (w*1.25 - 0.5)^2 at w = -0.75: -3.59375 on all three routes
+d/dw (w*-0.5 - -1.25)^2 at w = 2: -0.25 on all three routes
+forward mode by payload, reverse mode by scan: one answer

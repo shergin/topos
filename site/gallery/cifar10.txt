@@ -1,0 +1,33 @@
+loaded 50000 training and 10000 test images
+recorded 190 nodes for both expressions
+probe plan: forward; 94 of 190 nodes evaluated, 1 readable
+probe fused 6 groups, 51 nodes replaced
+probe live volume: peak 24609386 elements at node 115, retain-all 106079778
+step 0: minibatch loss = 6.9194 (a uniform model costs ln 10 ~ 2.30)
+step  250: minibatch loss = 1.6048, probe accuracy = 41.0%
+step  500: minibatch loss = 1.4293, probe accuracy = 48.4%
+step  750: minibatch loss = 1.1636, probe accuracy = 55.0%
+step 1000: minibatch loss = 1.2969, probe accuracy = 57.8%
+step 1250: minibatch loss = 0.9808, probe accuracy = 55.0%
+step 1500: minibatch loss = 1.3797, probe accuracy = 60.4%
+step 1750: minibatch loss = 1.0720, probe accuracy = 63.8%
+step 2000: minibatch loss = 1.0377, probe accuracy = 65.4%
+trained 2000 steps in 764.895s (382.4 ms/step)
+test accuracy: 65.38% over 10000 images (chance is 10%)
+the tape held 190 nodes through every step
+                           cifar-10 convnet training
+                ── minibatch  ── rolling mean  ── uniform start
+  12 ┤▌
+     │▌
+   9 ┤▌
+l    │▌
+o    │▌
+s  6 ┤▌
+s    │▙
+     │█
+   3 ┤██▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+     │ ▀▀▀▀▀▀▀▛███████████████████▙▙▙▙█▙▄██▙▄▙▙█▙▟▄▙▄▙▙▟▟▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+   0 ┤                                     ▘      ▘   ▝▝ ▀▀ ▘▀▀▀▀▀▀▀▀▘▀▀▀▀▀▀▀▀▝▘
+     └┬────────┬────────┬────────┬─────────┬────────┬────────┬────────┬────────┬
+      0       250      500      750      1000     1250     1500     1750    2000
+                                         step

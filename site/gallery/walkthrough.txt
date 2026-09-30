@@ -1,0 +1,152 @@
+
+== 1. the spec ==
+
+One line per recorded operation: its number, its opcode, the numbers of
+the operands it reads, and its shape. Shapes were checked as each line
+was written; a mismatch panics at the expression that records it.
+
+   0  Parameter                         [2, 2]
+   1  Input                             [1, 2]
+   2  MatMul         1, 0               [1, 2]
+   3  Tanh           2                  [1, 2]
+   4  Mul            3, 3               [1, 2]
+   5  Sum            4                  []
+tape: 6 nodes, 1 parameter, 1 input
+
+== 2. the derivative, as more spec ==
+
+`differentiate` appended 23 nodes to the same tape; nothing above them changed.
+The last one is d loss / d weights.
+
+   6  Leaf                              []
+   7  Broadcast      6  shape=[1, 2]    [1, 2]
+   8  Leaf                              [1, 2]
+   9  Add            8, 7               [1, 2]
+  10  Mul            9, 3               [1, 2]
+  11  Mul            9, 3               [1, 2]
+  12  Leaf                              [1, 2]
+  13  Add            12, 10             [1, 2]
+  14  Add            13, 11             [1, 2]
+  15  Leaf                              [1, 2]
+  16  Mul            3, 3               [1, 2]
+  17  Sub            15, 16             [1, 2]
+  18  Mul            14, 17             [1, 2]
+  19  Leaf                              [1, 2]
+  20  Add            19, 18             [1, 2]
+  21  Permute        0  order=[1, 0]    [2, 2]
+  22  MatMul         20, 21             [1, 2]
+  23  Permute        1  order=[1, 0]    [2, 1]
+  24  MatMul         23, 20             [2, 2]
+  25  Leaf                              [1, 2]
+  26  Add            25, 22             [1, 2]
+  27  Leaf                              [2, 2]
+  28  Add            27, 24             [2, 2]
+tape: 29 nodes, 1 parameter, 1 input
+
+How to read them:
+  - a Leaf holding one is the seed, spread over the shape the sum reduced
+  - `hidden * hidden` gets the product rule once per operand
+  - `1 - hidden * hidden` is the derivative of tanh
+  - the matmul rule pushes the result back as two transposed products,
+    one per operand
+  - each Leaf-then-Add pair starts a gradient at zero and adds one
+    consumer's share; that is how a value used twice collects both
+
+== 3. the plan ==
+
+The same operations, scheduled. Each line also says what happens to the
+value once computed: kept for reading, or freed after its last use. The
+last line is the plan's own memory accounting: the most elements alive at
+once, against the total if nothing were ever freed.
+
+   0  Parameter                         [2, 2]       freed after 2
+   1  Input                             [1, 2]       freed after 23
+   2  MatMul         1, 0               [1, 2]       freed after 3
+   3  Tanh           2                  [1, 2]       kept
+   4  Mul            3, 3               [1, 2]       freed after 5
+   5  Sum            4                  []           kept
+   6  Leaf                              []           freed after 7
+   7  Broadcast      6  shape=[1, 2]    [1, 2]       freed after 9
+   8  Leaf                              [1, 2]       freed after 9
+   9  Add            8, 7               [1, 2]       freed after 11
+  10  Mul            9, 3               [1, 2]       freed after 13
+  11  Mul            9, 3               [1, 2]       freed after 14
+  12  Leaf                              [1, 2]       freed after 13
+  13  Add            12, 10             [1, 2]       freed after 14
+  14  Add            13, 11             [1, 2]       freed after 18
+  15  Leaf                              [1, 2]       freed after 17
+  16  Mul            3, 3               [1, 2]       freed after 17
+  17  Sub            15, 16             [1, 2]       freed after 18
+  18  Mul            14, 17             [1, 2]       freed after 20
+  19  Leaf                              [1, 2]       freed after 20
+  20  Add            19, 18             [1, 2]       freed after 24
+  23  Permute        1  order=[1, 0]    [2, 1]       freed after 24
+  24  MatMul         23, 20             [2, 2]       freed after 28
+  27  Leaf                              [2, 2]       freed after 28
+  28  Add            27, 24             [2, 2]       kept
+plan: forward; 25 of 29 nodes evaluated, 3 readable
+live volume: peak 15 elements at node 28, retain-all 56
+
+Not scheduled: nodes 21, 22, 25, 26. The rules also produced the gradient with
+respect to the input; nobody declared it, so it is never computed.
+Elected patterns: none. Fusion is an offer the catalog makes for shapes it
+recognizes (windows, batch-norm); a dense layer this small runs as primitives.
+
+== 4. the plan as StableHLO ==
+
+module @topos {
+  func.func @main(%arg0: tensor<2x2xf32>, %arg1: tensor<1x2xf32>) -> (tensor<f32>, tensor<2x2xf32>, tensor<1x2xf32>) {
+    %v2 = stablehlo.dot_general %arg1, %arg0, contracting_dims = [1] x [0] : (tensor<1x2xf32>, tensor<2x2xf32>) -> tensor<1x2xf32>
+    %v3 = stablehlo.tanh %v2 : tensor<1x2xf32>
+    %v4 = stablehlo.multiply %v3, %v3 : tensor<1x2xf32>
+    %v5_seed = stablehlo.constant dense<0.0> : tensor<f32>
+    %v5 = stablehlo.reduce(%v4 init: %v5_seed) applies stablehlo.add across dimensions = [0, 1] : (tensor<1x2xf32>, tensor<f32>) -> tensor<f32>
+    %v6 = stablehlo.constant dense<1.0> : tensor<f32>
+    %v7 = stablehlo.broadcast_in_dim %v6, dims = [] : (tensor<f32>) -> tensor<1x2xf32>
+    %v8 = stablehlo.constant dense<0.0> : tensor<1x2xf32>
+    %v9 = stablehlo.add %v8, %v7 : tensor<1x2xf32>
+    %v10 = stablehlo.multiply %v9, %v3 : tensor<1x2xf32>
+    %v11 = stablehlo.multiply %v9, %v3 : tensor<1x2xf32>
+    %v12 = stablehlo.constant dense<0.0> : tensor<1x2xf32>
+    %v13 = stablehlo.add %v12, %v10 : tensor<1x2xf32>
+    %v14 = stablehlo.add %v13, %v11 : tensor<1x2xf32>
+    %v15 = stablehlo.constant dense<1.0> : tensor<1x2xf32>
+    %v16 = stablehlo.multiply %v3, %v3 : tensor<1x2xf32>
+    %v17 = stablehlo.subtract %v15, %v16 : tensor<1x2xf32>
+    %v18 = stablehlo.multiply %v14, %v17 : tensor<1x2xf32>
+    %v19 = stablehlo.constant dense<0.0> : tensor<1x2xf32>
+    %v20 = stablehlo.add %v19, %v18 : tensor<1x2xf32>
+    %v23 = stablehlo.transpose %arg1, dims = [1, 0] : (tensor<1x2xf32>) -> tensor<2x1xf32>
+    %v24 = stablehlo.dot_general %v23, %v20, contracting_dims = [1] x [0] : (tensor<2x1xf32>, tensor<1x2xf32>) -> tensor<2x2xf32>
+    %v27 = stablehlo.constant dense<0.0> : tensor<2x2xf32>
+    %v28 = stablehlo.add %v27, %v24 : tensor<2x2xf32>
+    return %v5, %v28, %v3 : tensor<f32>, tensor<2x2xf32>, tensor<1x2xf32>
+  }
+}
+
+The function takes the parameter and the input, in recording order, and
+returns exactly what the entry declared, in that order: the loss, the
+gradient, then `hidden`.
+
+== 5. two runs that must agree ==
+
+loss:
+  interpreter        0.83054614
+  exact plan         0.83054614
+  fast plan          0.83054614
+d loss / d weights:
+  engine scan        [[0.6397, 0.75025934], [1.2794, 1.5005187]]
+  recorded gradient  [[0.6397, 0.75025934], [1.2794, 1.5005187]]
+hidden, declared readable: [[0.7615942, 0.5005202]]
+
+exact plan == interpreter, bit for bit: asserted
+recorded gradient == engine scan, bit for bit: asserted
+fast plan == exact plan: yes; no backend claimed any of this graph in this build
+
+loss before training, then after each of five steps of size 0.05:
+  0.8305, 0.5910, 0.3760, 0.2014, 0.0826, 0.0260
+
+== 6. the spec is executable ==
+
+Walking all 29 lines by hand, outside the crate, reproduces the interpreter's
+loss 0.83054614 bit for bit.

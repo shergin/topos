@@ -7,6 +7,27 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- The documentation site, <https://shergin.github.io/topos/>, generated
+  by the `topos-site` workspace member in `site/` and deployed by
+  `.github/workflows/pages.yml`. Every plate on it is program output:
+  a block of Rust in `site/figures/` records a graph and asks the crate
+  for one reading of it -- the spec dump with every operand reference
+  linked, the derivative shaded below a divider, a plan with its
+  liveness, the StableHLO, a run's values, a training curve, a
+  notebook card, or the graph drawn as a picture -- and the code shown
+  beside the plate is the code that ran. The site-authored chapters
+  (getting started, the walkthrough, recording, differentiation,
+  training, entries and plans, emission, the neural tier, the element
+  seam) live beside the repository's own docs, which the site renders
+  with plates inserted under their headings. The gallery shows every
+  example with what it printed into a pipe, recorded by
+  `site/record.sh` into `site/gallery/`. The playground compiles the
+  crate to WebAssembly (`site/wasm/`) and reads a small tape language
+  six ways, live. `site/plates/` holds the pieces the generator and
+  the playground share.
+
 ## [0.13.1] - 2026-09-07
 
 ### Added

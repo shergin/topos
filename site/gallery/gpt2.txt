@@ -1,0 +1,7 @@
+loaded the checkpoint in 0.3s
+recorded 5559 nodes and compiled the decode plan in 0.0s
+prefilled 5 tokens in 0.12s
+Once upon a time, everyone seemed to be doing it for business, and then it happened.
+
+In the decades before the Internet, most businesses were all about their business. The companies who had a business were the
+generated 40 tokens on the tape engine in 0.7s (18 ms/token)
