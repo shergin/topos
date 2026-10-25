@@ -95,6 +95,10 @@ impl<E: Element> Module<E> for Gelu {
     }
 }
 
+/// One block's key and value caches, in that order: what the decode
+/// step takes per block and hands back with the step's rows appended.
+pub type CachePair<'tape, E> = (Value<'tape, E>, Value<'tape, E>);
+
 /// One decode step's results: the output row and the caches with the
 /// step's key and value rows appended.
 struct Decoded<'tape, E> {
@@ -398,10 +402,10 @@ impl<E: Element> Gpt2<E> {
         &self,
         tape: &'tape Tape<E>,
         embedded: Value<'tape, E>,
-        caches: &[(Value<'tape, E>, Value<'tape, E>)],
+        caches: &[CachePair<'tape, E>],
         position: Value<'tape, E>,
         mask: Value<'tape, E>,
-    ) -> (Value<'tape, E>, Vec<(Value<'tape, E>, Value<'tape, E>)>) {
+    ) -> (Value<'tape, E>, Vec<CachePair<'tape, E>>) {
         assert_eq!(caches.len(), self.blocks.len(), "one cache pair per block");
         let positions = tape.resolve(self.positions);
         let row = positions.narrow(0, 0, CONTEXT_LEN).gather(position);

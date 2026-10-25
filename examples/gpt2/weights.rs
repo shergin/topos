@@ -102,10 +102,8 @@ impl Weights {
         for (name, entry) in header.entries {
             assert_eq!(entry.dtype, "F32", "the 124M release is f32");
             let [start, end] = entry.data_offsets;
-            let elements: Vec<f32> = data[start..end]
-                .chunks_exact(4)
-                .map(|chunk| f32::from_le_bytes(chunk.try_into().expect("four bytes")))
-                .collect();
+            let (words, _) = data[start..end].as_chunks::<4>();
+            let elements: Vec<f32> = words.iter().map(|&word| f32::from_le_bytes(word)).collect();
             tensors.insert(name, Tensor::new(entry.shape, elements));
         }
         Self { tensors }

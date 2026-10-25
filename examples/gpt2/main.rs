@@ -282,10 +282,8 @@ impl XlaServer {
         self.responses
             .read_exact(&mut response)
             .expect("the server answers; see its standard error");
-        response
-            .chunks_exact(4)
-            .map(|chunk| f32::from_le_bytes(chunk.try_into().expect("four bytes")))
-            .collect()
+        let (words, _) = response.as_chunks::<4>();
+        words.iter().map(|&word| f32::from_le_bytes(word)).collect()
     }
 }
 

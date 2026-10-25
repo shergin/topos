@@ -19,6 +19,10 @@ mod batch_norm;
 mod candidates;
 mod catalog;
 mod kind;
+// The module convention names each file after its main concept, and this
+// module's main concept is the `Pattern` enum itself; the inception is
+// deliberate.
+#[allow(clippy::module_inception)]
 mod pattern;
 mod reduce_window;
 mod view;

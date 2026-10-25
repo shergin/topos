@@ -84,7 +84,8 @@ fn parse_into(split: &mut Split, name: &str) {
     let bytes =
         fs::read(&path).unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
     assert_eq!(bytes.len() % (PIXELS + 1), 0, "truncated batch {name}");
-    for record in bytes.chunks_exact(PIXELS + 1) {
+    let (records, _) = bytes.as_chunks::<{ PIXELS + 1 }>();
+    for record in records {
         split.labels.push(record[0] as usize);
         for (position, &byte) in record[1..].iter().enumerate() {
             let channel = position / (32 * 32);

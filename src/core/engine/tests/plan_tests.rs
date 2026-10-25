@@ -920,8 +920,8 @@ fn decode_carry_matches_the_full_context_plan_bitwise() {
         .collect();
     for step in 0..CAPACITY {
         let mut elements = Vec::new();
-        for at in 0..CAPACITY {
-            elements.extend(if at <= step { &rows[at] } else { &garbage });
+        for (at, row) in rows.iter().enumerate() {
+            elements.extend(if at <= step { row } else { &garbage });
         }
         let full_run = full_plan.forward(
             &parameters,

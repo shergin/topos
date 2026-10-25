@@ -14,6 +14,15 @@ use super::{Kinship, Node, Origin, Parameters, SlotStore, Structure, Symbol, Tap
 // is enough to catch that.
 assert_impl_all!(Network<f64>: Send, Sync);
 
+/// The recorded columns and stores a network hands back when it
+/// reopens: node structure, parameter initials, and input defaults,
+/// in that order.
+type Stores<E> = (
+    Structure<Tensor<E>>,
+    SlotStore<Tensor<E>>,
+    SlotStore<Tensor<E>>,
+);
+
 /// The sealed phase of a recording: an immutable computation-graph
 /// spec.
 ///
@@ -71,13 +80,7 @@ impl<E: Element> Network<E> {
 
     /// Hands the stores back for [`Tape::reopen`], unsharing the input
     /// defaults if a plan still holds them.
-    pub(super) fn into_stores(
-        self,
-    ) -> (
-        Structure<Tensor<E>>,
-        SlotStore<Tensor<E>>,
-        SlotStore<Tensor<E>>,
-    ) {
+    pub(super) fn into_stores(self) -> Stores<E> {
         (
             self.structure,
             self.initials,

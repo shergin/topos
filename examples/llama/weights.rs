@@ -135,15 +135,14 @@ impl Weights {
 /// elements.
 fn widened(dtype: &str, bytes: &[u8]) -> Vec<f32> {
     let halves = || {
-        bytes
-            .chunks_exact(2)
-            .map(|chunk| u16::from_le_bytes(chunk.try_into().expect("two bytes")))
+        let (pairs, _) = bytes.as_chunks::<2>();
+        pairs.iter().map(|&pair| u16::from_le_bytes(pair))
     };
     match dtype {
-        "F32" => bytes
-            .chunks_exact(4)
-            .map(|chunk| f32::from_le_bytes(chunk.try_into().expect("four bytes")))
-            .collect(),
+        "F32" => {
+            let (words, _) = bytes.as_chunks::<4>();
+            words.iter().map(|&word| f32::from_le_bytes(word)).collect()
+        }
         // A bf16 value is an f32 with the low sixteen mantissa bits
         // dropped, so widening is one shift.
         "BF16" => halves()

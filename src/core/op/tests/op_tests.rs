@@ -97,9 +97,9 @@ fn read_contracts_fit_the_liveness_width() {
             "{} outgrew the `Reads::operands` width; widen it",
             op.opcode().name()
         );
-        for position in op.arity()..reads.operands.len() {
+        for (position, &read) in reads.operands.iter().enumerate().skip(op.arity()) {
             assert!(
-                !reads.operands[position],
+                !read,
                 "{} declares a read at position {position}, past its arity",
                 op.opcode().name()
             );
