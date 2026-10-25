@@ -24,8 +24,10 @@ The format is based on [Keep a Changelog], and this project adheres to
   `NewtonSchulz::orthogonalize` is public, so a hand-rolled Muon is
   a few lines of table algebra. The momentum table is
   parameter-aligned and every step is pure payload arithmetic, so
-  identical runs are bitwise identical. The training chapter's
-  optimizer plate runs it beside SGD and Adam on one recorded graph.
+  identical runs are bitwise identical. The training chapter runs
+  it beside SGD and Adam on the optimizer plate and explains the
+  orthogonalized step in a section of its own, with a plate of the
+  Newton-Schulz iteration at work and one of the AdamW pairing.
 - The documentation site, <https://shergin.github.io/topos/>, generated
   by the `topos-site` workspace member in `site/` and deployed by
   `.github/workflows/pages.yml`. Every plate on it is program output:

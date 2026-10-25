@@ -43,6 +43,18 @@ An `Optimizer` is an open trait: gradients and parameters in, next parameters ou
 
 Hyperparameters are caller-owned and visible at the call site: `Adam::new` takes its betas and epsilon as payloads you write, `NewtonSchulz::new` takes its polynomial the same way, and the learning rate stays an argument of every step. A facade never chooses a float constant.
 
+## Muon orthogonalizes the step
+
+A weight matrix stretches its input more along some directions than others, and so does its gradient: a few directions carry most of the signal, and under a plain step the rest barely move. `Muon` ([Jordan et al., 2024](https://kellerjordan.github.io/posts/muon/)) rewrites the step so every direction moves by about the same amount. It keeps a momentum table, as SGD with momentum does, then replaces each matrix's update with the nearest matrix whose stretch factors, its singular values, are all one: the same directions, equalized. `NewtonSchulz` computes that replacement with a handful of matrix products. Divide by the Frobenius norm, then repeat `X = a X + (b A + c A A) X` with `A = X Xᵀ`, and every singular value is pushed toward one while the directions stay where they were.
+
+{{figure train_muon_orthogonalize}}
+
+The polynomial is the caller's. The reference quintic `(3.4445, -4.7750, 2.0315)` over five iterations is tuned for speed and lands the values in a band around one rather than on it; the classical cubic `(1.5, -0.5, 0)` converges exactly given more iterations. Either way the step's size no longer depends on how large the gradient was, only on the learning rate and the matrix's shape: a tall matrix's update is scaled by the square root of its aspect ratio, so each of its rows moves as far as a square matrix's would.
+
+Muon is for the hidden matrices. Biases and norm gains have no matrix to orthogonalize and take the plain momentum step; embeddings and output heads are matrices, but the reference practice hands them to AdamW. In topos that pairing is caller-owned table algebra. `Muon::step_where` takes a predicate for which parameters are orthogonalized, each optimizer steps the whole table at its own rate, and `Parameters::step_each` picks each parameter's next payload by symbol.
+
+{{figure train_muon_pairing}}
+
 ## Feeds are the data
 
 Input shapes are fixed at record time, and the batch arrives as a feed. A graph recorded over a `[2, 2]` input trains on any number of two-sample minibatches without ever growing the tape — and rasterizes its learned surface through the very same two-row expression afterwards, two grid cells per run.
