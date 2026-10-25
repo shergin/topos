@@ -194,7 +194,8 @@ never payloads.
 
 **Optimizer.** An open trait: gradients and parameters in,
 next parameters out. State is more `Parameters` tables. `Sgd`,
-`Adam`, `AdamW`. Learning rate is a per-step argument.
+`Adam`, `AdamW`, and `Muon`, whose matrix updates pass through
+`NewtonSchulz`. Learning rate is a per-step argument.
 
 **Activation.** `Tanh` and `Relu`. Anything else is composition
 on the public surface (GELU in the GPT-2 example).

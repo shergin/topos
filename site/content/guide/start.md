@@ -116,7 +116,7 @@ Both readings, and four more, are walked in order on [the next page](../../walkt
 | name things after the seal | `Symbol`, `Value::symbol`, `Tape::resolve` |
 | run it | `Network::forward` (the exact oracle), `BoundEntry::interpret` |
 | a gradient | `Run::backward` (engine scan), `Tape::differentiate` (as more spec), `Tape::vjp` (any seed) |
-| train | `Parameters::step`, `Run::recorded_gradients`, `Sgd`, `Adam`, `AdamW` |
+| train | `Parameters::step`, `Run::recorded_gradients`, `Sgd`, `Adam`, `AdamW`, `Muon` |
 | layers | `Linear`, `Mlp`, `Conv2d`, `max_pool`, `BatchNorm`, `LayerNorm`, `RmsNorm`, `Dropout`, `Embedding`, `scaled_dot_product`, `cross_entropy`, `init` |
 | compile | `Network::entry` → `Entry` → `lower` → `Plan`, `Numerics::{Fast, Exact}` |
 | emit | `Plan::emit_stablehlo` |

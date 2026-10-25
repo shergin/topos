@@ -162,8 +162,8 @@ pub use graph::{
 };
 pub use neural::{
     Activation, Adam, AdamW, BatchNorm, Conv2d, Dropout, Embedding, LayerNorm, Linear, Mlp, Module,
-    Normalization, Optimizer, Path, RmsNorm, Segment, Sequential, Sgd, Visitor, causal_mask,
-    checkpoint, conv2d, cross_entropy, init, max_pool, named_parameters, parameters,
+    Muon, NewtonSchulz, Normalization, Optimizer, Path, RmsNorm, Segment, Sequential, Sgd, Visitor,
+    causal_mask, checkpoint, conv2d, cross_entropy, init, max_pool, named_parameters, parameters,
     scaled_dot_product,
 };
 pub use payload::{
@@ -179,10 +179,11 @@ pub use payload::{
 pub mod model {
     pub use crate::{
         Activation, Adam, AdamW, Adjoints, BatchNorm, BoundEntry, Conv2d, Detach, Dropout,
-        Embedding, Entry, Field, Gradients, LayerNorm, Linear, Mlp, Module, Network, Normalization,
-        Optimizer, Parameters, Path, Plan, RmsNorm, Run, Segment, Sequential, Sgd, Shape, Symbol,
-        Tape, Tensor, Value, Visitor, causal_mask, checkpoint, concat, conv2d, cross_entropy, init,
-        max_pool, named_parameters, parameters, scaled_dot_product, stack,
+        Embedding, Entry, Field, Gradients, LayerNorm, Linear, Mlp, Module, Muon, Network,
+        NewtonSchulz, Normalization, Optimizer, Parameters, Path, Plan, RmsNorm, Run, Segment,
+        Sequential, Sgd, Shape, Symbol, Tape, Tensor, Value, Visitor, causal_mask, checkpoint,
+        concat, conv2d, cross_entropy, init, max_pool, named_parameters, parameters,
+        scaled_dot_product, stack,
     };
 }
 

@@ -57,7 +57,7 @@ Dropout looks like it needs a random generator in the graph and a switch that tu
 
 ## Optimizers and the rest
 
-`Sgd`, `Adam`, and `AdamW` implement `Optimizer`; moments are parameter-aligned tables that initialize from the first step's gradients. `BatchNorm` records the training normalization by batch statistics and, through `express_with`, the inference twin normalized by running estimates fed per run — the estimates live in the caller's loop as plain payloads. `LayerNorm` and `RmsNorm` are the transformer norms; `Embedding` is a `Module` holding one `[vocab, dim]` table whose `express` is the gather over a one-hot selection. [Training](../training/#optimizers-are-instruments) compares two optimizers on one graph.
+`Sgd`, `Adam`, `AdamW`, and `Muon` implement `Optimizer`; moments and momentum are parameter-aligned tables that initialize from the first step's gradients. `Muon` orthogonalizes each matrix update through `NewtonSchulz`, a few matrix products on the public surface whose polynomial, iteration count, and stabilizer are payloads the caller writes. `BatchNorm` records the training normalization by batch statistics and, through `express_with`, the inference twin normalized by running estimates fed per run — the estimates live in the caller's loop as plain payloads. `LayerNorm` and `RmsNorm` are the transformer norms; `Embedding` is a `Module` holding one `[vocab, dim]` table whose `express` is the gather over a one-hot selection. [Training](../training/#optimizers-are-instruments) compares two optimizers on one graph.
 
 ## Where next
 

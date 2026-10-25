@@ -9,6 +9,22 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 ### Added
 
+- The `Muon` optimizer and the `NewtonSchulz` iteration behind it.
+  `Muon` is momentum SGD whose matrix updates are orthogonalized:
+  every parameter of rank two and above is reshaped to one row per
+  leading index, passed through the Newton-Schulz polynomial, scaled
+  by the integer aspect ratio `sqrt(max(1, rows / columns))`, and
+  stepped; biases and gains step along the plain Nesterov momentum
+  direction, and `Muon::step_where` takes a per-parameter predicate
+  for keeping embeddings and heads out, as `AdamW::step_where` does
+  for decay. `NewtonSchulz::new` takes the polynomial's three
+  coefficients, the iteration count, and the normalization
+  stabilizer as payloads the caller writes (the reference quintic is
+  `(3.4445, -4.7750, 2.0315)` over five iterations), and
+  `NewtonSchulz::orthogonalize` is public, so a hand-rolled Muon is
+  a few lines of table algebra. The momentum table is
+  parameter-aligned and every step is pure payload arithmetic, so
+  identical runs are bitwise identical.
 - The documentation site, <https://shergin.github.io/topos/>, generated
   by the `topos-site` workspace member in `site/` and deployed by
   `.github/workflows/pages.yml`. Every plate on it is program output:

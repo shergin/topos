@@ -37,11 +37,11 @@ Parallel what-ifs work the same way: clone the table per thread, share the netwo
 
 ## Optimizers are instruments
 
-An `Optimizer` is an open trait: gradients and parameters in, next parameters out, with whatever state it needs held as more parameter-aligned tables. `Sgd` is stateless; `Adam` and `AdamW` carry moments. A custom optimizer is an ordinary implementation with the same standing as the built-ins, and a comparison loop can iterate them side by side.
+An `Optimizer` is an open trait: gradients and parameters in, next parameters out, with whatever state it needs held as more parameter-aligned tables. `Sgd` is stateless; `Adam` and `AdamW` carry moments; `Muon` carries a momentum table and passes each matrix's update through a `NewtonSchulz` iteration, so every singular direction of a weight moves by about the same amount. A custom optimizer is an ordinary implementation with the same standing as the built-ins, and a comparison loop can iterate them side by side.
 
 {{figure train_optimizers}}
 
-Hyperparameters are caller-owned and visible at the call site: `Adam::new` takes its betas and epsilon as payloads you write, and the learning rate stays an argument of every step. A facade never chooses a float constant.
+Hyperparameters are caller-owned and visible at the call site: `Adam::new` takes its betas and epsilon as payloads you write, `NewtonSchulz::new` takes its polynomial the same way, and the learning rate stays an argument of every step. A facade never chooses a float constant.
 
 ## Feeds are the data
 
