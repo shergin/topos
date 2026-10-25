@@ -1,6 +1,8 @@
 {
     use malevich::{Line, Plot};
-    use topos::{Activation, Adam, Mlp, Module, Optimizer, Sgd, Shape, Tape, Tensor, init};
+    use topos::{
+        Activation, Adam, Mlp, Module, Muon, NewtonSchulz, Optimizer, Sgd, Shape, Tape, Tensor, init,
+    };
 
     // A tanh MLP fit to sin x over 48 samples, recorded once.
     let features: Tensor<f32> = init::uniform(3, 3.0)(&Shape::new([48, 1]));
@@ -19,8 +21,20 @@
     let mut curves = Vec::new();
     let mut sgd = Sgd;
     let mut adam = Adam::new(Tensor::from(0.9_f32), Tensor::from(0.999), Tensor::from(1e-8));
-    let runs: [(&str, &mut dyn Optimizer<f32>, f32); 2] =
-        [("sgd, lr 0.003", &mut sgd, 0.003), ("adam, lr 0.005", &mut adam, 0.005)];
+    // Muon orthogonalizes each weight matrix's update through the
+    // reference quintic; the polynomial is written here, not chosen
+    // by the facade.
+    let quintic = NewtonSchulz::new(
+        [Tensor::from(3.4445_f32), Tensor::from(-4.7750), Tensor::from(2.0315)],
+        5,
+        Tensor::from(1e-7),
+    );
+    let mut muon = Muon::new(Tensor::from(0.95_f32), quintic);
+    let runs: [(&str, &mut dyn Optimizer<f32>, f32); 3] = [
+        ("sgd, lr 0.003", &mut sgd, 0.003),
+        ("adam, lr 0.005", &mut adam, 0.005),
+        ("muon, lr 0.002", &mut muon, 0.002),
+    ];
     for (label, optimizer, learning_rate) in runs {
         let learning_rate = Tensor::from(learning_rate);
         let mut parameters = network.parameters();
@@ -34,7 +48,7 @@
         curves.push((label, losses));
     }
     let mut plot = Plot::new()
-        .title("two optimizers, one recorded gradient")
+        .title("three optimizers, one recorded gradient")
         .x_label("step")
         .y_label("sum of squared errors")
         .log_y();

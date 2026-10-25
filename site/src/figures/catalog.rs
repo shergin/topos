@@ -82,7 +82,7 @@ fn training() -> Vec<Figure> {
     catalog![
         "train_rates" => ("Three learning rates on one spec, each descending from a clone of the same initial state. On a log scale a constant convergence rate is a straight line.", card(72, 16)),
         "train_state" => ("Training does not version the graph. After a hundred steps the network prints the same lines and still answers the initial parameters; the loop's own table is what moved.", card(72, 16)),
-        "train_optimizers" => ("Plain SGD against Adam on one small regression, from the same initial state and the same recorded gradients. The optimizer is a caller-owned instrument the loop hands the gradients to.", card(72, 16)),
+        "train_optimizers" => ("Plain SGD, Adam, and Muon on one small regression, from the same initial state and the same recorded gradients. The optimizer is a caller-owned instrument the loop hands the gradients to.", card(72, 16)),
         "train_regression" => ("A tanh MLP fit to a noisy sine. The fit line is the trained expression itself, fed an even grid in place of the training samples.", card(72, 16)),
         "train_xor" => ("XOR learned by a `[2, 4, 1]` perceptron fed two samples per run, and the surface it learned, rasterized through the very same two-row expression training used.", card(64, 14)),
         "train_moons" => ("The two moons, separated: the decision surface of a `[2, 16, 16, 1]` MLP after two thousand full-batch steps, drawn by a grid-shaped twin of the training expression.", card(72, 16)),
